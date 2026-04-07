@@ -264,6 +264,7 @@ let chaseChars = [];
 let chaseAnimId = null;
 let chaseTarget = '';
 let chasePaused = false;
+let chaseRepeatId = null;
 let lastFrameTime = 0;
 
 // --- Audio ---
@@ -478,6 +479,10 @@ function startChaseRound() {
   });
 
   speakChar(chaseTarget);
+  clearInterval(chaseRepeatId);
+  chaseRepeatId = setInterval(() => {
+    if (!chasePaused) speakChar(chaseTarget);
+  }, 5000);
 }
 
 function animateChase(timestamp) {
@@ -521,6 +526,7 @@ function onChaseTap(ch) {
 
 function stopChase() {
   if (chaseAnimId) { cancelAnimationFrame(chaseAnimId); chaseAnimId = null; }
+  clearInterval(chaseRepeatId);
   chaseChars.forEach(c => c.el.remove());
   chaseChars = [];
 }
