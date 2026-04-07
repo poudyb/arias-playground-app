@@ -456,7 +456,6 @@ function startChaseRound() {
     el.textContent = ch;
     el.style.fontSize = fontSize + 'vmin';
     el.style.color = colors[i % colors.length];
-    el.addEventListener('click', () => onChaseTap(ch));
     chaseArena.appendChild(el);
     chaseChars.push({ el, ch, x: 0, y: 0, vx: 0, vy: 0, w: 0, h: 0 });
   });
@@ -513,9 +512,21 @@ function animateChase(timestamp) {
   chaseAnimId = requestAnimationFrame(animateChase);
 }
 
-function onChaseTap(ch) {
+function onChaseClick(e) {
   if (chasePaused) return;
-  if (ch === chaseTarget) {
+
+  const x = e.clientX;
+  const y = e.clientY;
+  const margin = 30;
+
+  const hits = chaseChars.filter(c =>
+    x >= c.x - margin && x <= c.x + c.w + margin &&
+    y >= c.y - margin && y <= c.y + c.h + margin
+  );
+
+  if (hits.length === 0) return;
+
+  if (hits.some(c => c.ch === chaseTarget)) {
     chasePaused = true;
     chaseDifficulty = Math.min(chaseDifficulty + 1, 15);
     spawnConfetti();
@@ -528,6 +539,8 @@ function onChaseTap(ch) {
     playBuzzer();
   }
 }
+
+chaseArena.addEventListener('click', onChaseClick);
 
 function stopChase() {
   if (chaseAnimId) { cancelAnimationFrame(chaseAnimId); chaseAnimId = null; }
