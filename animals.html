@@ -569,10 +569,30 @@
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    -webkit-appearance: none;
+    appearance: none;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
+    filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.18));
+  }
+
+  .chase-animal:focus {
+    outline: none;
+  }
+
+  .chase-animal:focus-visible {
+    outline: 3px solid rgba(46, 125, 50, 0.75);
+    outline-offset: 6px;
+    border-radius: 12px;
   }
 
   .chase-animal:active {
-    transform: scale(0.9);
+    transform: scale(0.92);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.14));
   }
 
   #thumbs-down {
@@ -1343,8 +1363,6 @@ function startChaseRound() {
   chaseTargetIndex = indices[targetSlot];
   chaseTargetKey = ANIMALS[chaseTargetIndex].key;
 
-  const colors = COLORS.slice().sort(function() { return Math.random() - 0.5; });
-
   indices.forEach(function(animalIndex, i) {
     const a = ANIMALS[animalIndex];
     const el = document.createElement('button');
@@ -1369,7 +1387,7 @@ function startChaseRound() {
 
   requestAnimationFrame(function() {
     if (mode !== 'chase') return;
-    chaseAnimals.forEach(function(c, idx) {
+    chaseAnimals.forEach(function(c) {
       c.w = c.el.offsetWidth;
       c.h = c.el.offsetHeight;
       c.x = Math.random() * (window.innerWidth - c.w);
@@ -1379,7 +1397,6 @@ function startChaseRound() {
       c.vy = Math.sin(angle) * speed;
       c.el.style.left = c.x + 'px';
       c.el.style.top = c.y + 'px';
-      c.el.style.color = colors[idx % colors.length];
     });
     lastFrameTime = 0;
     chaseAnimId = requestAnimationFrame(animateChase);
