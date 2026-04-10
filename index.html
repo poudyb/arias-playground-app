@@ -122,6 +122,81 @@
     color: #e65100;
     opacity: 0.9;
   }
+
+  .parent-panel {
+    width: 100%;
+    max-width: 720px;
+    margin-bottom: clamp(1rem, 4vw, 1.5rem);
+    padding: clamp(0.65rem, 2.5vw, 0.85rem) clamp(0.85rem, 2.5vw, 1rem);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.22);
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  .parent-panel__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.65rem;
+  }
+
+  .parent-panel__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: clamp(0.9rem, 3vw, 1rem);
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .parent-panel__time-icon {
+    font-size: 1.2rem;
+    line-height: 1;
+    filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.15));
+  }
+
+  .parent-panel select {
+    font-family: inherit;
+    font-size: clamp(0.9rem, 3vw, 1rem);
+    font-weight: 600;
+    padding: 0.45rem 0.75rem;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    background: #fff;
+    color: #5e35b1;
+    cursor: pointer;
+    min-width: 10.5rem;
+  }
+
+  .parent-panel__custom {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .parent-panel__custom[hidden] {
+    display: none !important;
+  }
+
+  .parent-panel__custom input {
+    font-family: inherit;
+    font-size: clamp(0.9rem, 3vw, 1rem);
+    font-weight: 600;
+    width: 4.25rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    background: #fff;
+    color: #5e35b1;
+    text-align: center;
+  }
+
+  .parent-panel__custom-suffix {
+    font-size: clamp(0.85rem, 2.8vw, 0.95rem);
+    font-weight: 600;
+    color: #fff;
+  }
 </style>
 </head>
 <body>
@@ -130,6 +205,27 @@
     <h1 class="portal-title">Aria's Portal</h1>
     <p class="portal-sub">Pick a game to play!</p>
   </header>
+
+  <section class="parent-panel" aria-label="Time limit">
+    <div class="parent-panel__row">
+      <label class="parent-panel__label" for="play-limit">
+        <span class="parent-panel__time-icon" aria-hidden="true">⏱️</span>
+        Time limit
+      </label>
+      <select id="play-limit" name="play-limit">
+        <option value="unlimited" selected>No limit</option>
+        <option value="5">5 minutes</option>
+        <option value="10">10 minutes</option>
+        <option value="15">15 minutes</option>
+        <option value="custom">Custom…</option>
+      </select>
+      <span class="parent-panel__custom" id="custom-minutes-wrap" hidden>
+        <input type="number" id="custom-minutes" name="custom-minutes" min="1" max="180" value="15" inputmode="numeric" aria-label="Custom minutes">
+        <span class="parent-panel__custom-suffix">min</span>
+      </span>
+    </div>
+  </section>
+
   <div class="game-grid">
     <a class="game-tile" href="alphabet.html" id="tile-alphabets">
       <span class="game-tile__art" aria-hidden="true">🔤🌈✨</span>
@@ -138,5 +234,62 @@
     </a>
   </div>
 </main>
+<script>
+(function() {
+  var SESSION_KEY = 'ariaAlphabetSession';
+  var STATS_KEY = 'ariaAlphabetStats';
+
+  function defaultStats() {
+    return {
+      freeChars: 0,
+      quizCorrect: 0,
+      chaseCorrect: 0,
+      quizStruggled: [],
+      chaseStruggled: [],
+      visitedFreeplay: false,
+      visitedQuiz: false,
+      visitedChase: false
+    };
+  }
+
+  var playLimit = document.getElementById('play-limit');
+  var customWrap = document.getElementById('custom-minutes-wrap');
+  var customMinutes = document.getElementById('custom-minutes');
+
+  function syncCustomVisibility() {
+    customWrap.hidden = playLimit.value !== 'custom';
+  }
+
+  playLimit.addEventListener('change', syncCustomVisibility);
+  syncCustomVisibility();
+
+  function resolveMinutes() {
+    var sel = playLimit.value;
+    if (sel === 'unlimited') return null;
+    if (sel === 'custom') {
+      var n = parseInt(customMinutes.value, 10);
+      if (isNaN(n) || n < 1) n = 1;
+      if (n > 180) n = 180;
+      return n;
+    }
+    var preset = parseInt(sel, 10);
+    return !isNaN(preset) && preset > 0 ? preset : null;
+  }
+
+  document.getElementById('tile-alphabets').addEventListener('click', function(e) {
+    e.preventDefault();
+    var mins = resolveMinutes();
+    var endsAt = mins != null ? Date.now() + mins * 60 * 1000 : null;
+    try {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+        endsAt: endsAt,
+        startedAt: Date.now()
+      }));
+      sessionStorage.setItem(STATS_KEY, JSON.stringify(defaultStats()));
+    } catch (err) {}
+    window.location.href = 'alphabet.html';
+  });
+})();
+</script>
 </body>
 </html>

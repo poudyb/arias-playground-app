@@ -235,9 +235,224 @@
   .chase-char:active {
     transform: scale(0.9);
   }
+
+  #play-timer {
+    display: none;
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 140;
+    font-family: "Fredoka", system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(94, 53, 177, 0.92);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    pointer-events: none;
+  }
+
+  #play-timer.is-visible {
+    display: block;
+  }
+
+  body.session-ended {
+    pointer-events: none;
+  }
+
+  body.session-ended #session-end-overlay,
+  body.session-ended #session-end-overlay * {
+    pointer-events: auto;
+  }
+
+  #session-end-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    background: rgba(0, 0, 0, 0.45);
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  body.session-ended #session-end-overlay {
+    display: flex;
+  }
+
+  .session-end-card {
+    max-width: 24rem;
+    width: 100%;
+    background: linear-gradient(160deg, #fff9e6 0%, #ffe0f0 40%, #e3f2fd 100%);
+    border-radius: 24px;
+    padding: clamp(1.35rem, 4vw, 1.85rem);
+    font-family: "Fredoka", system-ui, sans-serif;
+    box-shadow:
+      0 4px 0 #ff6ec7,
+      0 16px 48px rgba(0, 0, 0, 0.22);
+    border: 4px solid #fff;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .session-end-card::before {
+    content: "⭐";
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    font-size: 1.75rem;
+    opacity: 0.9;
+    pointer-events: none;
+  }
+
+  .session-end-card::after {
+    content: "✨";
+    position: absolute;
+    bottom: 3.5rem;
+    left: 0.65rem;
+    font-size: 1.35rem;
+    opacity: 0.85;
+    pointer-events: none;
+  }
+
+  .session-end-card h2 {
+    font-size: clamp(1.5rem, 5.5vw, 1.85rem);
+    color: #6a1b9a;
+    margin-bottom: 0.25rem;
+    text-align: center;
+    text-shadow: 0 2px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .session-end-card .session-end-sub {
+    font-size: clamp(0.95rem, 3.2vw, 1.05rem);
+    font-weight: 600;
+    color: #ad1457;
+    text-align: center;
+    margin-bottom: 1.1rem;
+  }
+
+  .session-end-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0 0 1.2rem;
+  }
+
+  .score-section {
+    border-radius: 16px;
+    padding: 0.75rem 0.85rem;
+    border: 3px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.08);
+  }
+
+  .score-section--free {
+    background: linear-gradient(135deg, #fff59d 0%, #ffcc80 100%);
+  }
+
+  .score-section--quiz {
+    background: linear-gradient(135deg, #90caf9 0%, #64b5f6 100%);
+  }
+
+  .score-section--chase {
+    background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%);
+  }
+
+  .score-section__head {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .score-section__icon {
+    font-size: 1.35rem;
+    line-height: 1;
+  }
+
+  .score-section__title {
+    font-size: clamp(1rem, 3.5vw, 1.15rem);
+    font-weight: 700;
+    color: #4a148c;
+  }
+
+  .score-section__body {
+    font-size: clamp(0.88rem, 3vw, 0.98rem);
+    font-weight: 600;
+    color: #333;
+    line-height: 1.45;
+  }
+
+  .score-section--muted .score-section__body {
+    color: #555;
+    font-weight: 500;
+  }
+
+  .score-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+  }
+
+  .score-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.1rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    font-weight: 800;
+    background: #fff;
+    color: #6a1b9a;
+    border: 2px solid rgba(106, 27, 154, 0.25);
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06);
+  }
+
+  .score-celebrate {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1b5e20;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .session-end-card::before,
+    .session-end-card::after { opacity: 0.5; }
+  }
+
+  .session-end-home {
+    display: block;
+    text-align: center;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 12px 16px;
+    border-radius: 999px;
+    background: #7c4dff;
+    color: #fff;
+    text-decoration: none;
+    box-shadow: 0 3px 0 #5e35b1;
+  }
+
+  .session-end-home:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #5e35b1;
+  }
 </style>
 </head>
 <body>
+
+<div id="play-timer" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<div id="session-end-overlay" aria-modal="true" role="dialog" aria-labelledby="session-end-title" aria-hidden="true">
+  <div class="session-end-card">
+    <h2 id="session-end-title">Time's up!</h2>
+    <p class="session-end-sub">You did awesome — here's your scoreboard!</p>
+    <div class="session-end-stats" id="session-end-stats"></div>
+    <a href="index.html" class="session-end-home" id="session-end-home">Back to home</a>
+  </div>
+</div>
 
 <a href="index.html" class="home-btn" id="link-home" aria-label="Back to games">← Home</a>
 <div id="mode-buttons">
@@ -267,6 +482,304 @@ const NUMBER_WORDS = {
 };
 
 const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+const SESSION_KEY = 'ariaAlphabetSession';
+const STATS_KEY = 'ariaAlphabetStats';
+
+function defaultStats() {
+  return {
+    freeChars: 0,
+    quizCorrect: 0,
+    chaseCorrect: 0,
+    quizStruggled: [],
+    chaseStruggled: [],
+    visitedFreeplay: false,
+    visitedQuiz: false,
+    visitedChase: false
+  };
+}
+
+function normalizeStats(parsed) {
+  const d = defaultStats();
+  if (!parsed || typeof parsed !== 'object') return d;
+  return {
+    ...d,
+    ...parsed,
+    quizStruggled: Array.isArray(parsed.quizStruggled) ? parsed.quizStruggled : [],
+    chaseStruggled: Array.isArray(parsed.chaseStruggled) ? parsed.chaseStruggled : [],
+    visitedFreeplay: !!parsed.visitedFreeplay,
+    visitedQuiz: !!parsed.visitedQuiz,
+    visitedChase: !!parsed.visitedChase
+  };
+}
+
+let playLimitEndsAt = null;
+let sessionEnded = false;
+let sessionTickId = null;
+let stats = defaultStats();
+
+function shouldTrackStats() {
+  return playLimitEndsAt != null && !sessionEnded;
+}
+
+function persistStats() {
+  if (!shouldTrackStats()) return;
+  try {
+    sessionStorage.setItem(STATS_KEY, JSON.stringify(stats));
+  } catch (_) {}
+}
+
+function bumpStat(field) {
+  if (!shouldTrackStats()) return;
+  stats[field]++;
+  if (field === 'freeChars') stats.visitedFreeplay = true;
+  persistStats();
+}
+
+function addQuizStruggle(char) {
+  if (!shouldTrackStats() || char == null || char === '') return;
+  const ch = String(char).toUpperCase();
+  if (!stats.quizStruggled.includes(ch)) stats.quizStruggled.push(ch);
+  persistStats();
+}
+
+function addChaseStruggle() {
+  if (!shouldTrackStats() || chaseTarget == null || chaseTarget === '') return;
+  const ch = String(chaseTarget).toUpperCase();
+  if (!stats.chaseStruggled.includes(ch)) stats.chaseStruggled.push(ch);
+  persistStats();
+}
+
+function loadStatsFromStorage() {
+  try {
+    const raw = sessionStorage.getItem(STATS_KEY);
+    stats = raw ? normalizeStats(JSON.parse(raw)) : defaultStats();
+  } catch (_) {
+    stats = defaultStats();
+  }
+}
+
+function clearPlaySessionStorage() {
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(STATS_KEY);
+  } catch (_) {}
+}
+
+function initPlaySession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) {
+      playLimitEndsAt = null;
+      stats = defaultStats();
+      sessionStorage.removeItem(STATS_KEY);
+      return;
+    }
+    const s = JSON.parse(raw);
+    playLimitEndsAt = s.endsAt != null ? Number(s.endsAt) : null;
+    if (playLimitEndsAt != null && (isNaN(playLimitEndsAt) || Date.now() >= playLimitEndsAt)) {
+      loadStatsFromStorage();
+      onSessionTimeUp();
+      return;
+    }
+    loadStatsFromStorage();
+  } catch (_) {
+    playLimitEndsAt = null;
+    stats = defaultStats();
+  }
+}
+
+function formatTimeLeft(ms) {
+  const sec = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(sec / 60);
+  const r = sec % 60;
+  return m + ':' + (r < 10 ? '0' : '') + r;
+}
+
+function onSessionTimeUp() {
+  if (sessionEnded) return;
+  sessionEnded = true;
+  if (sessionTickId != null) {
+    clearInterval(sessionTickId);
+    sessionTickId = null;
+  }
+  loadStatsFromStorage();
+  stopAlphabetsGame();
+  document.body.classList.add('session-ended');
+  const timerEl = document.getElementById('play-timer');
+  timerEl.classList.remove('is-visible');
+  timerEl.textContent = '';
+  const overlay = document.getElementById('session-end-overlay');
+  overlay.setAttribute('aria-hidden', 'false');
+  const board = document.getElementById('session-end-stats');
+  board.innerHTML = '';
+
+  function addScoreSection(modClass, icon, title, bodyEl) {
+    const sec = document.createElement('div');
+    sec.className = 'score-section ' + modClass;
+    const head = document.createElement('div');
+    head.className = 'score-section__head';
+    const ic = document.createElement('span');
+    ic.className = 'score-section__icon';
+    ic.setAttribute('aria-hidden', 'true');
+    ic.textContent = icon;
+    const ttl = document.createElement('div');
+    ttl.className = 'score-section__title';
+    ttl.textContent = title;
+    head.appendChild(ic);
+    head.appendChild(ttl);
+    const body = document.createElement('div');
+    body.className = 'score-section__body';
+    body.appendChild(bodyEl);
+    sec.appendChild(head);
+    sec.appendChild(body);
+    board.appendChild(sec);
+  }
+
+  function addMutedSection(modClass, icon, title, message) {
+    const sec = document.createElement('div');
+    sec.className = 'score-section score-section--muted ' + modClass;
+    const head = document.createElement('div');
+    head.className = 'score-section__head';
+    const ic = document.createElement('span');
+    ic.className = 'score-section__icon';
+    ic.setAttribute('aria-hidden', 'true');
+    ic.textContent = icon;
+    const ttl = document.createElement('div');
+    ttl.className = 'score-section__title';
+    ttl.textContent = title;
+    head.appendChild(ic);
+    head.appendChild(ttl);
+    const body = document.createElement('div');
+    body.className = 'score-section__body';
+    body.textContent = message;
+    sec.appendChild(head);
+    sec.appendChild(body);
+    board.appendChild(sec);
+  }
+
+  function pillsForChars(arr) {
+    const wrap = document.createElement('div');
+    wrap.className = 'score-pills';
+    arr.forEach(function(ch) {
+      const pill = document.createElement('span');
+      pill.className = 'score-pill';
+      pill.textContent = ch;
+      wrap.appendChild(pill);
+    });
+    return wrap;
+  }
+
+  /* Free play */
+  if (!stats.visitedFreeplay) {
+    addMutedSection('score-section--free', '🎨', 'Free play', 'This mode was not accessed during this play session.');
+  } else if (stats.freeChars === 0) {
+    const line = document.createElement('span');
+    line.textContent = 'You opened Free play — next time, tap lots of letters and numbers to fill the rainbow! 🌈';
+    addScoreSection('score-section--free', '🎨', 'Free play', line);
+  } else {
+    const fc = stats.freeChars;
+    const line = document.createElement('span');
+    line.textContent = 'You explored ' + fc + ' ' + (fc === 1 ? 'letter or number' : 'letters & numbers') + '! 🌈';
+    addScoreSection('score-section--free', '🎨', 'Free play', line);
+  }
+
+  /* Quiz */
+  if (!stats.visitedQuiz) {
+    addMutedSection('score-section--quiz', '🧠', 'Quiz', 'This mode was not accessed during this play session.');
+  } else {
+    const wrap = document.createDocumentFragment();
+    const line = document.createElement('div');
+    if (stats.quizCorrect > 0) {
+      line.textContent = 'Nice work — ' + stats.quizCorrect + ' quiz ' + (stats.quizCorrect === 1 ? 'round' : 'rounds') + ' solved!';
+    } else if (stats.quizStruggled.length > 0) {
+      line.textContent = 'You were practicing — keep going next time!';
+    } else {
+      line.textContent = 'You opened Quiz — try solving puzzles next time! 🧩';
+    }
+    wrap.appendChild(line);
+    if (stats.quizStruggled.length === 0) {
+      if (stats.quizCorrect > 0) {
+        const cheer = document.createElement('div');
+        cheer.className = 'score-celebrate';
+        cheer.textContent = 'Every answer was first try — you are a star! ⭐';
+        wrap.appendChild(cheer);
+      }
+    } else {
+      const sub = document.createElement('div');
+      sub.style.marginTop = '0.45rem';
+      sub.style.fontWeight = '600';
+      sub.textContent = stats.quizCorrect > 0
+        ? 'These took an extra try (you got them!):'
+        : 'These letters or numbers needed another try:';
+      wrap.appendChild(sub);
+      wrap.appendChild(pillsForChars(stats.quizStruggled));
+    }
+    const holder = document.createElement('div');
+    holder.appendChild(wrap);
+    addScoreSection('score-section--quiz', '🧠', 'Quiz', holder);
+  }
+
+  /* Chase */
+  if (!stats.visitedChase) {
+    addMutedSection('score-section--chase', '🏃', 'Chase', 'This mode was not accessed during this play session.');
+  } else {
+    const wrap = document.createDocumentFragment();
+    const line = document.createElement('div');
+    if (stats.chaseCorrect > 0) {
+      line.textContent = 'You caught the target ' + stats.chaseCorrect + ' ' + (stats.chaseCorrect === 1 ? 'time' : 'times') + '!';
+    } else if (stats.chaseStruggled.length > 0) {
+      line.textContent = 'You were chasing — nice effort!';
+    } else {
+      line.textContent = 'You opened Chase — tap the right letter next time! 🎯';
+    }
+    wrap.appendChild(line);
+    if (stats.chaseStruggled.length === 0) {
+      if (stats.chaseCorrect > 0) {
+        const cheer = document.createElement('div');
+        cheer.className = 'score-celebrate';
+        cheer.textContent = 'No mix-ups — sharp tapping! 🎯';
+        wrap.appendChild(cheer);
+      }
+    } else {
+      const sub = document.createElement('div');
+      sub.style.marginTop = '0.45rem';
+      sub.style.fontWeight = '600';
+      sub.textContent = stats.chaseCorrect > 0
+        ? 'These targets needed another tap or two:'
+        : 'These targets were tricky to catch:';
+      wrap.appendChild(sub);
+      wrap.appendChild(pillsForChars(stats.chaseStruggled));
+    }
+    const holder = document.createElement('div');
+    holder.appendChild(wrap);
+    addScoreSection('score-section--chase', '🏃', 'Chase', holder);
+  }
+
+  speechSynthesis.cancel();
+}
+
+function updatePlayTimerUi() {
+  const el = document.getElementById('play-timer');
+  if (!playLimitEndsAt || sessionEnded) {
+    el.classList.remove('is-visible');
+    el.textContent = '';
+    return;
+  }
+  const left = playLimitEndsAt - Date.now();
+  if (left <= 0) {
+    onSessionTimeUp();
+    return;
+  }
+  el.classList.add('is-visible');
+  el.textContent = formatTimeLeft(left) + ' left';
+}
+
+function startSessionTimerIfNeeded() {
+  if (!playLimitEndsAt || sessionEnded) return;
+  updatePlayTimerUi();
+  sessionTickId = setInterval(updatePlayTimerUi, 500);
+}
 
 const hint = document.getElementById('hint');
 const letter = document.getElementById('letter');
@@ -562,6 +1075,7 @@ function animateChase(timestamp) {
 }
 
 function onChaseClick(e) {
+  if (sessionEnded) return;
   if (chasePaused) return;
 
   const x = e.clientX;
@@ -576,6 +1090,7 @@ function onChaseClick(e) {
   if (hits.length === 0) return;
 
   if (hits.some(c => c.ch === chaseTarget)) {
+    bumpStat('chaseCorrect');
     chasePaused = true;
     chaseDifficulty = Math.min(chaseDifficulty + 1, 15);
     spawnConfetti();
@@ -587,6 +1102,7 @@ function onChaseClick(e) {
       startChaseRound();
     }, 2000);
   } else {
+    addChaseStruggle();
     chaseDifficulty = Math.max(chaseDifficulty - 1, 0);
     showThumbsDown();
     playBuzzer();
@@ -617,6 +1133,7 @@ function stopAlphabetsGame() {
 }
 
 function setMode(newMode) {
+  if (sessionEnded) return;
   if (mode === 'chase') stopChase();
 
   mode = newMode;
@@ -640,6 +1157,13 @@ function setMode(newMode) {
     hint.textContent = isTouch ? 'Tap any letter or number!' : 'Press any letter or number!';
     currentTarget = '';
   }
+
+  if (shouldTrackStats()) {
+    if (mode === 'freeplay') stats.visitedFreeplay = true;
+    else if (mode === 'quiz') stats.visitedQuiz = true;
+    else if (mode === 'chase') stats.visitedChase = true;
+    persistStats();
+  }
 }
 
 modeBtns.forEach(btn => {
@@ -650,14 +1174,17 @@ modeBtns.forEach(btn => {
 });
 
 function handleChar(key) {
+  if (sessionEnded) return;
   if (mode === 'chase') return;
   if (mode === 'freeplay') {
+    bumpStat('freeChars');
     showChar(key, pickColor());
     speakChar(key);
     scheduleFade();
   } else {
     if (quizLocked) return;
     if (key === currentTarget) {
+      bumpStat('quizCorrect');
       quizLocked = true;
       spawnConfetti();
       showCelebrationEmojis();
@@ -668,6 +1195,7 @@ function handleChar(key) {
         startQuizRound();
       }, 2000);
     } else {
+      addQuizStruggle(currentTarget);
       showThumbsDown();
       playBuzzer();
     }
@@ -686,7 +1214,11 @@ if (isTouch) {
   hint.textContent = 'Tap any letter or number!';
 }
 
+initPlaySession();
+startSessionTimerIfNeeded();
+
 document.addEventListener('keydown', function(e) {
+  if (sessionEnded) return;
   if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
   const key = e.key.toUpperCase();
   if (!/^[A-Z0-9]$/.test(key)) return;
@@ -707,6 +1239,11 @@ window.addEventListener('pageshow', function(e) {
 
 document.getElementById('link-home').addEventListener('click', function() {
   stopAlphabetsGame();
+  clearPlaySessionStorage();
+});
+
+document.getElementById('session-end-home').addEventListener('click', function() {
+  clearPlaySessionStorage();
 });
 </script>
 </body>
