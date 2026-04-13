@@ -24,6 +24,13 @@
     background: linear-gradient(165deg, #7c4dff 0%, #ff6ec7 45%, #ffd54f 100%);
   }
 
+  /* align-items: center shrink-wraps flex children; grid needs a full-width main so % widths and auto-fit see the real viewport. */
+  main {
+    align-self: stretch;
+    width: 100%;
+    max-width: min(1080px, 100%);
+  }
+
   .portal-header {
     text-align: center;
     margin-bottom: clamp(1.25rem, 5vw, 2.5rem);
@@ -48,28 +55,44 @@
   }
 
   .game-grid {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
+    --game-grid-gap: clamp(0.65rem, 2vw, 1.15rem);
+    container-type: inline-size;
+    container-name: portal-game-grid;
+    display: grid;
+    /* At most 2 columns when wide: min track is max(15rem, half row). Narrow phones stay 1 column. */
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(
+        max(15rem, min(100%, calc((100% - var(--game-grid-gap)) / 2))),
+        1fr
+      )
+    );
     align-items: stretch;
-    justify-content: center;
-    gap: clamp(0.65rem, 2vw, 1.15rem);
+    justify-items: stretch;
+    gap: var(--game-grid-gap);
     width: 100%;
     max-width: min(1080px, 100%);
     margin-inline: auto;
-    overflow-x: auto;
-    overflow-y: visible;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-gutter: stable;
     padding-bottom: 6px;
+  }
+
+  /* Third tile sits on its own row when the grid is 2 columns wide (not three in one line). */
+  .game-grid .game-tile:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  @container portal-game-grid (min-width: 31.5rem) {
+    .game-grid .game-tile:nth-child(3) {
+      justify-self: center;
+      width: min(100%, calc((100% - var(--game-grid-gap)) / 2));
+    }
   }
 
   .game-tile {
     container-type: inline-size;
-    flex: 1 1 0;
-    align-self: stretch;
-    min-width: min(260px, 85vw);
-    max-width: 340px;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
     display: flex;
     flex-direction: column;
     align-items: center;
