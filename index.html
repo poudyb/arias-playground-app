@@ -57,8 +57,8 @@
 
   .game-grid {
     --game-grid-gap: clamp(0.65rem, 2vw, 1.15rem);
-    container-type: inline-size;
-    container-name: portal-game-grid;
+    /* Do not use container-type here: Safari/iPad can compute a near-zero width for the grid,
+       which makes @container(max-width: …) always match and collapses tiles into narrow strips. */
     display: grid;
     /* At most 2 columns when wide: min track is max(15rem, half row). Narrow phones stay 1 column. */
     grid-template-columns: repeat(
@@ -82,8 +82,8 @@
     grid-column: 1 / -1;
   }
 
-  /* Narrow grid (usually one column): cap card width so tiles are not full-bleed; wider grid fills each column. */
-  @container portal-game-grid (max-width: 31.5rem) {
+  /* Narrow viewports (typical phones): cap card width; use media queries, not grid container queries (Safari-safe). */
+  @media (max-width: 31.5rem) {
     .game-grid .game-tile {
       width: min(100%, 22.5rem);
       max-width: 22.5rem;
@@ -91,7 +91,7 @@
     }
   }
 
-  @container portal-game-grid (min-width: 31.5rem) {
+  @media (min-width: 31.5rem) {
     .game-grid .game-tile:nth-child(3) {
       justify-self: center;
       width: min(100%, calc((100% - var(--game-grid-gap)) / 2));
@@ -99,7 +99,6 @@
   }
 
   .game-tile {
-    container-type: inline-size;
     width: 100%;
     min-width: 0;
     max-width: none;
@@ -153,13 +152,6 @@
     animation: tile-wiggle 2.5s ease-in-out infinite;
   }
 
-  @supports (font-size: 1cqi) {
-    .game-tile__art {
-      min-height: clamp(4.25rem, 42cqi, 7.5rem);
-      font-size: clamp(2rem, 26cqi, 3.5rem);
-    }
-  }
-
   .game-tile__art--letters {
     display: inline-flex;
     align-items: center;
@@ -170,12 +162,6 @@
     font-weight: 800;
     font-size: clamp(1.75rem, 10vw, 3rem);
     animation: tile-wiggle-letters 2.5s ease-in-out infinite;
-  }
-
-  @supports (font-size: 1cqi) {
-    .game-tile__art--letters {
-      font-size: clamp(1.75rem, 22cqi, 3.1rem);
-    }
   }
 
   @keyframes tile-wiggle-letters {
@@ -253,16 +239,6 @@
     text-wrap: balance;
     color: #e65100;
     opacity: 0.95;
-  }
-
-  @supports (font-size: 1cqi) {
-    .game-tile__label {
-      font-size: clamp(0.92rem, 8.5cqi, 1.45rem);
-    }
-
-    .game-tile__hint {
-      font-size: clamp(0.8rem, 6.8cqi, 1.05rem);
-    }
   }
 
   .game-tile--animals {
