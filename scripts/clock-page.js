@@ -179,7 +179,7 @@ function renderClockTime(face, h, m, s, opts) {
     const mf = opts.msFraction || 0;
     const secondsVal = s == null ? 0 : s;
     const elapsed = h * 3600 + m * 60 + secondsVal + mf;
-    const hue = (elapsed * 360 / 60) % 360;
+    const hue = (elapsed * 360 / 600) % 360;
     slots.h1.style.setProperty('--led-hue', String(hue));
     slots.h2.style.setProperty('--led-hue', String(hue));
     slots.m1.style.setProperty('--led-hue', String(hue));
