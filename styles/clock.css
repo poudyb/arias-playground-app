@@ -201,7 +201,7 @@
   }
 
   .clock-digit-svg {
-    --led-color: hsl(var(--led-hue, 18), 95%, 58%);
+    --led-color: oklch(0.82 0.19 var(--led-hue, 50));
   }
 
   .clock-digit-svg .seg {
