@@ -268,17 +268,20 @@
     box-shadow: 0 0 6px #64b5f6;
   }
 
-  .clock-digit-svg .seg-btn {
-    cursor: pointer;
-    pointer-events: auto;
-  }
-
-  .clock-face--manual .clock-digit-svg .seg {
+  .clock-digit-svg .seg {
     pointer-events: none;
   }
 
-  .clock-face--manual .clock-digit-svg .seg-btn {
-    pointer-events: auto;
+  .clock-digit-svg .seg-hit {
+    fill: transparent;
+    pointer-events: all;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+  }
+
+  .clock-digit-svg .seg-hit:focus-visible {
+    fill: rgba(100, 181, 246, 0.18);
   }
 
   .watch-wrap,

@@ -23,6 +23,16 @@ const SEGMENT_POLYGONS = {
   g: '12,46 48,46 52,50 48,54 12,54 8,50'
 };
 
+const SEGMENT_HIT_POLYGONS = {
+  a: '0,0 60,0 46,14 14,14',
+  b: '60,0 60,45 40,45 40,14 46,14',
+  c: '60,55 60,100 46,86 40,86 40,55',
+  d: '0,100 14,86 46,86 60,100',
+  e: '0,55 20,55 20,86 14,86 0,100',
+  f: '0,0 14,14 20,14 20,45 0,45',
+  g: '0,45 60,45 60,55 0,55'
+};
+
 const SEG_LABELS = {
   a: 'top',
   b: 'top right',
@@ -500,22 +510,23 @@ function enterMatch() {
 
   ['h1', 'h2', 'm1', 'm2'].forEach(function(pos) {
     const svg = manualFace._slots[pos];
-    const segs = svg.querySelectorAll('.seg');
-    for (let i = 0; i < segs.length; i++) {
-      const seg = segs[i];
-      const segName = seg.getAttribute('data-seg');
-      seg.classList.add('seg-btn');
-      seg.setAttribute('role', 'button');
-      seg.setAttribute('tabindex', '0');
-      seg.setAttribute('aria-label', POSITION_LABELS[pos] + ', ' + SEG_LABELS[segName]);
-      seg.addEventListener('click', function() { toggleSeg(pos, segName); });
-      seg.addEventListener('keydown', function(ev) {
+    ['a', 'b', 'c', 'd', 'e', 'f', 'g'].forEach(function(segName) {
+      const hit = document.createElementNS(SVG_NS, 'polygon');
+      hit.setAttribute('points', SEGMENT_HIT_POLYGONS[segName]);
+      hit.setAttribute('class', 'seg-hit');
+      hit.setAttribute('data-seg', segName);
+      hit.setAttribute('role', 'button');
+      hit.setAttribute('tabindex', '0');
+      hit.setAttribute('aria-label', POSITION_LABELS[pos] + ', ' + SEG_LABELS[segName]);
+      hit.addEventListener('click', function() { toggleSeg(pos, segName); });
+      hit.addEventListener('keydown', function(ev) {
         if (ev.key === 'Enter' || ev.key === ' ') {
           ev.preventDefault();
           toggleSeg(pos, segName);
         }
       });
-    }
+      svg.appendChild(hit);
+    });
   });
 
   startTickLoop(function(now) {
