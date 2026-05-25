@@ -41,6 +41,11 @@ function speakText(text, options = {}) {
 }
 
 function cancelSpeech() {
+  if (!activeUtterance) return;
   if (window.speechSynthesis) window.speechSynthesis.cancel();
   activeUtterance = null;
 }
+
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) cancelSpeech();
+});
