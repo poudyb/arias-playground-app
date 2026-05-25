@@ -201,7 +201,12 @@
   }
 
   .clock-digit-svg {
-    --led-color: oklch(0.82 0.19 var(--led-hue, 50));
+    --led-color: hsl(var(--led-hue, 50), 95%, 60%);
+  }
+  @supports (color: oklch(0.82 0.19 50)) {
+    .clock-digit-svg {
+      --led-color: oklch(0.82 0.19 var(--led-hue, 50));
+    }
   }
 
   .clock-digit-svg .seg {
