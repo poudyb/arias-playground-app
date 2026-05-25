@@ -657,25 +657,3 @@
     .session-end-card::before,
     .session-end-card::after { opacity: 0.5; }
   }
-
-  /* Hidden video: audio is used for name + animal sound per segment (see script cues). */
-  .animal-sounds-video-wrap {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    clip-path: inset(50%);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  .animal-sounds-video-wrap video {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-    pointer-events: none;
-  }

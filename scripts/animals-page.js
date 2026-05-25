@@ -5,15 +5,12 @@ const animalGrid = document.getElementById('animal-grid');
 const modeHint = document.getElementById('mode-hint');
 const quizTop = document.getElementById('quiz-top');
 const quizReplayBtn = document.getElementById('quiz-replay-btn');
-const animalSoundsVideo = document.getElementById('animal-sounds-video');
 const chaseArena = document.getElementById('chase-arena');
 const thumbsDownEl = document.getElementById('thumbs-down');
 const MODE_SESSION_KEY = 'ariaAnimalsSession';
 
-let videoSegmentTimeUpdate = null;
-let videoSegmentSeekedHandler = null;
-let videoSegmentSeekTimer = null;
-let videoPlaybackGen = 0;
+const audioBuffers = new Array(ANIMALS.length).fill(null);
+let currentSource = null;
 let animalPlaying = false;
 let activity = null;
 
@@ -79,118 +76,57 @@ const session = createTimedSession({
   renderSummary
 });
 
-function stopVideoSegmentPlayback() {
-  if (!animalSoundsVideo) return;
-  videoPlaybackGen++;
+function decodeBuffer(ctx, arrayBuffer) {
+  return new Promise(function(resolve, reject) {
+    const ret = ctx.decodeAudioData(arrayBuffer, resolve, reject);
+    if (ret && typeof ret.then === 'function') ret.then(resolve, reject);
+  });
+}
+
+function loadAnimalSounds() {
+  const ctx = audio.getAudioCtx();
+  ANIMALS.forEach(function(item, index) {
+    fetch('assets/animals/sounds/' + item.key + '.m4a')
+      .then(function(r) { return r.arrayBuffer(); })
+      .then(function(buf) { return decodeBuffer(ctx, buf); })
+      .then(function(decoded) { audioBuffers[index] = decoded; })
+      .catch(function(err) { console.warn('animal sound failed: ' + item.key, err); });
+  });
+}
+
+function stopAnimalSound() {
+  if (!animalPlaying) return;
+  if (currentSource) {
+    try {
+      currentSource.onended = null;
+      currentSource.stop();
+      currentSource.disconnect();
+    } catch (_) {}
+    currentSource = null;
+  }
   animalPlaying = false;
-  if (videoSegmentSeekTimer != null) {
-    window.clearTimeout(videoSegmentSeekTimer);
-    videoSegmentSeekTimer = null;
-  }
-  if (videoSegmentSeekedHandler) {
-    animalSoundsVideo.removeEventListener('seeked', videoSegmentSeekedHandler);
-    videoSegmentSeekedHandler = null;
-  }
-  if (videoSegmentTimeUpdate) {
-    animalSoundsVideo.removeEventListener('timeupdate', videoSegmentTimeUpdate);
-    videoSegmentTimeUpdate = null;
-  }
-  animalSoundsVideo.pause();
 }
 
-function getVideoSegmentBounds(animalIndex) {
-  const duration = animalSoundsVideo.duration;
-  if (!duration || !Number.isFinite(duration)) return null;
-  const pair = ANIMAL_VIDEO_CUES[animalIndex];
-  if (!pair) return null;
-  return { start: pair[0], end: pair[1] };
-}
-
-function seekVideoTo(video, time) {
-  if (typeof video.fastSeek === 'function') {
-    try {
-      video.fastSeek(time);
-      return;
-    } catch (_) {}
-  }
-  video.currentTime = time;
-}
-
-function playAnimalSoundFromVideo(animalIndex) {
-  if (!animalSoundsVideo || session.isSessionEnded()) return;
+function playAnimalSound(animalIndex) {
+  if (session.isSessionEnded()) return;
   if (animalPlaying) return;
-  animalPlaying = true;
+  const buffer = audioBuffers[animalIndex];
+  if (!buffer) return;
   cancelSpeech();
-  const playbackSession = videoPlaybackGen;
 
-  function runPlayback() {
-    if (playbackSession !== videoPlaybackGen) return;
-    const bounds = getVideoSegmentBounds(animalIndex);
-    if (!bounds) return;
-
-    const start = bounds.start;
-    const end = bounds.end;
-    const trim = 0.05;
-    const video = animalSoundsVideo;
-    let started = false;
-
-    function beginAfterSeek() {
-      if (playbackSession !== videoPlaybackGen || started) return;
-      started = true;
-      if (videoSegmentSeekTimer != null) {
-        window.clearTimeout(videoSegmentSeekTimer);
-        videoSegmentSeekTimer = null;
-      }
-      if (videoSegmentSeekedHandler) {
-        video.removeEventListener('seeked', videoSegmentSeekedHandler);
-        videoSegmentSeekedHandler = null;
-      }
-
-      videoSegmentTimeUpdate = function() {
-        if (playbackSession !== videoPlaybackGen) return;
-        if (video.currentTime >= end - trim) {
-          video.pause();
-          stopVideoSegmentPlayback();
-        }
-      };
-      video.addEventListener('timeupdate', videoSegmentTimeUpdate);
-      video.muted = false;
-      video.volume = 1;
-      const startedPlayback = video.play();
-      if (startedPlayback && typeof startedPlayback.catch === 'function') {
-        startedPlayback.catch(function() {});
-      }
+  const ctx = audio.getAudioCtx();
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(ctx.destination);
+  source.onended = function() {
+    if (currentSource === source) {
+      currentSource = null;
+      animalPlaying = false;
     }
-
-    videoSegmentSeekedHandler = beginAfterSeek;
-    video.addEventListener('seeked', beginAfterSeek);
-    video.muted = true;
-    video.volume = 1;
-    try {
-      const primed = video.play();
-      if (primed && typeof primed.catch === 'function') primed.catch(function() {});
-    } catch (_) {}
-
-    seekVideoTo(video, start);
-
-    videoSegmentSeekTimer = window.setTimeout(function() {
-      videoSegmentSeekTimer = null;
-      if (playbackSession !== videoPlaybackGen) return;
-      if (!started && !video.seeking) beginAfterSeek();
-    }, 40);
-  }
-
-  if (!animalSoundsVideo.duration || !Number.isFinite(animalSoundsVideo.duration)) {
-    animalSoundsVideo.addEventListener('loadedmetadata', function onMeta() {
-      animalSoundsVideo.removeEventListener('loadedmetadata', onMeta);
-      if (playbackSession !== videoPlaybackGen) return;
-      runPlayback();
-    }, { once: true });
-    if (animalSoundsVideo.readyState === 0) animalSoundsVideo.load();
-    return;
-  }
-
-  runPlayback();
+  };
+  currentSource = source;
+  animalPlaying = true;
+  source.start(0);
 }
 
 const audio = createAudioFeedback();
@@ -198,26 +134,13 @@ const thumbsDown = createThumbsDownController(thumbsDownEl, {
   animationName: 'animal-shake'
 });
 
-function warmAnimalVideo() {
-  const video = animalSoundsVideo;
-  if (!video) return;
-  const wasMuted = video.muted;
-  video.muted = true;
-  const primed = video.play();
-  function settle() {
-    try {
-      video.pause();
-      video.muted = wasMuted;
-    } catch (_) {}
-  }
-  if (primed && typeof primed.then === 'function') primed.then(settle).catch(settle);
-  else window.setTimeout(settle, 0);
-}
+loadAnimalSounds();
 
-setupInteractionUnlock([
-  function() { audio.getAudioCtx(); },
-  warmAnimalVideo
-]);
+setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
+
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) stopAnimalSound();
+});
 
 activity = createCollectionActivity({
   items: ANIMALS,
@@ -227,10 +150,10 @@ activity = createCollectionActivity({
     showCelebrationEmojis,
     spawnConfetti
   },
-  promptItem: playAnimalSoundFromVideo,
+  promptItem: playAnimalSound,
   stopPrompt: function() {
     cancelSpeech();
-    stopVideoSegmentPlayback();
+    stopAnimalSound();
   },
   freeplayHintText: 'Tap an animal!',
   freeplayStatField: 'freeAnimals',
