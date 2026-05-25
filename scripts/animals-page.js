@@ -14,6 +14,7 @@ let videoSegmentTimeUpdate = null;
 let videoSegmentSeekedHandler = null;
 let videoSegmentSeekTimer = null;
 let videoPlaybackGen = 0;
+let animalPlaying = false;
 let activity = null;
 
 function renderAnimalPill(pill, key) {
@@ -81,6 +82,7 @@ const session = createTimedSession({
 function stopVideoSegmentPlayback() {
   if (!animalSoundsVideo) return;
   videoPlaybackGen++;
+  animalPlaying = false;
   if (videoSegmentSeekTimer != null) {
     window.clearTimeout(videoSegmentSeekTimer);
     videoSegmentSeekTimer = null;
@@ -116,8 +118,9 @@ function seekVideoTo(video, time) {
 
 function playAnimalSoundFromVideo(animalIndex) {
   if (!animalSoundsVideo || session.isSessionEnded()) return;
+  if (animalPlaying) return;
+  animalPlaying = true;
   cancelSpeech();
-  stopVideoSegmentPlayback();
   const playbackSession = videoPlaybackGen;
 
   function runPlayback() {

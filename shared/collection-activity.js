@@ -153,6 +153,7 @@ function createCollectionActivity(options) {
       nextIndex = Math.floor(Math.random() * items.length);
     } while (quizTargetIndex >= 0 && getTargetKey(items[nextIndex]) === getTargetKey(items[quizTargetIndex]));
     quizTargetIndex = nextIndex;
+    if (stopPrompt) stopPrompt();
     if (promptItem) promptItem(quizTargetIndex);
     if (onQuizStart) onQuizStart(items[quizTargetIndex], quizTargetIndex);
   }
@@ -197,6 +198,7 @@ function createCollectionActivity(options) {
       entry.vy = Math.sin(angle) * params.speed;
     });
 
+    if (stopPrompt) stopPrompt();
     promptChaseTarget();
     chaseRepeatId = setInterval(function() {
       if (chasePaused || session.isSessionEnded()) return;
