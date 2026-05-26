@@ -13,6 +13,7 @@ const RAINBOW_PALETTE = [
 
 function createAudioFeedback() {
   let audioCtx = null;
+  let keepalive = null;
 
   function getAudioCtx() {
     if (!audioCtx) {
@@ -22,7 +23,25 @@ function createAudioFeedback() {
       const resumed = audioCtx.resume();
       if (resumed && typeof resumed.catch === 'function') resumed.catch(function() {});
     }
+    startKeepalive();
     return audioCtx;
+  }
+
+  // iOS Safari lets the audio session sleep between sounds; waking it on the
+  // next synth.speak() or createBufferSource().start() does ~100-300ms of
+  // sync work on the main thread, freezing rAF a moment before the prompt
+  // audio kicks in. A continuous silent source keeps the session warm so
+  // subsequent prompts start instantly.
+  function startKeepalive() {
+    if (keepalive || !audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0;
+    osc.frequency.value = 1;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    keepalive = osc;
   }
 
   function playChime() {
