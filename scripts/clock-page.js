@@ -152,11 +152,13 @@ function buildClockFace(opts) {
 
   if (opts.showSeconds) {
     const colon2 = createColonEl();
+    colon2.classList.add('clock-colon--dim');
     face.appendChild(colon2);
     colons.push(colon2);
     ['s1', 's2'].forEach(function(name) {
       const svg = createDigitSvg();
       svg.setAttribute('data-pos', name);
+      svg.classList.add('clock-digit-svg--dim');
       face.appendChild(svg);
       slots[name] = svg;
     });
@@ -456,7 +458,7 @@ function enterMatch() {
   wrap.className = 'match-wrap';
 
   const realFace = buildClockFace({ showSeconds: true, sizeClass: 'clock-face--real' });
-  const manualFace = buildClockFace({ showSeconds: false, sizeClass: 'clock-face--manual' });
+  const manualFace = buildClockFace({ showSeconds: true, sizeClass: 'clock-face--manual' });
   enableSpeakOnTap(realFace);
 
   // Stack both clocks left-aligned so HH lines up under HH and MM under MM.
@@ -531,6 +533,9 @@ function enterMatch() {
 
   startTickLoop(function(now) {
     renderClockTime(realFace, get12Hour(now), now.getMinutes(), now.getSeconds(), realClockOpts(now));
+    const ss = formatTwo(now.getSeconds());
+    renderDigit(manualFace._slots.s1, Number(ss[0]));
+    renderDigit(manualFace._slots.s2, Number(ss[1]));
     evaluateMatch();
   });
 

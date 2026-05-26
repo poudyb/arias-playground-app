@@ -626,3 +626,20 @@
     0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
     100% { transform: translate(var(--tx), var(--ty)) rotate(var(--rot)); opacity: 0; }
   }
+
+  .clock-face .clock-digit-svg.clock-digit-svg--dim,
+  .clock-face--manual.matching .clock-digit-svg.clock-digit-svg--dim {
+    --led-color: #5d6878;
+  }
+
+  .clock-face .clock-digit-svg--dim .seg.on,
+  .clock-face--manual.matching .clock-digit-svg--dim .seg.on {
+    filter: none;
+  }
+
+  .clock-face .clock-colon--dim .clock-colon__dot,
+  .clock-face--manual.matching .clock-colon--dim .clock-colon__dot {
+    background: #5d6878;
+    box-shadow: 0 0 2px #5d6878;
+    opacity: 0.6;
+  }
