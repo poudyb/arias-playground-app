@@ -582,8 +582,14 @@ function enterQuiz() {
     optRow.innerHTML = '';
     thumbsDown.hide();
 
-    const h = randomHour();
-    const m = randomMinute();
+    const prev = target;
+    let h, m;
+    let tries = 0;
+    do {
+      h = randomHour();
+      m = randomMinute();
+      tries++;
+    } while (prev && prev.h === h && prev.m === m && tries < 50);
     target = { h: h, m: m };
 
     function pickWrong(exclude) {

@@ -41,6 +41,7 @@ function createCollectionActivity(options) {
   let chaseTargetItem = null;
   let chasePaused = false;
   let chaseRepeatId = null;
+  let lastChaseTargetKey = null;
   let lastFrameTime = 0;
 
   function quizTarget() {
@@ -178,7 +179,15 @@ function createCollectionActivity(options) {
       indices[j] = tmp;
       shuffled.push(indices[i]);
     }
-    chaseTargetItem = pool[shuffled[Math.floor(Math.random() * shuffled.length)]];
+    let targetCandidates = shuffled;
+    if (lastChaseTargetKey != null && shuffled.length > 1) {
+      const filtered = shuffled.filter(function(idx) {
+        return getTargetKey(pool[idx]) !== lastChaseTargetKey;
+      });
+      if (filtered.length > 0) targetCandidates = filtered;
+    }
+    chaseTargetItem = pool[targetCandidates[Math.floor(Math.random() * targetCandidates.length)]];
+    lastChaseTargetKey = getTargetKey(chaseTargetItem);
 
     shuffled.forEach(function(idx, position) {
       const item = pool[idx];

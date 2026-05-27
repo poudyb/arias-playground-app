@@ -17,6 +17,7 @@ const SAME_AS_MODES = ['animals', 'shapes'];
 let category = 'animals';
 let pool = ANIMALS;
 let targetIndex = -1;
+let lastTargetKey = null;
 let correctChoiceIdx = 0;
 let roundLocked = false;
 let delayedNextTimer = null;
@@ -129,7 +130,14 @@ function startRound() {
   });
   thumbsDown.hide();
 
-  targetIndex = Math.floor(Math.random() * pool.length);
+  let nextTargetIndex;
+  let tries = 0;
+  do {
+    nextTargetIndex = Math.floor(Math.random() * pool.length);
+    tries++;
+  } while (pool.length > 1 && lastTargetKey != null && struggleIdForIndex(nextTargetIndex) === lastTargetKey && tries < 50);
+  targetIndex = nextTargetIndex;
+  lastTargetKey = struggleIdForIndex(targetIndex);
   const wrongIndices = pickWrongIndices(targetIndex, CHOICES.length - 1);
   correctChoiceIdx = Math.floor(Math.random() * CHOICES.length);
 
