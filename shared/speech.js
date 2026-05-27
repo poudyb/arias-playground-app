@@ -10,7 +10,8 @@ function speakText(text, options = {}) {
   const { rate = 0.9 } = options;
   const synth = window.speechSynthesis;
   if (!synth) return null;
-  if (activeUtterance) return null;
+  if (activeUtterance && activeUtterance.text === text) return null;
+  if (activeUtterance) synth.cancel();
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = rate;
