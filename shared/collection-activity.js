@@ -146,7 +146,7 @@ function createCollectionActivity(options) {
   }
 
   function startQuizRound() {
-    if (session.isSessionEnded()) return;
+    if (session.isSessionEnded() || mode !== 'quiz') return;
     quizLocked = false;
     thumbsDown.hide();
     let nextIndex;
@@ -160,7 +160,7 @@ function createCollectionActivity(options) {
   }
 
   function startChaseRound() {
-    if (session.isSessionEnded()) return;
+    if (session.isSessionEnded() || mode !== 'chase') return;
     stopChase();
     chasePaused = false;
     thumbsDown.hide();
