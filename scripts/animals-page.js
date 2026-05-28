@@ -12,6 +12,7 @@ const MODE_SESSION_KEY = 'ariaAnimalsSession';
 const audioBuffers = new Array(ANIMALS.length).fill(null);
 let currentSource = null;
 let playingAnimalIndex = -1;
+let pendingAnimalIndex = -1;
 let activity = null;
 
 function renderAnimalPill(pill, key) {
@@ -89,12 +90,16 @@ function loadAnimalSounds() {
     fetch('assets/animals/sounds/' + item.key + '.m4a')
       .then(function(r) { return r.arrayBuffer(); })
       .then(function(buf) { return decodeBuffer(ctx, buf); })
-      .then(function(decoded) { audioBuffers[index] = decoded; })
+      .then(function(decoded) {
+        audioBuffers[index] = decoded;
+        if (pendingAnimalIndex === index) playAnimalSound(index);
+      })
       .catch(function(err) { console.warn('animal sound failed: ' + item.key, err); });
   });
 }
 
 function stopAnimalSound() {
+  pendingAnimalIndex = -1;
   if (playingAnimalIndex < 0) return;
   if (currentSource) {
     try {
@@ -111,7 +116,10 @@ function playAnimalSound(animalIndex) {
   if (session.isSessionEnded()) return;
   if (playingAnimalIndex === animalIndex) return;
   const buffer = audioBuffers[animalIndex];
-  if (!buffer) return;
+  if (!buffer) {
+    pendingAnimalIndex = animalIndex;
+    return;
+  }
   stopAnimalSound();
   cancelSpeech();
 
