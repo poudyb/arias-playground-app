@@ -1,5 +1,8 @@
 /* Self-hosted Fredoka (variable font, latin subset).
-   Replaces the render-blocking third-party request to fonts.googleapis.com. */
+   Replaces the render-blocking third-party request to fonts.googleapis.com.
+
+   Font: Fredoka by The Fredoka Project Authors.
+   Licensed under the SIL Open Font License 1.1 — see assets/fonts/OFL.txt. */
 @font-face {
   font-family: "Fredoka";
   font-style: normal;
