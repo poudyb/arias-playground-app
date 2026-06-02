@@ -40,6 +40,7 @@ function createCollectionActivity(options) {
   let chaseAnimId = null;
   let chaseTargetItem = null;
   let chasePaused = false;
+  let chaseMissedThisRound = false;
   let chaseRepeatId = null;
   let lastChaseTargetKey = null;
   let lastFrameTime = 0;
@@ -163,6 +164,7 @@ function createCollectionActivity(options) {
     if (session.isSessionEnded() || mode !== 'chase') return;
     stopChase();
     chasePaused = false;
+    chaseMissedThisRound = false;
     thumbsDown.hide();
     chaseItems.forEach(function(entry) { entry.el.remove(); });
     chaseItems = [];
@@ -303,7 +305,10 @@ function createCollectionActivity(options) {
       session.mutateStats(function(stats) {
         pushUniqueStruggle(stats.chaseStruggled, targetKey);
       });
-      chaseDifficulty = Math.max(chaseDifficulty - 1, 0);
+      if (!chaseMissedThisRound) {
+        chaseMissedThisRound = true;
+        chaseDifficulty = Math.max(chaseDifficulty - 1, 0);
+      }
       thumbsDown.show();
       audio.playBuzzer();
     }
