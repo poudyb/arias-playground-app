@@ -20,7 +20,7 @@
     top: 12px;
     left: 12px;
     z-index: 150;
-    font-family: "Fredoka", system-ui, sans-serif;
+    font-family: Georgia, "Times New Roman", serif;
     font-size: 15px;
     font-weight: 600;
     padding: 10px 16px;
@@ -257,7 +257,7 @@
     left: 50%;
     transform: translateX(-50%);
     z-index: 140;
-    font-family: "Fredoka", system-ui, sans-serif;
+    font-family: Georgia, "Times New Roman", serif;
     font-size: 14px;
     font-weight: 600;
     padding: 8px 14px;
@@ -302,7 +302,7 @@
     background: linear-gradient(160deg, #fff9e6 0%, #ffe0f0 40%, #e3f2fd 100%);
     border-radius: 24px;
     padding: clamp(1.35rem, 4vw, 1.85rem);
-    font-family: "Fredoka", system-ui, sans-serif;
+    font-family: Georgia, "Times New Roman", serif;
     box-shadow:
       0 4px 0 #ff6ec7,
       0 16px 48px rgba(0, 0, 0, 0.22);
