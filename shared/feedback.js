@@ -145,7 +145,7 @@ function spawnConfetti(options = {}) {
 
 function showCelebrationEmojis(options = {}) {
   const {
-    emojis = ['👍', '🎉'],
+    emojis = ['🎉', '🎉'],
     positions = [
       { left: '15vw', top: '25vh' },
       { right: '15vw', top: '25vh' }
