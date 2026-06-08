@@ -69,6 +69,7 @@ function stopGame() {
     resetTimer = null;
   }
   thumbsDown.hide();
+  hint.stop();
 }
 
 const session = createTimedSession({
@@ -83,6 +84,21 @@ const session = createTimedSession({
 const audio = createAudioFeedback();
 const thumbsDown = createThumbsDownController();
 setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
+
+function flashSpellingHint() {
+  if (mode === 'quiz') {
+    flashHintEl(spellChoices.querySelector('[data-word="' + WORDS[quizTargetIndex] + '"]'));
+  } else if (mode === 'spell') {
+    flashHintEl(keyEls[WORDS[spellTargetIndex][typed.length]]);
+  }
+}
+
+const hint = createHintNudge({
+  onFlash: flashSpellingHint,
+  isActive: function() {
+    return !session.isSessionEnded() && (mode === 'quiz' || mode === 'spell');
+  }
+});
 
 // Letters that can extend `prefix` toward some valid word.
 function allowedNext(prefix) {
@@ -229,12 +245,14 @@ function startQuizRound() {
   renderWord(target);
   renderChoices(buildChoiceIndices(quizTargetIndex), target);
   spellHint.textContent = 'Find the picture!';
+  hint.reset();
 }
 
 function onChoice(word, btn, target) {
   if (quizLocked || mode !== 'quiz') return;
   if (word === target) {
     quizLocked = true;
+    hint.stop();
     btn.classList.add('correct');
     audio.playChime();
     speakText(target.toLowerCase(), { rate: 0.85 });
@@ -254,6 +272,7 @@ function onChoice(word, btn, target) {
       stats.quizWrong += 1;
       pushUniqueStruggle(stats.quizStruggled, target);
     });
+    hint.registerMiss();
   }
 }
 
@@ -288,6 +307,7 @@ function spellPressLetter(ch) {
     typed += ch;
     renderSlots();
     if (typed.length === WORD_LEN) completeSpell(target);
+    else hint.poke();
   } else {
     // Gentle, located per-letter feedback: shake the active slot + a soft
     // buzz, keep all correct progress. No full-screen X (too harsh while
@@ -297,11 +317,13 @@ function spellPressLetter(ch) {
     session.mutateStats(function(stats) {
       pushUniqueStruggle(stats.spellStruggled, target);
     });
+    hint.registerMiss();
   }
 }
 
 function completeSpell(target) {
   locked = true;
+  hint.stop();
   renderSlots();
   audio.playChime();
   speakText(target.toLowerCase(), { rate: 0.85 });
@@ -332,6 +354,7 @@ function startSpellRound() {
   renderSlots();
   spellHint.textContent = 'Spell the word!';
   speakText(target.toLowerCase(), { rate: 0.85 });
+  hint.reset();
 }
 
 function enterSpell() {
@@ -364,6 +387,7 @@ function setMode(next) {
   }
   cancelSpeech();
   thumbsDown.hide();
+  hint.stop();
   mode = next;
   rememberSessionMode(SPELLING_SESSION_KEY, mode);
   modeBtns.forEach(function(btn) {

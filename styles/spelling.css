@@ -168,6 +168,16 @@ body {
   background: #fff;
 }
 
+/* Gentle hint glow — used on the correct picture (Quiz) and the next letter
+   key (Spell It). Matches the other games' .hint-flash. */
+.hint-flash {
+  animation: hint-flash-pulse 1.1s ease-out;
+}
+@keyframes hint-flash-pulse {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 179, 0, 0)); }
+  45% { filter: drop-shadow(0 0 13px rgba(255, 179, 0, 0.95)); }
+}
+
 /* ---- On-screen keyboard ---- */
 
 /* On-screen keyboard: only on touch devices (a real keyboard is used on
