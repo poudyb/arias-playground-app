@@ -53,6 +53,29 @@ function createCollectionActivity(options) {
     return chaseTargetItem;
   }
 
+  let gridTiles = [];
+
+  function flashHintTarget() {
+    if (mode === 'quiz') {
+      flashHintEl(gridTiles[quizTargetIndex]);
+    } else if (mode === 'chase') {
+      const target = chaseTarget();
+      for (let i = 0; i < chaseItems.length; i++) {
+        if (chaseItems[i].item === target) {
+          flashHintEl(chaseItems[i].el);
+          break;
+        }
+      }
+    }
+  }
+
+  const hint = createHintNudge({
+    onFlash: flashHintTarget,
+    isActive: function() {
+      return !session.isSessionEnded() && (mode === 'quiz' || mode === 'chase');
+    }
+  });
+
   function promptChaseTarget() {
     if (chaseTargetItem == null) return;
     if (speakChase) {
@@ -77,6 +100,7 @@ function createCollectionActivity(options) {
       btn.classList.toggle('active', btn.dataset.mode === mode);
     });
     thumbsDown.hide();
+    hint.stop();
     quizLocked = false;
 
     const inChase = mode === 'chase';
@@ -133,6 +157,7 @@ function createCollectionActivity(options) {
         stats.quizCorrect++;
       });
       quizLocked = true;
+      hint.stop();
       spawnConfetti({ colors: confetti.colors });
       showCelebrationEmojis();
       audio.playChime();
@@ -143,6 +168,7 @@ function createCollectionActivity(options) {
       });
       thumbsDown.show();
       audio.playBuzzer();
+      hint.registerMiss();
     }
   }
 
@@ -158,6 +184,7 @@ function createCollectionActivity(options) {
     if (stopPrompt) stopPrompt();
     if (promptItem) promptItem(quizTargetIndex);
     if (onQuizStart) onQuizStart(items[quizTargetIndex], quizTargetIndex);
+    hint.reset();
   }
 
   function startChaseRound() {
@@ -211,6 +238,7 @@ function createCollectionActivity(options) {
 
     if (stopPrompt) stopPrompt();
     promptChaseTarget();
+    hint.reset();
     chaseRepeatId = setInterval(function() {
       if (chasePaused || session.isSessionEnded()) return;
       promptChaseTarget();
@@ -296,6 +324,7 @@ function createCollectionActivity(options) {
         stats.chaseCorrect++;
       });
       chasePaused = true;
+      hint.stop();
       spawnConfetti({ colors: confetti.colors });
       showCelebrationEmojis();
       audio.playChime();
@@ -311,15 +340,18 @@ function createCollectionActivity(options) {
       }
       thumbsDown.show();
       audio.playBuzzer();
+      hint.registerMiss();
     }
   }
 
   function buildGrid() {
     grid.innerHTML = '';
+    gridTiles = [];
     items.forEach(function(item, index) {
       const btn = renderTile(item, index);
       btn.addEventListener('click', function() { handleItemClick(item, index); });
       grid.appendChild(btn);
+      gridTiles[index] = btn;
     });
   }
 
@@ -342,6 +374,7 @@ function createCollectionActivity(options) {
   return {
     setMode,
     stop: function() {
+      hint.stop();
       stopChase();
     },
     reset: function() {
