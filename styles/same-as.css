@@ -341,24 +341,6 @@
     box-shadow: 0 3px 0 #006064;
   }
 
-  #thumbs-down {
-    position: fixed;
-    bottom: 8vh;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 15vw;
-    display: none;
-    z-index: 50;
-    animation: td-shake 0.4s ease-out;
-    pointer-events: none;
-  }
-
-  @keyframes td-shake {
-    0%, 100% { transform: translateX(-50%) rotate(0deg); }
-    25% { transform: translateX(-50%) rotate(-8deg); }
-    75% { transform: translateX(-50%) rotate(8deg); }
-  }
-
   .celebration-emoji {
     position: fixed;
     z-index: 55;

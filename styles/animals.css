@@ -600,26 +600,6 @@
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.14));
   }
 
-  #thumbs-down {
-    position: fixed;
-    bottom: 10vh;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 15vw;
-    display: none;
-    z-index: 50;
-    animation: animal-shake 0.4s ease-out;
-    pointer-events: none;
-  }
-
-  @keyframes animal-shake {
-    0%, 100% { transform: translateX(-50%) rotate(0deg); }
-    20% { transform: translateX(-50%) rotate(-10deg); }
-    40% { transform: translateX(-50%) rotate(10deg); }
-    60% { transform: translateX(-50%) rotate(-5deg); }
-    80% { transform: translateX(-50%) rotate(5deg); }
-  }
-
   .celebration-emoji {
     position: fixed;
     z-index: 55;

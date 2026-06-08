@@ -163,37 +163,36 @@ function showCelebrationEmojis(options = {}) {
   });
 }
 
-function createThumbsDownController(el, options = {}) {
+// Mirrors showCelebrationEmojis: spawns two matching emojis at the same
+// left/right positions so the incorrect buzzer is symmetric with the correct one.
+function createThumbsDownController(options = {}) {
   const {
-    animationName,
-    hideAfterMs = 800,
-    useAriaHidden = true
+    emojis = ['❌', '❌'],
+    positions = [
+      { left: '15vw', top: '25vh' },
+      { right: '15vw', top: '25vh' }
+    ],
+    durationMs = 1600
   } = options;
 
-  let hideTimer = null;
+  let current = [];
 
   function hide() {
-    if (hideTimer != null) {
-      window.clearTimeout(hideTimer);
-      hideTimer = null;
-    }
-    el.style.display = 'none';
-    if (useAriaHidden) el.setAttribute('aria-hidden', 'true');
+    current.forEach(function(node) { node.remove(); });
+    current = [];
   }
 
   function show() {
-    el.style.display = 'block';
-    if (useAriaHidden) el.removeAttribute('aria-hidden');
-    if (animationName) {
-      el.style.animation = 'none';
-      void el.offsetWidth;
-      el.style.animation = animationName + ' 0.4s ease-out';
-    }
-    if (hideTimer != null) window.clearTimeout(hideTimer);
-    hideTimer = window.setTimeout(function() {
-      hideTimer = null;
-      hide();
-    }, hideAfterMs);
+    hide();
+    emojis.forEach(function(emoji, index) {
+      const node = document.createElement('div');
+      node.className = 'celebration-emoji';
+      node.textContent = emoji;
+      Object.assign(node.style, positions[index] || positions[positions.length - 1] || {});
+      document.body.appendChild(node);
+      window.setTimeout(function() { node.remove(); }, durationMs);
+      current.push(node);
+    });
   }
 
   return { hide, show };

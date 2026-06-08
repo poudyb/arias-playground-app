@@ -1,7 +1,6 @@
 const hint = document.getElementById('hint');
 const letter = document.getElementById('letter');
 const modeBtns = document.querySelectorAll('.mode-btn');
-const thumbsDownEl = document.getElementById('thumbs-down');
 const touchGrid = document.getElementById('touch-grid');
 const displayArea = document.getElementById('display-area');
 const chaseArena = document.getElementById('chase-arena');
@@ -75,10 +74,7 @@ const session = createTimedSession({
 });
 
 const audio = createAudioFeedback();
-const thumbsDown = createThumbsDownController(thumbsDownEl, {
-  animationName: 'shake',
-  useAriaHidden: false
-});
+const thumbsDown = createThumbsDownController();
 
 setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
 

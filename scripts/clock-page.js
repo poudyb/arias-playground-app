@@ -255,12 +255,8 @@ function nextMinuteOf(h, m) {
 }
 
 const appMain = document.getElementById('app-main');
-const thumbsDownEl = document.getElementById('thumbs-down');
 const audio = createAudioFeedback();
-const thumbsDown = createThumbsDownController(thumbsDownEl, {
-  animationName: 'clock-shake',
-  hideAfterMs: 750
-});
+const thumbsDown = createThumbsDownController();
 
 setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
 

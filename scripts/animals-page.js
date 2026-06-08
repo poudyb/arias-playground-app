@@ -6,7 +6,6 @@ const modeHint = document.getElementById('mode-hint');
 const quizTop = document.getElementById('quiz-top');
 const quizReplayBtn = document.getElementById('quiz-replay-btn');
 const chaseArena = document.getElementById('chase-arena');
-const thumbsDownEl = document.getElementById('thumbs-down');
 const MODE_SESSION_KEY = 'ariaAnimalsSession';
 
 const audioBuffers = new Array(ANIMALS.length).fill(null);
@@ -139,9 +138,7 @@ function playAnimalSound(animalIndex) {
 }
 
 const audio = createAudioFeedback();
-const thumbsDown = createThumbsDownController(thumbsDownEl, {
-  animationName: 'animal-shake'
-});
+const thumbsDown = createThumbsDownController();
 
 loadAnimalSounds();
 

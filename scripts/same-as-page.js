@@ -1,7 +1,6 @@
 const catBtns = document.querySelectorAll('.cat-btn');
 const refCard = document.getElementById('ref-card');
 const refArt = document.getElementById('ref-art');
-const thumbsDownEl = document.getElementById('thumbs-down');
 
 const CHOICES = [
   { btn: document.getElementById('choice-left'), art: document.getElementById('choice-left-art') },
@@ -58,10 +57,7 @@ const session = createTimedSession({
 });
 
 const audio = createAudioFeedback();
-const thumbsDown = createThumbsDownController(thumbsDownEl, {
-  animationName: 'td-shake',
-  hideAfterMs: 750
-});
+const thumbsDown = createThumbsDownController();
 
 setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
 

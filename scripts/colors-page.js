@@ -6,7 +6,6 @@ const modeHint = document.getElementById('mode-hint');
 const quizTop = document.getElementById('quiz-top');
 const quizReplayBtn = document.getElementById('quiz-replay-btn');
 const chaseArena = document.getElementById('chase-arena');
-const thumbsDownEl = document.getElementById('thumbs-down');
 const MODE_SESSION_KEY = 'ariaColorsSession';
 
 let activity = null;
@@ -81,9 +80,7 @@ function speakColorPrompt(colorIndex) {
 }
 
 const audio = createAudioFeedback();
-const thumbsDown = createThumbsDownController(thumbsDownEl, {
-  animationName: 'color-shake'
-});
+const thumbsDown = createThumbsDownController();
 
 setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
 
