@@ -100,3 +100,35 @@ function normalizeClockStats(parsed) {
     usedNext: !!parsed.usedNext
   };
 }
+
+function createSpellingStats() {
+  return {
+    freeWords: 0,
+    quizCorrect: 0,
+    quizWrong: 0,
+    quizStruggled: [],
+    spellCorrect: 0,
+    spellStruggled: [],
+    usedFreeplay: false,
+    usedQuiz: false,
+    usedSpell: false
+  };
+}
+
+function normalizeSpellingStats(parsed) {
+  const defaults = createSpellingStats();
+  if (!parsed || typeof parsed !== 'object') return defaults;
+  return {
+    ...defaults,
+    ...parsed,
+    freeWords: typeof parsed.freeWords === 'number' ? parsed.freeWords : defaults.freeWords,
+    quizCorrect: typeof parsed.quizCorrect === 'number' ? parsed.quizCorrect : defaults.quizCorrect,
+    quizWrong: typeof parsed.quizWrong === 'number' ? parsed.quizWrong : defaults.quizWrong,
+    quizStruggled: Array.isArray(parsed.quizStruggled) ? parsed.quizStruggled : [],
+    spellCorrect: typeof parsed.spellCorrect === 'number' ? parsed.spellCorrect : defaults.spellCorrect,
+    spellStruggled: Array.isArray(parsed.spellStruggled) ? parsed.spellStruggled : [],
+    usedFreeplay: !!parsed.usedFreeplay,
+    usedQuiz: !!parsed.usedQuiz,
+    usedSpell: !!parsed.usedSpell
+  };
+}

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Spelling - Aria's Playroom</title>
+<link rel="stylesheet" href="styles/spelling.css">
+</head>
+<body class="spelling-page">
+
+<div id="play-timer" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<div id="session-end-overlay" aria-modal="true" role="dialog" aria-labelledby="session-end-title" aria-hidden="true">
+  <div class="session-end-card">
+    <h2 id="session-end-title">Time's up!</h2>
+    <p class="session-end-sub">You did awesome — here's your scoreboard!</p>
+    <div class="session-end-stats" id="session-end-stats"></div>
+    <a href="index.html" class="session-end-home" id="session-end-home">Back to home</a>
+  </div>
+</div>
+
+<a href="index.html" class="home-btn" id="link-home" aria-label="Back to games">← Home</a>
+<div id="mode-buttons">
+  <button class="mode-btn active" data-mode="freeplay">Free Play</button>
+  <button class="mode-btn" data-mode="quiz">Quiz</button>
+  <button class="mode-btn" data-mode="spell">Spell It</button>
+</div>
+
+<div id="spell-main">
+  <div id="spell-hint" class="spell-hint"></div>
+  <div id="spell-picture" class="spell-picture" aria-hidden="true"><img id="spell-img" alt=""></div>
+  <div id="spell-slots" class="spell-slots"></div>
+  <div id="spell-choices" class="spell-choices" aria-hidden="true"></div>
+</div>
+<div id="keyboard" class="keyboard"></div>
+
+<div id="confetti-container"></div>
+
+<script src="shared/touch-guard.js"></script>
+<script src="data/spelling.js"></script>
+<script src="shared/feedback.js"></script>
+<script src="shared/stats.js"></script>
+<script src="shared/speech.js"></script>
+<script src="shared/summary.js"></script>
+<script src="shared/portal-storage.js"></script>
+<script src="shared/session.js"></script>
+<script src="scripts/spelling-page.js"></script>
+</body>
+</html>

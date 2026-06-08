@@ -102,5 +102,19 @@ const ACTIVITIES = [
     sessionKey: 'ariaClockSession',
     statsKey: 'ariaClockStats',
     defaultStats: function() { return createClockStats(); }
+  },
+  {
+    id: 'spelling',
+    href: 'spelling.html',
+    title: 'Spelling',
+    hint: 'Spell three-letter words!',
+    tileClass: 'game-tile--spelling',
+    artClasses: 'game-tile__art game-tile__art--letters',
+    artHtml:
+      '<span class="game-tile__art__emoji">🔤</span>' +
+      '<span class="game-tile__art__emoji">✏️</span>',
+    sessionKey: 'ariaSpellingSession',
+    statsKey: 'ariaSpellingStats',
+    defaultStats: function() { return createSpellingStats(); }
   }
 ];
