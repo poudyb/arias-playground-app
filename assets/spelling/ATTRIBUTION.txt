@@ -1,0 +1,9 @@
+Spelling-game pictograms
+========================
+
+The pictographic symbols used are the property of the Government of Aragon
+and have been created by Sergio Palao for ARASAAC (https://arasaac.org),
+which distributes them under the Creative Commons License BY-NC-SA 4.0.
+
+Source: https://arasaac.org
+License: https://creativecommons.org/licenses/by-nc-sa/4.0/
