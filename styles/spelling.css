@@ -154,6 +154,19 @@ body {
   object-fit: contain;
   pointer-events: none;
 }
+.choice.correct {
+  border-color: #43a047;
+  box-shadow: 0 0 0 4px rgba(67, 160, 71, 0.3);
+}
+.choice.wrong {
+  border-color: #e53935;
+  animation: slot-shake 0.4s ease-out;
+}
+
+.slot.shown {
+  border-color: #b0bec5;
+  background: #fff;
+}
 
 /* ---- On-screen keyboard ---- */
 

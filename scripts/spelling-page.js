@@ -25,6 +25,8 @@ let mode = 'freeplay';
 let typed = '';
 let locked = false;
 let resetTimer = null;
+let quizTargetIndex = -1;
+let quizLocked = false;
 
 function renderSummary(board, stats) {
   appendScoreSection(board, {
@@ -35,6 +37,16 @@ function renderSummary(board, stats) {
       ? 'You spelled ' + stats.freeWords + ' ' + (stats.freeWords === 1 ? 'word' : 'words') + '! 🎉'
       : 'You opened Free Play - tap letters to build words next time!'
   });
+  if (stats.usedQuiz || stats.quizCorrect > 0) {
+    appendScoreSection(board, {
+      modClass: 'score-section--quiz',
+      icon: '🧩',
+      title: 'Quiz',
+      body: stats.quizCorrect > 0
+        ? 'You found ' + stats.quizCorrect + ' ' + (stats.quizCorrect === 1 ? 'picture' : 'pictures') + '!'
+        : 'You opened Quiz - match the word to its picture next time!'
+    });
+  }
   cancelSpeech();
 }
 
@@ -173,6 +185,100 @@ function completeWord(word) {
   }, 2200);
 }
 
+// Render a word as static (non-typed) filled slots — used as the Quiz prompt.
+function renderWord(word) {
+  spellSlots.innerHTML = '';
+  for (let i = 0; i < WORD_LEN; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'slot shown';
+    slot.textContent = word[i];
+    spellSlots.appendChild(slot);
+  }
+}
+
+function buildChoiceIndices(targetIdx) {
+  const idxs = [targetIdx];
+  while (idxs.length < 3 && idxs.length < WORDS.length) {
+    const r = Math.floor(Math.random() * WORDS.length);
+    if (idxs.indexOf(r) === -1) idxs.push(r);
+  }
+  for (let i = idxs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = idxs[i];
+    idxs[i] = idxs[j];
+    idxs[j] = tmp;
+  }
+  return idxs;
+}
+
+function renderChoices(indices, target) {
+  spellChoices.innerHTML = '';
+  indices.forEach(function(idx) {
+    const word = WORDS[idx];
+    const btn = document.createElement('button');
+    btn.className = 'choice';
+    btn.dataset.word = word;
+    const img = document.createElement('img');
+    img.src = IMG_FOR[word];
+    img.alt = '';
+    btn.appendChild(img);
+    btn.addEventListener('click', function() { onChoice(word, btn, target); });
+    spellChoices.appendChild(btn);
+  });
+}
+
+function startQuizRound() {
+  if (session.isSessionEnded() || mode !== 'quiz') return;
+  quizLocked = false;
+  thumbsDown.hide();
+  let next;
+  do {
+    next = Math.floor(Math.random() * WORDS.length);
+  } while (WORDS.length > 1 && next === quizTargetIndex);
+  quizTargetIndex = next;
+  const target = WORDS[quizTargetIndex];
+  renderWord(target);
+  renderChoices(buildChoiceIndices(quizTargetIndex), target);
+  spellHint.textContent = 'Find the picture!';
+}
+
+function onChoice(word, btn, target) {
+  if (quizLocked || mode !== 'quiz') return;
+  if (word === target) {
+    quizLocked = true;
+    btn.classList.add('correct');
+    audio.playChime();
+    speakText(target.toLowerCase(), { rate: 0.85 });
+    showCelebrationEmojis();
+    spawnConfetti();
+    session.mutateStats(function(stats) {
+      stats.quizCorrect += 1;
+      stats.usedQuiz = true;
+    });
+    resetTimer = window.setTimeout(startQuizRound, 2000);
+  } else {
+    btn.classList.add('wrong');
+    window.setTimeout(function() { btn.classList.remove('wrong'); }, 500);
+    thumbsDown.show();
+    audio.playBuzzer();
+    session.mutateStats(function(stats) {
+      stats.quizWrong += 1;
+      pushUniqueStruggle(stats.quizStruggled, target);
+    });
+  }
+}
+
+function enterQuiz() {
+  typed = '';
+  locked = false;
+  spellPicture.classList.remove('is-visible');
+  spellPicture.setAttribute('aria-hidden', 'true');
+  keyboardEl.style.display = 'none';
+  spellChoices.classList.add('is-visible');
+  spellChoices.setAttribute('aria-hidden', 'false');
+  startQuizRound();
+}
+
 function enterFreeplay() {
   typed = '';
   locked = false;
@@ -216,7 +322,7 @@ function setMode(next) {
     else if (mode === 'spell') stats.usedSpell = true;
   });
   if (mode === 'freeplay') enterFreeplay();
-  else if (mode === 'quiz') enterPlaceholder('Quiz');
+  else if (mode === 'quiz') enterQuiz();
   else enterPlaceholder('Spell It');
 }
 
