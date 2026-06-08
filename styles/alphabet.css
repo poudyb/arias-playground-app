@@ -46,6 +46,7 @@
   }
 
   #letter {
+    font-family: Georgia, "Times New Roman", serif;
     font-size: 50vw;
     font-weight: bold;
     line-height: 1;
@@ -169,7 +170,7 @@
       background: #f0f0f0;
       font-size: 5vw;
       font-weight: bold;
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: Georgia, "Times New Roman", serif;
       color: #333;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
@@ -216,6 +217,7 @@
 
   .chase-char {
     position: absolute;
+    font-family: Georgia, "Times New Roman", serif;
     font-weight: bold;
     line-height: 1;
     cursor: pointer;

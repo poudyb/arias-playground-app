@@ -113,6 +113,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(2.4rem, 9vw, 4.5rem);
   font-weight: 800;
   color: #333;
@@ -203,7 +204,7 @@ body {
     background: #eceff1;
     font-size: clamp(1.5rem, 6vw, 2.1rem);
     font-weight: 700;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: Georgia, "Times New Roman", serif;
     color: #2b2b2b;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
