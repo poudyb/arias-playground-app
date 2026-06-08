@@ -363,6 +363,7 @@ function stopClockGame() {
     activeMode = null;
   }
   thumbsDown.hide();
+  hint.stop();
 }
 
 const session = createTimedSession({
@@ -372,6 +373,14 @@ const session = createTimedSession({
   normalizeStats: normalizeClockStats,
   stopGame: stopClockGame,
   renderSummary
+});
+
+// Hints only for Quiz (pick the matching time). Not for Next: that's a
+// predict-then-wait game where flashing the correct future time would spoil
+// the puzzle and idle is the normal state.
+const hint = createHintNudge({
+  onFlash: function() { flashHintEl(appMain.querySelector('.clock-option[data-correct="1"]')); },
+  isActive: function() { return currentMode === 'quiz' && !session.isSessionEnded(); }
 });
 
 function setMode(name) {
@@ -389,6 +398,7 @@ function setMode(name) {
   appMain.innerHTML = '';
   cancelSpeech();
   thumbsDown.hide();
+  hint.stop();
 
   if (session.shouldTrackStats()) {
     session.mutateStats(function(stats) {
@@ -630,12 +640,14 @@ function enterQuiz() {
 
     cancelSpeech();
     window.setTimeout(speakRound, 280);
+    hint.reset();
   }
 
   function onOptionTap(btn, opt) {
     if (session.isSessionEnded() || roundLocked) return;
     if (opt.correct) {
       roundLocked = true;
+      hint.stop();
       session.mutateStats(function(stats) { stats.quizCorrect++; });
       btn.classList.remove('pop');
       void btn.offsetWidth;
@@ -669,6 +681,7 @@ function enterQuiz() {
     });
     thumbsDown.show();
     audio.playBuzzer();
+    hint.registerMiss();
   }
 
   replay.addEventListener('click', function() {
