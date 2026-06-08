@@ -27,6 +27,7 @@ let locked = false;
 let resetTimer = null;
 let quizTargetIndex = -1;
 let quizLocked = false;
+let spellTargetIndex = -1;
 
 function renderSummary(board, stats) {
   appendScoreSection(board, {
@@ -45,6 +46,16 @@ function renderSummary(board, stats) {
       body: stats.quizCorrect > 0
         ? 'You found ' + stats.quizCorrect + ' ' + (stats.quizCorrect === 1 ? 'picture' : 'pictures') + '!'
         : 'You opened Quiz - match the word to its picture next time!'
+    });
+  }
+  if (stats.usedSpell || stats.spellCorrect > 0) {
+    appendScoreSection(board, {
+      modClass: 'score-section--spell',
+      icon: '✏️',
+      title: 'Spell It',
+      body: stats.spellCorrect > 0
+        ? 'You spelled ' + stats.spellCorrect + ' ' + (stats.spellCorrect === 1 ? 'word' : 'words') + ' from pictures!'
+        : 'You opened Spell It - sound out the word next time!'
     });
   }
   cancelSpeech();
@@ -138,19 +149,20 @@ function updateKeys() {
 }
 
 function pressLetter(ch) {
-  if (locked || mode !== 'freeplay') return;
-  if (!allowedNext(typed)[ch]) return;
-  typed += ch;
-  renderSlots();
-  if (typed.length === WORD_LEN) {
-    completeWord(typed);
-  } else {
-    updateKeys();
+  if (locked) return;
+  if (mode === 'freeplay') {
+    if (!allowedNext(typed)[ch]) return;
+    typed += ch;
+    renderSlots();
+    if (typed.length === WORD_LEN) completeWord(typed);
+    else updateKeys();
+  } else if (mode === 'spell') {
+    spellPressLetter(ch);
   }
 }
 
 function pressBack() {
-  if (locked || typed.length === 0) return;
+  if (locked || mode !== 'freeplay' || typed.length === 0) return;
   typed = typed.slice(0, -1);
   renderSlots();
   updateKeys();
@@ -279,9 +291,89 @@ function enterQuiz() {
   startQuizRound();
 }
 
+function enableAllKeys() {
+  KEY_ROWS.forEach(function(rowStr) {
+    rowStr.split('').forEach(function(ch) { keyEls[ch].classList.remove('disabled'); });
+  });
+}
+
+function flashSlotWrong(pos) {
+  const slot = spellSlots.children[pos];
+  if (!slot) return;
+  slot.classList.remove('wrong');
+  void slot.offsetWidth;
+  slot.classList.add('wrong');
+  window.setTimeout(function() { slot.classList.remove('wrong'); }, 450);
+}
+
+function spellPressLetter(ch) {
+  if (locked) return;
+  const target = WORDS[spellTargetIndex];
+  if (ch === target[typed.length]) {
+    typed += ch;
+    renderSlots();
+    if (typed.length === WORD_LEN) completeSpell(target);
+  } else {
+    // Gentle, located per-letter feedback: shake the active slot + a soft
+    // buzz, keep all correct progress. No full-screen X (too harsh while
+    // sounding a word out one letter at a time).
+    flashSlotWrong(typed.length);
+    audio.playBuzzer();
+    session.mutateStats(function(stats) {
+      pushUniqueStruggle(stats.spellStruggled, target);
+    });
+  }
+}
+
+function completeSpell(target) {
+  locked = true;
+  renderSlots();
+  audio.playChime();
+  speakText(target.toLowerCase(), { rate: 0.85 });
+  showCelebrationEmojis();
+  spawnConfetti();
+  session.mutateStats(function(stats) {
+    stats.spellCorrect += 1;
+    stats.usedSpell = true;
+  });
+  resetTimer = window.setTimeout(startSpellRound, 2200);
+}
+
+function startSpellRound() {
+  if (session.isSessionEnded() || mode !== 'spell') return;
+  locked = false;
+  typed = '';
+  thumbsDown.hide();
+  let next;
+  do {
+    next = Math.floor(Math.random() * WORDS.length);
+  } while (WORDS.length > 1 && next === spellTargetIndex);
+  spellTargetIndex = next;
+  const target = WORDS[spellTargetIndex];
+  spellImg.src = IMG_FOR[target];
+  spellImg.alt = '';
+  spellPicture.classList.add('is-visible');
+  spellPicture.setAttribute('aria-hidden', 'false');
+  renderSlots();
+  spellHint.textContent = 'Spell the word!';
+  speakText(target.toLowerCase(), { rate: 0.85 });
+}
+
+function enterSpell() {
+  typed = '';
+  locked = false;
+  spellChoices.classList.remove('is-visible');
+  spellChoices.setAttribute('aria-hidden', 'true');
+  keyboardEl.style.display = '';
+  if (keyEls.BACK) keyEls.BACK.style.display = 'none';
+  enableAllKeys();
+  startSpellRound();
+}
+
 function enterFreeplay() {
   typed = '';
   locked = false;
+  if (keyEls.BACK) keyEls.BACK.style.display = '';
   spellPicture.classList.remove('is-visible');
   spellPicture.setAttribute('aria-hidden', 'true');
   spellChoices.classList.remove('is-visible');
@@ -290,18 +382,6 @@ function enterFreeplay() {
   spellHint.textContent = FREEPLAY_HINT;
   renderSlots();
   updateKeys();
-}
-
-function enterPlaceholder(label) {
-  typed = '';
-  locked = false;
-  spellPicture.classList.remove('is-visible');
-  spellPicture.setAttribute('aria-hidden', 'true');
-  spellChoices.classList.remove('is-visible');
-  spellChoices.setAttribute('aria-hidden', 'true');
-  spellSlots.innerHTML = '';
-  keyboardEl.style.display = 'none';
-  spellHint.textContent = label + ' is coming soon! ✨';
 }
 
 function setMode(next) {
@@ -323,7 +403,7 @@ function setMode(next) {
   });
   if (mode === 'freeplay') enterFreeplay();
   else if (mode === 'quiz') enterQuiz();
-  else enterPlaceholder('Spell It');
+  else enterSpell();
 }
 
 buildKeyboard();
