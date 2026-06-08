@@ -61,6 +61,11 @@ const thumbsDown = createThumbsDownController();
 
 setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
 
+const hint = createHintNudge({
+  onFlash: function() { flashHintEl(CHOICES[correctChoiceIdx].btn); },
+  isActive: function() { return !session.isSessionEnded(); }
+});
+
 function speakPrompt() {
   if (session.isSessionEnded()) return;
   speakText(PROMPT_SAY, { rate: 0.88 });
@@ -151,6 +156,7 @@ function startRound() {
   window.setTimeout(function() {
     if (!session.isSessionEnded()) speakPrompt();
   }, 280);
+  hint.reset();
 }
 
 function onChoiceTap(idx) {
@@ -159,6 +165,7 @@ function onChoiceTap(idx) {
 
   if (idx === correctChoiceIdx) {
     roundLocked = true;
+    hint.stop();
     session.mutateStats(function(stats) {
       stats.matchCorrect++;
     });
@@ -196,6 +203,7 @@ function onChoiceTap(idx) {
   });
   thumbsDown.show();
   audio.playBuzzer();
+  hint.registerMiss();
 }
 
 function stopMatchGame() {
@@ -203,6 +211,7 @@ function stopMatchGame() {
   clearTimeout(delayedNextTimer);
   delayedNextTimer = null;
   thumbsDown.hide();
+  hint.stop();
 }
 
 CHOICES.forEach(function(c, i) {
