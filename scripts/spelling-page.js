@@ -13,9 +13,10 @@ const keyboardEl = document.getElementById('keyboard');
 
 const SPELLING_SESSION_KEY = 'ariaSpellingSession';
 const SPELLING_STATS_KEY = 'ariaSpellingStats';
-const KEY_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
+const KEY_LETTERS = 'QWERTYUIOPASDFGHJKLZXCVBNM';
 const WORD_LEN = 3;
-const FREEPLAY_HINT = 'Tap letters to make a word!';
+const isTouch = window.matchMedia('(pointer: coarse)').matches;
+const FREEPLAY_HINT = isTouch ? 'Tap letters to make a word!' : 'Type the letters to make a word!';
 
 const WORDS = SPELLING_WORDS.map(function(w) { return w.word.toUpperCase(); });
 const IMG_FOR = {};
@@ -98,28 +99,14 @@ function allowedNext(prefix) {
 const keyEls = {};
 function buildKeyboard() {
   keyboardEl.innerHTML = '';
-  KEY_ROWS.forEach(function(rowStr, rowIdx) {
-    const row = document.createElement('div');
-    row.className = 'key-row';
-    rowStr.split('').forEach(function(ch) {
-      const btn = document.createElement('button');
-      btn.className = 'key';
-      btn.textContent = ch;
-      btn.dataset.key = ch;
-      btn.addEventListener('click', function() { pressLetter(ch); });
-      keyEls[ch] = btn;
-      row.appendChild(btn);
-    });
-    if (rowIdx === KEY_ROWS.length - 1) {
-      const back = document.createElement('button');
-      back.className = 'key key--back';
-      back.textContent = '⌫';
-      back.dataset.key = 'BACK';
-      back.addEventListener('click', pressBack);
-      keyEls.BACK = back;
-      row.appendChild(back);
-    }
-    keyboardEl.appendChild(row);
+  KEY_LETTERS.split('').forEach(function(ch) {
+    const btn = document.createElement('button');
+    btn.className = 'key';
+    btn.textContent = ch;
+    btn.dataset.key = ch;
+    btn.addEventListener('click', function() { pressLetter(ch); });
+    keyEls[ch] = btn;
+    keyboardEl.appendChild(btn);
   });
 }
 
@@ -140,12 +127,9 @@ function renderSlots() {
 
 function updateKeys() {
   const allow = allowedNext(typed);
-  KEY_ROWS.forEach(function(rowStr) {
-    rowStr.split('').forEach(function(ch) {
-      keyEls[ch].classList.toggle('disabled', locked || !allow[ch]);
-    });
+  KEY_LETTERS.split('').forEach(function(ch) {
+    keyEls[ch].classList.toggle('disabled', locked || !allow[ch]);
   });
-  keyEls.BACK.classList.toggle('disabled', locked || typed.length === 0);
 }
 
 function pressLetter(ch) {
@@ -159,13 +143,6 @@ function pressLetter(ch) {
   } else if (mode === 'spell') {
     spellPressLetter(ch);
   }
-}
-
-function pressBack() {
-  if (locked || mode !== 'freeplay' || typed.length === 0) return;
-  typed = typed.slice(0, -1);
-  renderSlots();
-  updateKeys();
 }
 
 function completeWord(word) {
@@ -292,9 +269,7 @@ function enterQuiz() {
 }
 
 function enableAllKeys() {
-  KEY_ROWS.forEach(function(rowStr) {
-    rowStr.split('').forEach(function(ch) { keyEls[ch].classList.remove('disabled'); });
-  });
+  KEY_LETTERS.split('').forEach(function(ch) { keyEls[ch].classList.remove('disabled'); });
 }
 
 function flashSlotWrong(pos) {
@@ -365,7 +340,6 @@ function enterSpell() {
   spellChoices.classList.remove('is-visible');
   spellChoices.setAttribute('aria-hidden', 'true');
   keyboardEl.style.display = '';
-  if (keyEls.BACK) keyEls.BACK.style.display = 'none';
   enableAllKeys();
   startSpellRound();
 }
@@ -373,7 +347,6 @@ function enterSpell() {
 function enterFreeplay() {
   typed = '';
   locked = false;
-  if (keyEls.BACK) keyEls.BACK.style.display = '';
   spellPicture.classList.remove('is-visible');
   spellPicture.setAttribute('aria-hidden', 'true');
   spellChoices.classList.remove('is-visible');
@@ -421,11 +394,6 @@ setMode(readSessionMode(SPELLING_SESSION_KEY, 'freeplay'));
 document.addEventListener('keydown', function(event) {
   if (session.isSessionEnded()) return;
   if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
-  if (event.key === 'Backspace') {
-    pressBack();
-    event.preventDefault();
-    return;
-  }
   const k = event.key.toUpperCase();
   if (k.length === 1 && k >= 'A' && k <= 'Z') {
     pressLetter(k);

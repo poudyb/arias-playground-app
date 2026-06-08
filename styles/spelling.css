@@ -170,45 +170,38 @@ body {
 
 /* ---- On-screen keyboard ---- */
 
-.keyboard {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(5px, 1.2vh, 10px);
-  padding: 8px clamp(4px, 1.5vw, 12px) clamp(10px, 2vh, 18px);
-  width: 100%;
-}
-.key-row {
-  display: flex;
-  justify-content: center;
-  gap: clamp(4px, 1vw, 8px);
-  width: 100%;
-  max-width: 760px;
-}
-.key {
-  flex: 1 1 0;
-  min-width: 0;
-  height: clamp(42px, 8vh, 66px);
-  border: none;
-  border-radius: 10px;
-  background: #eceff1;
-  font-size: clamp(1rem, 4.6vw, 1.7rem);
-  font-weight: 700;
-  font-family: system-ui, -apple-system, sans-serif;
-  color: #2b2b2b;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.key:active { transform: scale(0.94); }
-.key.disabled {
-  opacity: 0.28;
-  pointer-events: none;
-}
-.key--back {
-  flex: 1.6 1 0;
-  background: #ffe0b2;
-  font-size: clamp(1.1rem, 4.6vw, 1.6rem);
+/* On-screen keyboard: only on touch devices (a real keyboard is used on
+   desktop), laid out as the alphabet game's staggered QWERTY grid so every
+   key is the same width and the rows offset like a real keyboard. */
+.keyboard { display: none; }
+
+@media (pointer: coarse) {
+  #spell-main { flex: 0 0 56%; }
+  .keyboard {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(20, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: clamp(4px, 1vw, 8px);
+    padding: 8px clamp(6px, 2vw, 16px) clamp(12px, 2.5vh, 20px);
+    width: 100%;
+  }
+  .key {
+    grid-column: span 2;
+    border: none;
+    border-radius: 10px;
+    background: #eceff1;
+    font-size: clamp(1.5rem, 6vw, 2.1rem);
+    font-weight: 700;
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #2b2b2b;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .key[data-key="A"] { grid-column: 2 / span 2; }
+  .key[data-key="Z"] { grid-column: 4 / span 2; }
+  .key:active { transform: scale(0.94); }
+  .key.disabled { opacity: 0.28; pointer-events: none; }
 }
 
 /* ---- Feedback animations (shared look) ---- */
