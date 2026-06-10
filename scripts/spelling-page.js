@@ -184,6 +184,7 @@ function pressLetter(ch) {
   if (mode === 'freeplay') {
     if (!allowedNext(typed)[ch]) return;
     typed += ch;
+    speakText(ch.toLowerCase(), { rate: 0.85 });
     renderSlots();
     if (typed.length === WORD_LEN) completeWord(typed);
     else updateKeys();
@@ -337,6 +338,7 @@ function spellPressLetter(ch) {
   const target = WORDS[spellTargetIndex];
   if (ch === target[typed.length]) {
     typed += ch;
+    speakText(ch.toLowerCase(), { rate: 0.85 });
     renderSlots();
     if (typed.length === WORD_LEN) completeSpell(target);
     else hint.poke();
