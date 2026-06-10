@@ -85,34 +85,13 @@ const audio = createAudioFeedback();
 const thumbsDown = createThumbsDownController();
 setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
 
-// Speaks the word then spells it letter by letter as queued utterances.
+// Speaks the word, then spells it letter by letter.
 function speakWordThenSpell(word) {
-  const synth = window.speechSynthesis;
-  if (!synth) return;
-  cancelSpeech();
   const w = word.toLowerCase();
   const parts = [w].concat(w.split(''));
-  const utterances = parts.map(function(part, i) {
-    const u = new SpeechSynthesisUtterance(part);
-    u.rate = i === 0 ? 0.85 : 0.7;
-    return u;
+  speakSequence(parts, {
+    rates: parts.map(function(_, i) { return i === 0 ? 0.85 : 0.7; })
   });
-  const last = utterances[utterances.length - 1];
-  function release() { if (activeUtterance === utterances[0]) activeUtterance = null; }
-  last.addEventListener('end', release);
-  last.addEventListener('error', release);
-  function go() {
-    activeUtterance = utterances[0];
-    utterances.forEach(function(u) { synth.speak(u); });
-  }
-  if (synth.getVoices().length > 0) {
-    go();
-  } else {
-    synth.addEventListener('voiceschanged', function onV() {
-      synth.removeEventListener('voiceschanged', onV);
-      go();
-    });
-  }
 }
 
 function flashSpellingHint() {
@@ -158,6 +137,8 @@ function buildKeyboard() {
 }
 
 function renderSlots() {
+  // Keep the keyboard glow color in sync with the slot being filled.
+  keyboardEl.dataset.pos = typed.length;
   spellSlots.innerHTML = '';
   for (let i = 0; i < WORD_LEN; i++) {
     const slot = document.createElement('div');
@@ -173,7 +154,6 @@ function renderSlots() {
 }
 
 function updateKeys() {
-  keyboardEl.dataset.pos = typed.length;
   const allow = allowedNext(typed);
   KEY_LETTERS.split('').forEach(function(ch) {
     keyEls[ch].classList.toggle('disabled', locked || !allow[ch]);
@@ -274,9 +254,8 @@ function startQuizRound() {
   thumbsDown.hide();
 
   const saved = loadRoundState(QUIZ_STATE_KEY);
-  if (saved && typeof saved.targetIndex === 'number' && saved.targetIndex >= 0 && saved.targetIndex < WORDS.length &&
-      Array.isArray(saved.choiceIndices) && saved.choiceIndices.length === 3 &&
-      saved.choiceIndices.every(function(i) { return i >= 0 && i < WORDS.length; })) {
+  if (saved && isValidIndex(saved.targetIndex, WORDS.length) &&
+      isValidIndexArray(saved.choiceIndices, 3, WORDS.length)) {
     quizTargetIndex = saved.targetIndex;
     const target = WORDS[quizTargetIndex];
     renderWord(target);
@@ -343,7 +322,6 @@ function enterQuiz() {
 }
 
 function enableAllKeys() {
-  keyboardEl.dataset.pos = typed.length;
   KEY_LETTERS.split('').forEach(function(ch) { keyEls[ch].classList.remove('disabled'); });
 }
 
@@ -362,7 +340,6 @@ function spellPressLetter(ch) {
   if (ch === target[typed.length]) {
     typed += ch;
     speakText(ch.toLowerCase(), { rate: 0.85 });
-    keyboardEl.dataset.pos = typed.length;
     renderSlots();
     if (typed.length === WORD_LEN) completeSpell(target);
     else hint.poke();
@@ -402,7 +379,7 @@ function startSpellRound() {
   thumbsDown.hide();
 
   const saved = loadRoundState(SPELL_STATE_KEY);
-  if (saved && typeof saved.targetIndex === 'number' && saved.targetIndex >= 0 && saved.targetIndex < WORDS.length) {
+  if (saved && isValidIndex(saved.targetIndex, WORDS.length)) {
     spellTargetIndex = saved.targetIndex;
   } else {
     let next;

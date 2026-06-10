@@ -73,6 +73,46 @@ function cancelSpeech() {
   activeUtterance = null;
 }
 
+// Speaks several parts back-to-back as one cancellable sequence (e.g. a word
+// followed by its letters). rates[i] sets the rate per part.
+function speakSequence(parts, options = {}) {
+  const { rates = [] } = options;
+  const synth = window.speechSynthesis;
+  if (!synth || parts.length === 0) return;
+  cancelSpeech();
+
+  const utterances = parts.map(function(part, i) {
+    const u = new SpeechSynthesisUtterance(part);
+    u.rate = rates[i] != null ? rates[i] : 0.9;
+    return u;
+  });
+  const first = utterances[0];
+
+  function release() {
+    if (activeUtterance === first) activeUtterance = null;
+  }
+  const last = utterances[utterances.length - 1];
+  last.addEventListener('end', release);
+  last.addEventListener('error', release);
+
+  function go() {
+    if (synth.paused) synth.resume();
+    utterances.forEach(function(u) { synth.speak(u); });
+  }
+
+  activeUtterance = first;
+
+  if (synth.getVoices().length > 0) {
+    go();
+  } else {
+    function onReady() {
+      synth.removeEventListener('voiceschanged', onReady);
+      if (activeUtterance === first) go();
+    }
+    synth.addEventListener('voiceschanged', onReady);
+  }
+}
+
 document.addEventListener('visibilitychange', function() {
   if (document.hidden) cancelSpeech();
 });

@@ -121,11 +121,7 @@ function createCollectionActivity(options) {
     if (mode === 'quiz') {
       startQuizRound();
     } else if (mode === 'chase') {
-      var savedChase = modeSessionKey ? loadRoundState(modeSessionKey + ':chase') : null;
-      chaseDifficulty = (savedChase && typeof savedChase.difficulty === 'number')
-        ? Math.max(0, Math.min(savedChase.difficulty, chaseDifficultyMax))
-        : 0;
-      startChaseRound(savedChase && savedChase.targetKey ? savedChase.targetKey : null);
+      startChaseRound();
     } else if (mode === 'freeplay' && modeHint && freeplayHintText) {
       modeHint.textContent = freeplayHintText;
     }
@@ -182,8 +178,8 @@ function createCollectionActivity(options) {
     thumbsDown.hide();
 
     if (modeSessionKey) {
-      var saved = loadRoundState(modeSessionKey + ':quiz');
-      if (saved && typeof saved.targetIndex === 'number' && saved.targetIndex >= 0 && saved.targetIndex < items.length) {
+      const saved = loadRoundState(modeSessionKey + ':quiz');
+      if (saved && isValidIndex(saved.targetIndex, items.length)) {
         quizTargetIndex = saved.targetIndex;
         if (stopPrompt) stopPrompt();
         if (promptItem) promptItem(quizTargetIndex);
@@ -205,7 +201,7 @@ function createCollectionActivity(options) {
     hint.reset();
   }
 
-  function startChaseRound(preferTargetKey) {
+  function startChaseRound() {
     if (session.isSessionEnded() || mode !== 'chase') return;
     stopChase();
     chasePaused = false;
@@ -213,6 +209,14 @@ function createCollectionActivity(options) {
     thumbsDown.hide();
     chaseItems.forEach(function(entry) { entry.el.remove(); });
     chaseItems = [];
+
+    // Resume from the saved round: same difficulty, and the same target if a
+    // round was in progress (targetKey is null right after a correct answer).
+    const saved = modeSessionKey ? loadRoundState(modeSessionKey + ':chase') : null;
+    if (saved && typeof saved.difficulty === 'number') {
+      chaseDifficulty = Math.max(0, Math.min(saved.difficulty, chaseDifficultyMax));
+    }
+    const preferTargetKey = saved && saved.targetKey ? saved.targetKey : null;
 
     const params = getChaseParams(chaseDifficulty);
     const pool = chasePool ? chasePool(chaseDifficulty) : items;

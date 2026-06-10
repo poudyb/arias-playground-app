@@ -203,7 +203,14 @@ body {
     gap: clamp(4px, 1vw, 8px);
     padding: 8px clamp(6px, 2vw, 16px) clamp(12px, 2.5vh, 20px);
     width: 100%;
+    /* Defaults match data-pos="1" so keys stay visible if data-pos is unset */
+    --key-rgb: 66, 165, 245;
+    --key-bg: #e3f2fd;
+    --key-ink: #0d47a1;
   }
+  /* Key glow follows the slot being filled: red, blue, green (see .slot colors) */
+  .keyboard[data-pos="0"] { --key-rgb: 239, 83, 80; --key-bg: #fce4ec; --key-ink: #b71c1c; }
+  .keyboard[data-pos="2"] { --key-rgb: 76, 175, 80; --key-bg: #e8f5e9; --key-ink: #1b5e20; }
   .key {
     grid-column: span 2;
     border: 1.5px solid transparent;
@@ -220,23 +227,11 @@ body {
   .key[data-key="Z"] { grid-column: 4 / span 2; }
   .key:active { transform: scale(0.94); }
   .key.disabled { opacity: 0.28; pointer-events: none; }
-  .keyboard[data-pos="0"] .key:not(.disabled) {
-    background: #fce4ec;
-    border-color: rgba(239, 83, 80, 0.75);
-    color: #b71c1c;
-    box-shadow: inset 0 0 8px rgba(239, 83, 80, 0.4), 0 0 14px rgba(239, 83, 80, 0.55), 0 4px 18px rgba(239, 83, 80, 0.35);
-  }
-  .keyboard[data-pos="1"] .key:not(.disabled) {
-    background: #e3f2fd;
-    border-color: rgba(66, 165, 245, 0.75);
-    color: #0d47a1;
-    box-shadow: inset 0 0 8px rgba(66, 165, 245, 0.4), 0 0 14px rgba(66, 165, 245, 0.55), 0 4px 18px rgba(66, 165, 245, 0.35);
-  }
-  .keyboard[data-pos="2"] .key:not(.disabled) {
-    background: #e8f5e9;
-    border-color: rgba(76, 175, 80, 0.75);
-    color: #1b5e20;
-    box-shadow: inset 0 0 8px rgba(76, 175, 80, 0.4), 0 0 14px rgba(76, 175, 80, 0.55), 0 4px 18px rgba(76, 175, 80, 0.35);
+  .key:not(.disabled) {
+    background: var(--key-bg);
+    border-color: rgba(var(--key-rgb), 0.75);
+    color: var(--key-ink);
+    box-shadow: inset 0 0 8px rgba(var(--key-rgb), 0.4), 0 0 14px rgba(var(--key-rgb), 0.55), 0 4px 18px rgba(var(--key-rgb), 0.35);
   }
 }
 

@@ -149,9 +149,9 @@ function startRound() {
 
   const saved = loadRoundState(ROUND_STATE_KEY);
   if (saved && saved.category === category &&
-      typeof saved.targetIndex === 'number' && saved.targetIndex >= 0 && saved.targetIndex < pool.length &&
-      Array.isArray(saved.choiceItemIndices) && saved.choiceItemIndices.length === CHOICES.length &&
-      saved.choiceItemIndices.every(function(idx) { return idx >= 0 && idx < pool.length; })) {
+      isValidIndex(saved.targetIndex, pool.length) &&
+      isValidIndex(saved.correctChoiceIdx, CHOICES.length) &&
+      isValidIndexArray(saved.choiceItemIndices, CHOICES.length, pool.length)) {
     applyRoundState(saved.targetIndex, saved.correctChoiceIdx, saved.choiceItemIndices);
     cancelSpeech();
     window.setTimeout(function() { if (!session.isSessionEnded()) speakPrompt(); }, 280);

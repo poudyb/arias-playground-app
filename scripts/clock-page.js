@@ -608,7 +608,8 @@ function enterQuiz() {
     thumbsDown.hide();
 
     const saved = loadRoundState(QUIZ_STATE_KEY);
-    if (saved && saved.target && Array.isArray(saved.opts) && saved.opts.length === 3) {
+    if (saved && saved.target && Array.isArray(saved.opts) && saved.opts.length === 3 &&
+        saved.opts.every(function(o) { return o && typeof o.h === 'number' && typeof o.m === 'number'; })) {
       target = saved.target;
       renderOpts(saved.opts);
       cancelSpeech();

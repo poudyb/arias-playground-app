@@ -208,3 +208,12 @@ function loadRoundState(key) {
     return s ? JSON.parse(s) : null;
   } catch (_) { return null; }
 }
+
+function isValidIndex(value, poolSize) {
+  return typeof value === 'number' && value >= 0 && value < poolSize;
+}
+
+function isValidIndexArray(arr, length, poolSize) {
+  return Array.isArray(arr) && arr.length === length &&
+    arr.every(function(i) { return isValidIndex(i, poolSize); });
+}
