@@ -121,8 +121,11 @@ function createCollectionActivity(options) {
     if (mode === 'quiz') {
       startQuizRound();
     } else if (mode === 'chase') {
-      chaseDifficulty = 0;
-      startChaseRound();
+      var savedChase = modeSessionKey ? loadRoundState(modeSessionKey + ':chase') : null;
+      chaseDifficulty = (savedChase && typeof savedChase.difficulty === 'number')
+        ? Math.max(0, Math.min(savedChase.difficulty, chaseDifficultyMax))
+        : 0;
+      startChaseRound(savedChase && savedChase.targetKey ? savedChase.targetKey : null);
     } else if (mode === 'freeplay' && modeHint && freeplayHintText) {
       modeHint.textContent = freeplayHintText;
     }
@@ -157,6 +160,7 @@ function createCollectionActivity(options) {
         stats.quizCorrect++;
       });
       quizLocked = true;
+      if (modeSessionKey) saveRoundState(modeSessionKey + ':quiz', null);
       hint.stop();
       spawnConfetti({ colors: confetti.colors });
       showCelebrationEmojis();
@@ -176,18 +180,32 @@ function createCollectionActivity(options) {
     if (session.isSessionEnded() || mode !== 'quiz') return;
     quizLocked = false;
     thumbsDown.hide();
+
+    if (modeSessionKey) {
+      var saved = loadRoundState(modeSessionKey + ':quiz');
+      if (saved && typeof saved.targetIndex === 'number' && saved.targetIndex >= 0 && saved.targetIndex < items.length) {
+        quizTargetIndex = saved.targetIndex;
+        if (stopPrompt) stopPrompt();
+        if (promptItem) promptItem(quizTargetIndex);
+        if (onQuizStart) onQuizStart(items[quizTargetIndex], quizTargetIndex);
+        hint.reset();
+        return;
+      }
+    }
+
     let nextIndex;
     do {
       nextIndex = Math.floor(Math.random() * items.length);
     } while (quizTargetIndex >= 0 && getTargetKey(items[nextIndex]) === getTargetKey(items[quizTargetIndex]));
     quizTargetIndex = nextIndex;
+    if (modeSessionKey) saveRoundState(modeSessionKey + ':quiz', { targetIndex: quizTargetIndex });
     if (stopPrompt) stopPrompt();
     if (promptItem) promptItem(quizTargetIndex);
     if (onQuizStart) onQuizStart(items[quizTargetIndex], quizTargetIndex);
     hint.reset();
   }
 
-  function startChaseRound() {
+  function startChaseRound(preferTargetKey) {
     if (session.isSessionEnded() || mode !== 'chase') return;
     stopChase();
     chasePaused = false;
@@ -209,7 +227,12 @@ function createCollectionActivity(options) {
       shuffled.push(indices[i]);
     }
     let targetCandidates = shuffled;
-    if (lastChaseTargetKey != null && shuffled.length > 1) {
+    if (preferTargetKey) {
+      const preferred = shuffled.filter(function(idx) {
+        return getTargetKey(pool[idx]) === preferTargetKey;
+      });
+      if (preferred.length > 0) targetCandidates = preferred;
+    } else if (lastChaseTargetKey != null && shuffled.length > 1) {
       const filtered = shuffled.filter(function(idx) {
         return getTargetKey(pool[idx]) !== lastChaseTargetKey;
       });
@@ -217,6 +240,7 @@ function createCollectionActivity(options) {
     }
     chaseTargetItem = pool[targetCandidates[Math.floor(Math.random() * targetCandidates.length)]];
     lastChaseTargetKey = getTargetKey(chaseTargetItem);
+    if (modeSessionKey) saveRoundState(modeSessionKey + ':chase', { difficulty: chaseDifficulty, targetKey: lastChaseTargetKey });
 
     shuffled.forEach(function(idx, position) {
       const item = pool[idx];
@@ -329,6 +353,7 @@ function createCollectionActivity(options) {
       showCelebrationEmojis();
       audio.playChime();
       chaseDifficulty = Math.min(chaseDifficulty + 1, chaseDifficultyMax);
+      if (modeSessionKey) saveRoundState(modeSessionKey + ':chase', { difficulty: chaseDifficulty, targetKey: null });
       setTimeout(startChaseRound, 2000);
     } else {
       session.mutateStats(function(stats) {
@@ -337,6 +362,7 @@ function createCollectionActivity(options) {
       if (!chaseMissedThisRound) {
         chaseMissedThisRound = true;
         chaseDifficulty = Math.max(chaseDifficulty - 1, 0);
+        if (modeSessionKey) saveRoundState(modeSessionKey + ':chase', { difficulty: chaseDifficulty, targetKey: lastChaseTargetKey });
       }
       thumbsDown.show();
       audio.playBuzzer();

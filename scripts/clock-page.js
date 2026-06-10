@@ -581,12 +581,41 @@ function enterQuiz() {
     speakText(timeToWords(target.h, target.m), { rate: 0.88 });
   }
 
+  const QUIZ_STATE_KEY = CLOCK_SESSION_KEY + ':quiz';
+
+  function renderOpts(opts) {
+    optRow.innerHTML = '';
+    opts.forEach(function(opt) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'clock-option';
+      btn.setAttribute('aria-label', timeToWords(opt.h, opt.m));
+      btn.dataset.h = String(opt.h);
+      btn.dataset.m = String(opt.m);
+      btn.dataset.correct = opt.correct ? '1' : '0';
+      const face = buildClockFace({ showSeconds: false, sizeClass: 'clock-face--option' });
+      renderClockTime(face, opt.h, opt.m, null, {});
+      btn.appendChild(face);
+      btn.addEventListener('click', function() { onOptionTap(btn, opt); });
+      optRow.appendChild(btn);
+    });
+  }
+
   function newRound() {
     clearTimeout(delayedNextTimer);
     delayedNextTimer = null;
     roundLocked = false;
-    optRow.innerHTML = '';
     thumbsDown.hide();
+
+    const saved = loadRoundState(QUIZ_STATE_KEY);
+    if (saved && saved.target && Array.isArray(saved.opts) && saved.opts.length === 3) {
+      target = saved.target;
+      renderOpts(saved.opts);
+      cancelSpeech();
+      window.setTimeout(speakRound, 280);
+      hint.reset();
+      return;
+    }
 
     const prev = target;
     let h, m;
@@ -600,12 +629,12 @@ function enterQuiz() {
 
     function pickWrong(exclude) {
       let wh, wm;
-      let tries = 0;
+      let wtries = 0;
       do {
         wh = randomHour();
         wm = randomMinute();
-        tries++;
-        if (tries > 200) break;
+        wtries++;
+        if (wtries > 200) break;
       } while (
         wh === h ||
         minutesShareDigit(wm, m) ||
@@ -623,21 +652,8 @@ function enterQuiz() {
       { h: wrong2.h, m: wrong2.m, correct: false }
     ]);
 
-    opts.forEach(function(opt) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'clock-option';
-      btn.setAttribute('aria-label', timeToWords(opt.h, opt.m));
-      btn.dataset.h = String(opt.h);
-      btn.dataset.m = String(opt.m);
-      btn.dataset.correct = opt.correct ? '1' : '0';
-      const face = buildClockFace({ showSeconds: false, sizeClass: 'clock-face--option' });
-      renderClockTime(face, opt.h, opt.m, null, {});
-      btn.appendChild(face);
-      btn.addEventListener('click', function() { onOptionTap(btn, opt); });
-      optRow.appendChild(btn);
-    });
-
+    saveRoundState(QUIZ_STATE_KEY, { target: target, opts: opts });
+    renderOpts(opts);
     cancelSpeech();
     window.setTimeout(speakRound, 280);
     hint.reset();
@@ -648,6 +664,7 @@ function enterQuiz() {
     if (opt.correct) {
       roundLocked = true;
       hint.stop();
+      saveRoundState(QUIZ_STATE_KEY, null);
       session.mutateStats(function(stats) { stats.quizCorrect++; });
       btn.classList.remove('pop');
       void btn.offsetWidth;

@@ -265,18 +265,38 @@ function renderChoices(indices, target) {
   });
 }
 
+const QUIZ_STATE_KEY = SPELLING_SESSION_KEY + ':quiz';
+const SPELL_STATE_KEY = SPELLING_SESSION_KEY + ':spell';
+
 function startQuizRound() {
   if (session.isSessionEnded() || mode !== 'quiz') return;
   quizLocked = false;
   thumbsDown.hide();
+
+  const saved = loadRoundState(QUIZ_STATE_KEY);
+  if (saved && typeof saved.targetIndex === 'number' && saved.targetIndex >= 0 && saved.targetIndex < WORDS.length &&
+      Array.isArray(saved.choiceIndices) && saved.choiceIndices.length === 3 &&
+      saved.choiceIndices.every(function(i) { return i >= 0 && i < WORDS.length; })) {
+    quizTargetIndex = saved.targetIndex;
+    const target = WORDS[quizTargetIndex];
+    renderWord(target);
+    renderChoices(saved.choiceIndices, target);
+    spellHint.textContent = 'Find the picture!';
+    speakWordThenSpell(target);
+    hint.reset();
+    return;
+  }
+
   let next;
   do {
     next = Math.floor(Math.random() * WORDS.length);
   } while (WORDS.length > 1 && next === quizTargetIndex);
   quizTargetIndex = next;
+  const choiceIndices = buildChoiceIndices(quizTargetIndex);
+  saveRoundState(QUIZ_STATE_KEY, { targetIndex: quizTargetIndex, choiceIndices: choiceIndices });
   const target = WORDS[quizTargetIndex];
   renderWord(target);
-  renderChoices(buildChoiceIndices(quizTargetIndex), target);
+  renderChoices(choiceIndices, target);
   spellHint.textContent = 'Find the picture!';
   speakWordThenSpell(target);
   hint.reset();
@@ -287,6 +307,7 @@ function onChoice(word, btn, target) {
   if (word === target) {
     quizLocked = true;
     hint.stop();
+    saveRoundState(QUIZ_STATE_KEY, null);
     btn.classList.add('correct');
     audio.playChime();
     speakText(target.toLowerCase(), { rate: 0.85 });
@@ -361,6 +382,7 @@ function spellPressLetter(ch) {
 function completeSpell(target) {
   locked = true;
   hint.stop();
+  saveRoundState(SPELL_STATE_KEY, null);
   renderSlots();
   audio.playChime();
   speakText(target.toLowerCase(), { rate: 0.85 });
@@ -378,11 +400,19 @@ function startSpellRound() {
   locked = false;
   typed = '';
   thumbsDown.hide();
-  let next;
-  do {
-    next = Math.floor(Math.random() * WORDS.length);
-  } while (WORDS.length > 1 && next === spellTargetIndex);
-  spellTargetIndex = next;
+
+  const saved = loadRoundState(SPELL_STATE_KEY);
+  if (saved && typeof saved.targetIndex === 'number' && saved.targetIndex >= 0 && saved.targetIndex < WORDS.length) {
+    spellTargetIndex = saved.targetIndex;
+  } else {
+    let next;
+    do {
+      next = Math.floor(Math.random() * WORDS.length);
+    } while (WORDS.length > 1 && next === spellTargetIndex);
+    spellTargetIndex = next;
+    saveRoundState(SPELL_STATE_KEY, { targetIndex: spellTargetIndex });
+  }
+
   const target = WORDS[spellTargetIndex];
   spellImg.src = IMG_FOR[target];
   spellImg.alt = '';

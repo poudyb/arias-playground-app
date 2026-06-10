@@ -194,3 +194,17 @@ function rememberSessionMode(sessionKey, mode) {
     sessionStorage.setItem(sessionKey + ':mode', mode);
   } catch (_) {}
 }
+
+function saveRoundState(key, state) {
+  try {
+    if (state == null) sessionStorage.removeItem(key);
+    else sessionStorage.setItem(key, JSON.stringify(state));
+  } catch (_) {}
+}
+
+function loadRoundState(key) {
+  try {
+    const s = sessionStorage.getItem(key);
+    return s ? JSON.parse(s) : null;
+  } catch (_) { return null; }
+}

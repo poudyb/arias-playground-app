@@ -106,6 +106,7 @@ function setCategory(nextCategory) {
   if (SAME_AS_MODES.indexOf(nextCategory) === -1) nextCategory = 'animals';
   category = nextCategory;
   rememberSessionMode(SAME_AS_SESSION_KEY, category);
+  saveRoundState(ROUND_STATE_KEY, null);
   pool = category === 'animals' ? ANIMALS : SHAPES;
   catBtns.forEach(function(btn) {
     btn.classList.toggle('active', btn.dataset.cat === category);
@@ -117,6 +118,21 @@ function setCategory(nextCategory) {
     });
   }
   startRound();
+}
+
+const ROUND_STATE_KEY = SAME_AS_SESSION_KEY + ':round';
+
+function applyRoundState(ti, ci, choiceItemIndices) {
+  targetIndex = ti;
+  lastTargetKey = struggleIdForIndex(targetIndex);
+  correctChoiceIdx = ci;
+  CHOICES.forEach(function(c, i) {
+    const itemIndex = choiceItemIndices[i];
+    renderArt(c.art, pool[itemIndex]);
+    const label = pool[itemIndex].name + (itemIndex === targetIndex ? ' - matches top' : '');
+    c.btn.setAttribute('aria-label', label);
+  });
+  renderArt(refArt, pool[targetIndex]);
 }
 
 function startRound() {
@@ -131,26 +147,34 @@ function startRound() {
   });
   thumbsDown.hide();
 
+  const saved = loadRoundState(ROUND_STATE_KEY);
+  if (saved && saved.category === category &&
+      typeof saved.targetIndex === 'number' && saved.targetIndex >= 0 && saved.targetIndex < pool.length &&
+      Array.isArray(saved.choiceItemIndices) && saved.choiceItemIndices.length === CHOICES.length &&
+      saved.choiceItemIndices.every(function(idx) { return idx >= 0 && idx < pool.length; })) {
+    applyRoundState(saved.targetIndex, saved.correctChoiceIdx, saved.choiceItemIndices);
+    cancelSpeech();
+    window.setTimeout(function() { if (!session.isSessionEnded()) speakPrompt(); }, 280);
+    hint.reset();
+    return;
+  }
+
   let nextTargetIndex;
   let tries = 0;
   do {
     nextTargetIndex = Math.floor(Math.random() * pool.length);
     tries++;
   } while (pool.length > 1 && lastTargetKey != null && struggleIdForIndex(nextTargetIndex) === lastTargetKey && tries < 50);
-  targetIndex = nextTargetIndex;
-  lastTargetKey = struggleIdForIndex(targetIndex);
-  const wrongIndices = pickWrongIndices(targetIndex, CHOICES.length - 1);
-  correctChoiceIdx = Math.floor(Math.random() * CHOICES.length);
 
+  const newCorrectChoiceIdx = Math.floor(Math.random() * CHOICES.length);
+  const wrongIndices = pickWrongIndices(nextTargetIndex, CHOICES.length - 1);
   let wrongCursor = 0;
-  CHOICES.forEach(function(c, i) {
-    const choiceItemIndex = i === correctChoiceIdx ? targetIndex : wrongIndices[wrongCursor++];
-    renderArt(c.art, pool[choiceItemIndex]);
-    const label = pool[choiceItemIndex].name + (choiceItemIndex === targetIndex ? ' - matches top' : '');
-    c.btn.setAttribute('aria-label', label);
+  const choiceItemIndices = CHOICES.map(function(_, i) {
+    return i === newCorrectChoiceIdx ? nextTargetIndex : wrongIndices[wrongCursor++];
   });
 
-  renderArt(refArt, pool[targetIndex]);
+  saveRoundState(ROUND_STATE_KEY, { category: category, targetIndex: nextTargetIndex, correctChoiceIdx: newCorrectChoiceIdx, choiceItemIndices: choiceItemIndices });
+  applyRoundState(nextTargetIndex, newCorrectChoiceIdx, choiceItemIndices);
 
   cancelSpeech();
   window.setTimeout(function() {
@@ -166,6 +190,7 @@ function onChoiceTap(idx) {
   if (idx === correctChoiceIdx) {
     roundLocked = true;
     hint.stop();
+    saveRoundState(ROUND_STATE_KEY, null);
     session.mutateStats(function(stats) {
       stats.matchCorrect++;
     });
