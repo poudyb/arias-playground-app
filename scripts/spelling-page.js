@@ -173,6 +173,7 @@ function renderSlots() {
 }
 
 function updateKeys() {
+  keyboardEl.dataset.pos = typed.length;
   const allow = allowedNext(typed);
   KEY_LETTERS.split('').forEach(function(ch) {
     keyEls[ch].classList.toggle('disabled', locked || !allow[ch]);
@@ -321,6 +322,7 @@ function enterQuiz() {
 }
 
 function enableAllKeys() {
+  keyboardEl.dataset.pos = typed.length;
   KEY_LETTERS.split('').forEach(function(ch) { keyEls[ch].classList.remove('disabled'); });
 }
 
@@ -339,6 +341,7 @@ function spellPressLetter(ch) {
   if (ch === target[typed.length]) {
     typed += ch;
     speakText(ch.toLowerCase(), { rate: 0.85 });
+    keyboardEl.dataset.pos = typed.length;
     renderSlots();
     if (typed.length === WORD_LEN) completeSpell(target);
     else hint.poke();

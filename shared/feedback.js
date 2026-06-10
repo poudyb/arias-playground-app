@@ -143,56 +143,40 @@ function spawnConfetti(options = {}) {
   }
 }
 
-function showCelebrationEmojis(options = {}) {
-  const {
-    emojis = ['🎉', '🎉'],
-    positions = [
-      { left: '15vw', top: '25vh' },
-      { right: '15vw', top: '25vh' }
-    ],
-    durationMs = 1600
-  } = options;
+const CENTER_EMOJI_STYLE = {
+  left: '50%',
+  top: '40%',
+  transform: 'translateX(-50%) translateY(-50%)',
+  fontSize: '28vw'
+};
 
-  emojis.forEach(function(emoji, index) {
-    const el = document.createElement('div');
-    el.className = 'celebration-emoji';
-    el.textContent = emoji;
-    Object.assign(el.style, positions[index] || positions[positions.length - 1] || {});
-    document.body.appendChild(el);
-    window.setTimeout(function() { el.remove(); }, durationMs);
-  });
+function showCelebrationEmojis(options = {}) {
+  const { emoji = '🎉', durationMs = 1600 } = options;
+  const el = document.createElement('div');
+  el.className = 'celebration-emoji';
+  el.textContent = emoji;
+  Object.assign(el.style, CENTER_EMOJI_STYLE);
+  document.body.appendChild(el);
+  window.setTimeout(function() { el.remove(); }, durationMs);
 }
 
-// Mirrors showCelebrationEmojis: spawns two matching emojis at the same
-// left/right positions so the incorrect buzzer is symmetric with the correct one.
 function createThumbsDownController(options = {}) {
-  const {
-    emojis = ['❌', '❌'],
-    positions = [
-      { left: '15vw', top: '25vh' },
-      { right: '15vw', top: '25vh' }
-    ],
-    durationMs = 1600
-  } = options;
-
-  let current = [];
+  const { emoji = '❌', durationMs = 1600 } = options;
+  let current = null;
 
   function hide() {
-    current.forEach(function(node) { node.remove(); });
-    current = [];
+    if (current) { current.remove(); current = null; }
   }
 
   function show() {
     hide();
-    emojis.forEach(function(emoji, index) {
-      const node = document.createElement('div');
-      node.className = 'celebration-emoji';
-      node.textContent = emoji;
-      Object.assign(node.style, positions[index] || positions[positions.length - 1] || {});
-      document.body.appendChild(node);
-      window.setTimeout(function() { node.remove(); }, durationMs);
-      current.push(node);
-    });
+    const node = document.createElement('div');
+    node.className = 'celebration-emoji';
+    node.textContent = emoji;
+    Object.assign(node.style, CENTER_EMOJI_STYLE);
+    document.body.appendChild(node);
+    window.setTimeout(function() { if (current === node) current = null; node.remove(); }, durationMs);
+    current = node;
   }
 
   return { hide, show };

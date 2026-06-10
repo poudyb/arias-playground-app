@@ -661,12 +661,7 @@ function enterQuiz() {
         minDuration: 0.9,
         durationJitter: 0.7
       });
-      showCelebrationEmojis({
-        positions: [
-          { left: '12vw', top: '22vh' },
-          { right: '12vw', top: '22vh' }
-        ]
-      });
+      showCelebrationEmojis();
       audio.playChime();
       delayedNextTimer = window.setTimeout(function() {
         delayedNextTimer = null;
@@ -787,12 +782,7 @@ function enterNext() {
           minDuration: 0.9,
           durationJitter: 0.7
         });
-        showCelebrationEmojis({
-          positions: [
-            { left: '12vw', top: '22vh' },
-            { right: '12vw', top: '22vh' }
-          ]
-        });
+        showCelebrationEmojis();
         audio.playChime();
       } else {
         session.mutateStats(function(stats) {
