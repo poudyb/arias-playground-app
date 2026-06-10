@@ -85,9 +85,40 @@ const audio = createAudioFeedback();
 const thumbsDown = createThumbsDownController();
 setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
 
+// Speaks the word then spells it letter by letter as queued utterances.
+function speakWordThenSpell(word) {
+  const synth = window.speechSynthesis;
+  if (!synth) return;
+  cancelSpeech();
+  const w = word.toLowerCase();
+  const parts = [w].concat(w.split(''));
+  const utterances = parts.map(function(part, i) {
+    const u = new SpeechSynthesisUtterance(part);
+    u.rate = i === 0 ? 0.85 : 0.7;
+    return u;
+  });
+  const last = utterances[utterances.length - 1];
+  function release() { if (activeUtterance === utterances[0]) activeUtterance = null; }
+  last.addEventListener('end', release);
+  last.addEventListener('error', release);
+  function go() {
+    activeUtterance = utterances[0];
+    utterances.forEach(function(u) { synth.speak(u); });
+  }
+  if (synth.getVoices().length > 0) {
+    go();
+  } else {
+    synth.addEventListener('voiceschanged', function onV() {
+      synth.removeEventListener('voiceschanged', onV);
+      go();
+    });
+  }
+}
+
 function flashSpellingHint() {
   if (mode === 'quiz') {
     flashHintEl(spellChoices.querySelector('[data-word="' + WORDS[quizTargetIndex] + '"]'));
+    speakWordThenSpell(WORDS[quizTargetIndex]);
   } else if (mode === 'spell') {
     flashHintEl(keyEls[WORDS[spellTargetIndex][typed.length]]);
   }
@@ -245,6 +276,7 @@ function startQuizRound() {
   renderWord(target);
   renderChoices(buildChoiceIndices(quizTargetIndex), target);
   spellHint.textContent = 'Find the picture!';
+  speakWordThenSpell(target);
   hint.reset();
 }
 
