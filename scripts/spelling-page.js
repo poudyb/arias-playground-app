@@ -140,6 +140,9 @@ function renderSlots() {
   // Keep the keyboard glow color in sync with the slot being filled.
   keyboardEl.dataset.pos = typed.length;
   spellSlots.innerHTML = '';
+  // In Spell It, preview the next letter as faint "ghost" text so a child who
+  // can't spell yet still knows which letter to look for.
+  const ghostWord = (mode === 'spell' && spellTargetIndex >= 0) ? WORDS[spellTargetIndex] : null;
   for (let i = 0; i < WORD_LEN; i++) {
     const slot = document.createElement('div');
     slot.className = 'slot';
@@ -148,9 +151,23 @@ function renderSlots() {
       slot.textContent = typed[i];
     } else if (i === typed.length && !locked) {
       slot.classList.add('active');
+      if (ghostWord) {
+        slot.classList.add('ghost');
+        slot.textContent = ghostWord[i];
+      }
     }
     spellSlots.appendChild(slot);
   }
+  updateNextKeyHint();
+}
+
+// Glow the next letter's key on the on-screen keyboard (Spell It only) so a
+// child can match the ghost letter to the key they need to tap.
+function updateNextKeyHint() {
+  KEY_LETTERS.split('').forEach(function(ch) { keyEls[ch].classList.remove('next-key'); });
+  if (mode !== 'spell' || locked || spellTargetIndex < 0 || typed.length >= WORD_LEN) return;
+  const ch = WORDS[spellTargetIndex][typed.length];
+  if (keyEls[ch]) keyEls[ch].classList.add('next-key');
 }
 
 function updateKeys() {
@@ -178,6 +195,20 @@ function completeWord(word) {
   locked = true;
   renderSlots();
   updateKeys();
+  session.mutateStats(function(stats) {
+    stats.freeWords += 1;
+    stats.usedFreeplay = true;
+  });
+  // The third letter was just spoken like the first two. Saying the whole word
+  // right away would cancel that letter's speech (the child never hears it), so
+  // hold a beat first, THEN reveal the picture and say the word.
+  resetTimer = window.setTimeout(function() {
+    resetTimer = null;
+    revealFreeplayWord(word);
+  }, 950);
+}
+
+function revealFreeplayWord(word) {
   spellImg.src = IMG_FOR[word];
   spellImg.alt = word.toLowerCase();
   spellPicture.classList.add('is-visible');
@@ -187,10 +218,6 @@ function completeWord(word) {
   speakText(word.toLowerCase(), { rate: 0.85 });
   showCelebrationEmojis();
   spawnConfetti();
-  session.mutateStats(function(stats) {
-    stats.freeWords += 1;
-    stats.usedFreeplay = true;
-  });
   resetTimer = window.setTimeout(function() {
     resetTimer = null;
     typed = '';

@@ -104,10 +104,10 @@ body {
   display: flex;
   gap: clamp(8px, 2.2vw, 18px);
 }
-/* Position 1=red, 2=blue, 3=green — ties slot color to keyboard glow color */
-.slot:nth-child(1) { --slot-color: #ef5350; --slot-shadow: rgba(239, 83, 80, 0.22); }
-.slot:nth-child(2) { --slot-color: #42a5f5; --slot-shadow: rgba(66, 165, 245, 0.22); }
-.slot:nth-child(3) { --slot-color: #4caf50; --slot-shadow: rgba(76, 175, 80, 0.22); }
+/* Position 1=green, 2=red, 3=blue — ties slot color to keyboard glow color */
+.slot:nth-child(1) { --slot-color: #4caf50; --slot-shadow: rgba(76, 175, 80, 0.22); --slot-ghost: rgba(76, 175, 80, 0.45); }
+.slot:nth-child(2) { --slot-color: #ef5350; --slot-shadow: rgba(239, 83, 80, 0.22); --slot-ghost: rgba(239, 83, 80, 0.45); }
+.slot:nth-child(3) { --slot-color: #42a5f5; --slot-shadow: rgba(66, 165, 245, 0.22); --slot-ghost: rgba(66, 165, 245, 0.45); }
 
 .slot {
   width: clamp(64px, 17vw, 120px);
@@ -127,6 +127,10 @@ body {
 .slot.active {
   border-color: var(--slot-color, #1e88e5);
   box-shadow: 0 0 0 3px var(--slot-shadow, rgba(30, 136, 229, 0.18));
+}
+/* Faint preview of the next letter to type (Spell It). */
+.slot.active.ghost {
+  color: var(--slot-ghost, rgba(120, 120, 120, 0.4));
 }
 .slot.filled {
   border-color: var(--slot-color, #43a047);
@@ -203,14 +207,14 @@ body {
     gap: clamp(4px, 1vw, 8px);
     padding: 8px clamp(6px, 2vw, 16px) clamp(12px, 2.5vh, 20px);
     width: 100%;
-    /* Defaults match data-pos="1" so keys stay visible if data-pos is unset */
-    --key-rgb: 66, 165, 245;
-    --key-bg: #e3f2fd;
-    --key-ink: #0d47a1;
+    /* Defaults match data-pos="1" (second letter = red) so keys stay visible if data-pos is unset */
+    --key-rgb: 239, 83, 80;
+    --key-bg: #fce4ec;
+    --key-ink: #b71c1c;
   }
-  /* Key glow follows the slot being filled: red, blue, green (see .slot colors) */
-  .keyboard[data-pos="0"] { --key-rgb: 239, 83, 80; --key-bg: #fce4ec; --key-ink: #b71c1c; }
-  .keyboard[data-pos="2"] { --key-rgb: 76, 175, 80; --key-bg: #e8f5e9; --key-ink: #1b5e20; }
+  /* Key glow follows the slot being filled: green, red, blue (see .slot colors) */
+  .keyboard[data-pos="0"] { --key-rgb: 76, 175, 80; --key-bg: #e8f5e9; --key-ink: #1b5e20; }
+  .keyboard[data-pos="2"] { --key-rgb: 66, 165, 245; --key-bg: #e3f2fd; --key-ink: #0d47a1; }
   .key {
     grid-column: span 2;
     border: 1.5px solid transparent;
@@ -233,6 +237,26 @@ body {
     color: var(--key-ink);
     box-shadow: inset 0 0 8px rgba(var(--key-rgb), 0.4), 0 0 14px rgba(var(--key-rgb), 0.55), 0 4px 18px rgba(var(--key-rgb), 0.35);
   }
+  /* The single next-letter key to tap (Spell It) — a stronger, pulsing glow so
+     it stands out from the other lit keys. */
+  .key.next-key:not(.disabled) {
+    border-color: rgba(var(--key-rgb), 1);
+    animation: key-next-pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes key-next-pulse {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: inset 0 0 8px rgba(var(--key-rgb), 0.45), 0 0 14px rgba(var(--key-rgb), 0.6), 0 4px 18px rgba(var(--key-rgb), 0.35);
+    }
+    50% {
+      transform: scale(1.08);
+      box-shadow: inset 0 0 10px rgba(var(--key-rgb), 0.55), 0 0 26px rgba(var(--key-rgb), 0.95), 0 4px 22px rgba(var(--key-rgb), 0.5);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .key.next-key:not(.disabled) { animation: none; }
 }
 
 /* ---- Feedback animations (shared look) ---- */
