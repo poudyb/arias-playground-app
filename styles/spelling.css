@@ -199,6 +199,13 @@ body {
 
 @media (pointer: coarse) {
   #spell-main { flex: 0 0 56%; }
+  /* The on-screen keyboard owns the lower 44%, so the picture shares the upper
+     56% with the word slots. Let the picture shrink to fit that space instead
+     of a fixed 34vh that overflowed downward and painted over the keyboard.
+     The slots can't shrink below their letters, so the picture absorbs the
+     squeeze — full 34vh when there's room, smaller only when there isn't. */
+  .spell-picture { flex: 0 1 34vh; min-height: 0; }
+  .spell-picture img { max-height: 100%; }
   .keyboard {
     flex: 1;
     display: grid;

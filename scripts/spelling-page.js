@@ -1,7 +1,10 @@
-// Spelling game. Free Play (this file) lets a child build any valid 3-letter
-// word on a prefix-constrained QWERTY keyboard, then speaks it and shows the
-// picture. Quiz (pick-the-picture) and Spell It (type-from-picture) arrive in
-// later commits — their buttons currently show a placeholder.
+// Spelling game — three modes, all in this file:
+//   Free Play — build any valid 3-letter word on a prefix-constrained QWERTY
+//               keyboard (keys disable to only those extending toward a real
+//               word), then speak it and show the picture.
+//   Quiz      — show a word, pick the matching picture from three choices.
+//   Spell It  — show a picture and say the word; child types it with gentle
+//               per-letter feedback that keeps correct progress.
 
 const modeBtns = document.querySelectorAll('.mode-btn');
 const spellHint = document.getElementById('spell-hint');
@@ -216,7 +219,9 @@ function revealFreeplayWord(word) {
   spellHint.textContent = '';
   audio.playChime();
   speakText(word.toLowerCase(), { rate: 0.85 });
-  showCelebrationEmojis();
+  // No big centered 🎉 here: Free Play can't be "wrong," and the emoji covered
+  // the word/picture the child just built. Keep the chime + confetti (which
+  // don't obscure the reveal). Quiz and Spell It still celebrate.
   spawnConfetti();
   resetTimer = window.setTimeout(function() {
     resetTimer = null;
