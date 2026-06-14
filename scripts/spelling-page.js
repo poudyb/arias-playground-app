@@ -103,12 +103,15 @@ const audio = createAudioFeedback();
 const thumbsDown = createThumbsDownController();
 setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
 
-// Speaks the word, then spells it letter by letter.
+// Says the word, spells it letter by letter, then says the word again:
+// "dad … d a d … dad". The separate utterances give the pauses between each.
 function speakWordThenSpell(word) {
   const w = word.toLowerCase();
-  const parts = [w].concat(w.split(''));
+  const parts = [w].concat(w.split('')).concat([w]);
   speakSequence(parts, {
-    rates: parts.map(function(_, i) { return i === 0 ? 0.85 : 0.7; })
+    rates: parts.map(function(_, i) {
+      return (i === 0 || i === parts.length - 1) ? 0.85 : 0.7;
+    })
   });
 }
 
@@ -235,12 +238,11 @@ function revealFreeplayWord(word) {
   spellPicture.classList.add('is-visible');
   spellPicture.setAttribute('aria-hidden', 'false');
   spellHint.textContent = '';
-  audio.playChime();
   speakText(word.toLowerCase(), { rate: 0.85 });
-  // No big centered 🎉 here: Free Play can't be "wrong," and the emoji covered
-  // the word/picture the child just built. Keep the chime + confetti (which
-  // don't obscure the reveal). Quiz and Spell It still celebrate.
-  spawnConfetti();
+  // No celebration in Free Play: the chime, confetti, and 🎉 always travel
+  // together and are reserved for answering a question right (Quiz, Read It,
+  // Spell It). Free Play isn't a question — it just shows the word it built
+  // and says it.
   resetTimer = window.setTimeout(function() {
     resetTimer = null;
     typed = '';
