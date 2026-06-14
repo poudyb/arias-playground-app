@@ -3,6 +3,11 @@
 // the child's eye to the correct answer with a soft pulse until they solve
 // it. The caller decides WHAT to flash (via onFlash); this only decides WHEN.
 //
+// onFlash receives a `speak` flag: true on the first flash of a nudge (and,
+// when voiceOnMiss is set, on each wrong tap), false on the repeating pulses.
+// Callers that voice a hint should only do so when speak is true, so the
+// repeat is visual-only and never drones on audibly.
+//
 //   reset()        - start a fresh round (clear misses, arm the idle timer)
 //   poke()         - a non-solving interaction happened; restart idle countdown
 //   registerMiss() - a wrong attempt happened
@@ -13,7 +18,8 @@ function createHintNudge(options = {}) {
     idleMs = 7000,
     flashEveryMs = 2500,
     onFlash,
-    isActive
+    isActive,
+    voiceOnMiss = false
   } = options;
 
   let misses = 0;
@@ -36,20 +42,26 @@ function createHintNudge(options = {}) {
     }
   }
 
-  function flash() {
-    if (active() && onFlash) onFlash();
+  function flash(speak) {
+    if (active() && onFlash) onFlash(speak);
   }
 
-  function startNudging() {
-    if (nudging || !active()) return;
+  function startNudging(speak) {
+    if (!active()) return;
+    if (nudging) {
+      // Already pulsing — re-voice the hint only when this trigger warrants it.
+      if (speak && voiceOnMiss) flash(true);
+      return;
+    }
     nudging = true;
-    flash();
-    flashTimer = setInterval(flash, flashEveryMs);
+    flash(speak);
+    // The repeating pulse is visual-only (speak = false) so it never drones.
+    flashTimer = setInterval(function() { flash(false); }, flashEveryMs);
   }
 
   function armIdle() {
     if (idleTimer != null) clearTimeout(idleTimer);
-    idleTimer = setTimeout(startNudging, idleMs);
+    idleTimer = setTimeout(function() { startNudging(true); }, idleMs);
   }
 
   return {
@@ -64,7 +76,8 @@ function createHintNudge(options = {}) {
     },
     registerMiss: function() {
       misses += 1;
-      if (misses >= missThreshold) startNudging();
+      if (misses >= missThreshold) startNudging(true);
+      else if (voiceOnMiss) { flash(true); armIdle(); }
       else armIdle();
     },
     stop: function() {

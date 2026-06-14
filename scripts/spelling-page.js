@@ -115,13 +115,15 @@ function speakWordThenSpell(word) {
   });
 }
 
-function flashSpellingHint() {
+// The visual pulse repeats; the spoken word only fires when `speak` is true
+// (first nudge + each wrong tap) so the hint never drones on audibly.
+function flashSpellingHint(speak) {
   if (mode === 'quiz') {
     flashHintEl(spellChoices.querySelector('[data-word="' + WORDS[quizTargetIndex] + '"]'));
-    speakWordThenSpell(WORDS[quizTargetIndex]);
+    if (speak) speakWordThenSpell(WORDS[quizTargetIndex]);
   } else if (mode === 'read') {
     flashHintEl(spellChoices.querySelector('[data-word="' + WORDS[readTargetIndex] + '"]'));
-    speakWordThenSpell(WORDS[readTargetIndex]);
+    if (speak) speakWordThenSpell(WORDS[readTargetIndex]);
   } else if (mode === 'spell') {
     flashHintEl(keyEls[WORDS[spellTargetIndex][typed.length]]);
   }
@@ -129,6 +131,7 @@ function flashSpellingHint() {
 
 const hint = createHintNudge({
   onFlash: flashSpellingHint,
+  voiceOnMiss: true,
   isActive: function() {
     return !session.isSessionEnded() && (mode === 'quiz' || mode === 'spell' || mode === 'read');
   }
