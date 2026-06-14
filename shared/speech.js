@@ -36,6 +36,10 @@ function speakText(text, options = {}) {
   const { rate = 0.9 } = options;
   const synth = window.speechSynthesis;
   if (!synth) return null;
+  // Don't talk to an empty room: timers (chase re-prompts, idle hint nudges)
+  // keep firing while the tab/app is backgrounded, and speaking there is just
+  // disruptive noise and wasted cycles.
+  if (document.hidden) return null;
   if (activeUtterance && activeUtterance.text === text) return null;
   if (activeUtterance) synth.cancel();
 
@@ -79,6 +83,7 @@ function speakSequence(parts, options = {}) {
   const { rates = [] } = options;
   const synth = window.speechSynthesis;
   if (!synth || parts.length === 0) return;
+  if (document.hidden) return;
   cancelSpeech();
 
   const utterances = parts.map(function(part, i) {
@@ -116,3 +121,4 @@ function speakSequence(parts, options = {}) {
 document.addEventListener('visibilitychange', function() {
   if (document.hidden) cancelSpeech();
 });
+window.addEventListener('pagehide', cancelSpeech);

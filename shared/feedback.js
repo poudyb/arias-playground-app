@@ -11,14 +11,35 @@ const RAINBOW_PALETTE = [
   '#f4511e'
 ];
 
+// Every AudioContext created on the page, so we can suspend them all when the
+// tab/app goes to the background (saves cycles and silences anything scheduled).
+const audioContexts = [];
+
+function suspendAllAudio() {
+  audioContexts.forEach(function(ctx) {
+    if (ctx && ctx.state === 'running' && ctx.suspend) {
+      const p = ctx.suspend();
+      if (p && typeof p.catch === 'function') p.catch(function() {});
+    }
+  });
+}
+
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) suspendAllAudio();
+});
+window.addEventListener('pagehide', suspendAllAudio);
+
 function createAudioFeedback() {
   let audioCtx = null;
 
   function getAudioCtx() {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioContexts.push(audioCtx);
     }
-    if (audioCtx.state === 'suspended') {
+    // Stay suspended while backgrounded so nothing plays out of view; a real
+    // interaction after returning will resume it on the next call.
+    if (!document.hidden && audioCtx.state === 'suspended') {
       const resumed = audioCtx.resume();
       if (resumed && typeof resumed.catch === 'function') resumed.catch(function() {});
     }
