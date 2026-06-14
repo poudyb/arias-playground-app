@@ -1,8 +1,11 @@
-// Spelling game — three modes, all in this file:
+// Spelling game — four modes, all in this file:
 //   Free Play — build any valid 3-letter word on a prefix-constrained QWERTY
 //               keyboard (keys disable to only those extending toward a real
 //               word), then speak it and show the picture.
 //   Quiz      — show a word, pick the matching picture from three choices.
+//   Read It   — show a picture and say the word, pick the matching written
+//               word from three choices (Quiz's inverse). Distractors avoid
+//               look-alike spellings, like Clock's Quiz avoids near times.
 //   Spell It  — show a picture and say the word; child types it with gentle
 //               per-letter feedback that keeps correct progress.
 
@@ -32,6 +35,8 @@ let resetTimer = null;
 let quizTargetIndex = -1;
 let quizLocked = false;
 let spellTargetIndex = -1;
+let readTargetIndex = -1;
+let readLocked = false;
 
 function renderSummary(board, stats) {
   appendScoreSection(board, {
@@ -50,6 +55,16 @@ function renderSummary(board, stats) {
       body: stats.quizCorrect > 0
         ? 'You found ' + stats.quizCorrect + ' ' + (stats.quizCorrect === 1 ? 'picture' : 'pictures') + '!'
         : 'You opened Quiz - match the word to its picture next time!'
+    });
+  }
+  if (stats.usedRead || stats.readCorrect > 0) {
+    appendScoreSection(board, {
+      modClass: 'score-section--read',
+      icon: '📖',
+      title: 'Read It',
+      body: stats.readCorrect > 0
+        ? 'You read ' + stats.readCorrect + ' ' + (stats.readCorrect === 1 ? 'word' : 'words') + '!'
+        : 'You opened Read It - pick the word that matches the picture next time!'
     });
   }
   if (stats.usedSpell || stats.spellCorrect > 0) {
@@ -101,6 +116,9 @@ function flashSpellingHint() {
   if (mode === 'quiz') {
     flashHintEl(spellChoices.querySelector('[data-word="' + WORDS[quizTargetIndex] + '"]'));
     speakWordThenSpell(WORDS[quizTargetIndex]);
+  } else if (mode === 'read') {
+    flashHintEl(spellChoices.querySelector('[data-word="' + WORDS[readTargetIndex] + '"]'));
+    speakWordThenSpell(WORDS[readTargetIndex]);
   } else if (mode === 'spell') {
     flashHintEl(keyEls[WORDS[spellTargetIndex][typed.length]]);
   }
@@ -109,7 +127,7 @@ function flashSpellingHint() {
 const hint = createHintNudge({
   onFlash: flashSpellingHint,
   isActive: function() {
-    return !session.isSessionEnded() && (mode === 'quiz' || mode === 'spell');
+    return !session.isSessionEnded() && (mode === 'quiz' || mode === 'spell' || mode === 'read');
   }
 });
 
@@ -279,6 +297,7 @@ function renderChoices(indices, target) {
 
 const QUIZ_STATE_KEY = SPELLING_SESSION_KEY + ':quiz';
 const SPELL_STATE_KEY = SPELLING_SESSION_KEY + ':spell';
+const READ_STATE_KEY = SPELLING_SESSION_KEY + ':read';
 
 function startQuizRound() {
   if (session.isSessionEnded() || mode !== 'quiz') return;
@@ -351,6 +370,136 @@ function enterQuiz() {
   spellChoices.classList.add('is-visible');
   spellChoices.setAttribute('aria-hidden', 'false');
   startQuizRound();
+}
+
+// ---- Read It (Quiz's inverse: picture prompt → pick the written word) ----
+
+// Two letters in common with the target (1-letter different) makes a confusable
+// look-alike (cat/can/rat). We avoid those as distractors so a child reads the
+// whole word, not just one letter — the same spirit as Clock's Quiz rejecting
+// near times. With 73 words and at most a handful of look-alikes, there are
+// always plenty of clearly-different distractors left.
+function isLookAlike(a, b) {
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) diff++;
+  }
+  return diff === 1;
+}
+
+function buildWordChoiceIndices(targetIdx) {
+  const target = WORDS[targetIdx];
+  const idxs = [targetIdx];
+  let tries = 0;
+  while (idxs.length < 3 && tries < 500) {
+    tries++;
+    const r = Math.floor(Math.random() * WORDS.length);
+    if (idxs.indexOf(r) !== -1 || isLookAlike(target, WORDS[r])) continue;
+    idxs.push(r);
+  }
+  // Safety net for tiny/degenerate word lists: fill with anything distinct.
+  while (idxs.length < 3 && idxs.length < WORDS.length) {
+    const r = Math.floor(Math.random() * WORDS.length);
+    if (idxs.indexOf(r) === -1) idxs.push(r);
+  }
+  for (let i = idxs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = idxs[i];
+    idxs[i] = idxs[j];
+    idxs[j] = tmp;
+  }
+  return idxs;
+}
+
+function renderWordChoices(indices, target) {
+  spellChoices.innerHTML = '';
+  indices.forEach(function(idx) {
+    const word = WORDS[idx];
+    const btn = document.createElement('button');
+    btn.className = 'choice choice--word';
+    btn.dataset.word = word;
+    btn.textContent = word;
+    btn.addEventListener('click', function() { onWordChoice(word, btn, target); });
+    spellChoices.appendChild(btn);
+  });
+}
+
+// Show the picture + say the word (but don't spell it aloud — that would give
+// the letters away). The struggling-child hint does spell it out.
+function showReadPrompt(target) {
+  spellSlots.innerHTML = '';
+  spellImg.src = IMG_FOR[target];
+  spellImg.alt = '';
+  spellPicture.classList.add('is-visible');
+  spellPicture.setAttribute('aria-hidden', 'false');
+  spellHint.textContent = 'Find the word!';
+  speakText(target.toLowerCase(), { rate: 0.85 });
+  hint.reset();
+}
+
+function startReadRound() {
+  if (session.isSessionEnded() || mode !== 'read') return;
+  readLocked = false;
+  thumbsDown.hide();
+
+  const saved = loadRoundState(READ_STATE_KEY);
+  if (saved && isValidIndex(saved.targetIndex, WORDS.length) &&
+      isValidIndexArray(saved.choiceIndices, 3, WORDS.length)) {
+    readTargetIndex = saved.targetIndex;
+    const target = WORDS[readTargetIndex];
+    renderWordChoices(saved.choiceIndices, target);
+    showReadPrompt(target);
+    return;
+  }
+
+  let next;
+  do {
+    next = Math.floor(Math.random() * WORDS.length);
+  } while (WORDS.length > 1 && next === readTargetIndex);
+  readTargetIndex = next;
+  const choiceIndices = buildWordChoiceIndices(readTargetIndex);
+  saveRoundState(READ_STATE_KEY, { targetIndex: readTargetIndex, choiceIndices: choiceIndices });
+  const target = WORDS[readTargetIndex];
+  renderWordChoices(choiceIndices, target);
+  showReadPrompt(target);
+}
+
+function onWordChoice(word, btn, target) {
+  if (readLocked || mode !== 'read') return;
+  if (word === target) {
+    readLocked = true;
+    hint.stop();
+    saveRoundState(READ_STATE_KEY, null);
+    btn.classList.add('correct');
+    audio.playChime();
+    speakText(target.toLowerCase(), { rate: 0.85 });
+    showCelebrationEmojis();
+    spawnConfetti();
+    session.mutateStats(function(stats) {
+      stats.readCorrect += 1;
+      stats.usedRead = true;
+    });
+    resetTimer = window.setTimeout(startReadRound, 2000);
+  } else {
+    btn.classList.add('wrong');
+    window.setTimeout(function() { btn.classList.remove('wrong'); }, 500);
+    thumbsDown.show();
+    audio.playBuzzer();
+    session.mutateStats(function(stats) {
+      stats.readWrong += 1;
+      pushUniqueStruggle(stats.readStruggled, target);
+    });
+    hint.registerMiss();
+  }
+}
+
+function enterRead() {
+  typed = '';
+  locked = false;
+  keyboardEl.style.display = 'none';
+  spellChoices.classList.add('is-visible');
+  spellChoices.setAttribute('aria-hidden', 'false');
+  startReadRound();
 }
 
 function enableAllKeys() {
@@ -472,10 +621,12 @@ function setMode(next) {
   session.mutateStats(function(stats) {
     if (mode === 'freeplay') stats.usedFreeplay = true;
     else if (mode === 'quiz') stats.usedQuiz = true;
+    else if (mode === 'read') stats.usedRead = true;
     else if (mode === 'spell') stats.usedSpell = true;
   });
   if (mode === 'freeplay') enterFreeplay();
   else if (mode === 'quiz') enterQuiz();
+  else if (mode === 'read') enterRead();
   else enterSpell();
 }
 

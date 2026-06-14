@@ -109,9 +109,13 @@ function createSpellingStats() {
     quizStruggled: [],
     spellCorrect: 0,
     spellStruggled: [],
+    readCorrect: 0,
+    readWrong: 0,
+    readStruggled: [],
     usedFreeplay: false,
     usedQuiz: false,
-    usedSpell: false
+    usedSpell: false,
+    usedRead: false
   };
 }
 
@@ -127,8 +131,12 @@ function normalizeSpellingStats(parsed) {
     quizStruggled: Array.isArray(parsed.quizStruggled) ? parsed.quizStruggled : [],
     spellCorrect: typeof parsed.spellCorrect === 'number' ? parsed.spellCorrect : defaults.spellCorrect,
     spellStruggled: Array.isArray(parsed.spellStruggled) ? parsed.spellStruggled : [],
+    readCorrect: typeof parsed.readCorrect === 'number' ? parsed.readCorrect : defaults.readCorrect,
+    readWrong: typeof parsed.readWrong === 'number' ? parsed.readWrong : defaults.readWrong,
+    readStruggled: Array.isArray(parsed.readStruggled) ? parsed.readStruggled : [],
     usedFreeplay: !!parsed.usedFreeplay,
     usedQuiz: !!parsed.usedQuiz,
-    usedSpell: !!parsed.usedSpell
+    usedSpell: !!parsed.usedSpell,
+    usedRead: !!parsed.usedRead
   };
 }

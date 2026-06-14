@@ -44,7 +44,10 @@ body {
   right: 12px;
   z-index: 100;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
+  max-width: 62vw;
 }
 .mode-btn {
   background: #eee;
@@ -164,6 +167,17 @@ body {
   height: clamp(80px, 22vw, 170px);
   object-fit: contain;
   pointer-events: none;
+}
+/* Read It choices are words, not pictures — serif uppercase to match the slots. */
+.choice--word {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 8vw, 3.4rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #333;
+  min-width: clamp(108px, 27vw, 196px);
+  padding: clamp(12px, 2.6vw, 22px) clamp(10px, 3vw, 26px);
 }
 .choice.correct {
   border-color: #43a047;
@@ -398,6 +412,7 @@ body.session-ended #session-end-overlay { display: flex; }
 }
 .score-section--free { background: linear-gradient(135deg, #fff59d 0%, #ffcc80 100%); }
 .score-section--quiz { background: linear-gradient(135deg, #90caf9 0%, #64b5f6 100%); }
+.score-section--read { background: linear-gradient(135deg, #ce93d8 0%, #ba68c8 100%); }
 .score-section--spell { background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%); }
 .score-section--muted .score-section__body { color: #555; font-weight: 500; }
 .score-section__header {
