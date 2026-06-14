@@ -614,6 +614,7 @@ function setMode(next) {
   thumbsDown.hide();
   hint.stop();
   mode = next;
+  keyboardEl.dataset.mode = mode;
   rememberSessionMode(SPELLING_SESSION_KEY, mode);
   modeBtns.forEach(function(btn) {
     btn.classList.toggle('active', btn.dataset.mode === mode);

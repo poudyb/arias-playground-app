@@ -188,10 +188,13 @@ body {
   animation: slot-shake 0.4s ease-out;
 }
 
+/* Quiz shows the word only as a label to match against pictures — no keyboard
+   to sync with — so it stays a single neutral color. The per-position green/
+   red/blue is for the keyboard-building modes (Free Play, Spell It). */
 .slot.shown {
-  border-color: var(--slot-color, #b0bec5);
+  border-color: #b0bec5;
   background: #fff;
-  color: var(--slot-color, #333);
+  color: #37474f;
 }
 
 /* Gentle hint glow — used on the correct picture (Quiz) and the next letter
@@ -258,8 +261,16 @@ body {
     color: var(--key-ink);
     box-shadow: inset 0 0 8px rgba(var(--key-rgb), 0.4), 0 0 14px rgba(var(--key-rgb), 0.55), 0 4px 18px rgba(var(--key-rgb), 0.35);
   }
-  /* The single next-letter key to tap (Spell It) — a stronger, pulsing glow so
-     it stands out from the other lit keys. */
+  /* Spell It: only the highlighted next-letter key glows. The rest stay plain
+     (still tappable) so the one hint actually stands out — unlike Free Play,
+     where every still-valid key glows on purpose. */
+  .keyboard[data-mode="spell"] .key:not(.disabled):not(.next-key) {
+    background: #eceff1;
+    border-color: transparent;
+    color: #2b2b2b;
+    box-shadow: none;
+  }
+  /* The single next-letter key to tap (Spell It) — a stronger, pulsing glow. */
   .key.next-key:not(.disabled) {
     border-color: rgba(var(--key-rgb), 1);
     animation: key-next-pulse 1.1s ease-in-out infinite;
