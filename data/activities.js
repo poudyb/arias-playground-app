@@ -112,7 +112,8 @@ const ACTIVITIES = [
     artClasses: 'game-tile__art game-tile__art--letters',
     artHtml:
       '<span class="game-tile__art__emoji">🔤</span>' +
-      '<span class="game-tile__art__emoji">✏️</span>',
+      '<span class="game-tile__art__emoji">✏️</span>' +
+      '<span class="game-tile__art__emoji">🐝</span>',
     sessionKey: 'ariaSpellingSession',
     statsKey: 'ariaSpellingStats',
     defaultStats: function() { return createSpellingStats(); }

@@ -547,15 +547,22 @@ function completeSpell(target) {
   hint.stop();
   saveRoundState(SPELL_STATE_KEY, null);
   renderSlots();
-  audio.playChime();
-  speakText(target.toLowerCase(), { rate: 0.85 });
-  showCelebrationEmojis();
-  spawnConfetti();
   session.mutateStats(function(stats) {
     stats.spellCorrect += 1;
     stats.usedSpell = true;
   });
-  resetTimer = window.setTimeout(startSpellRound, 2200);
+  // The third letter was just spoken like the first two. Celebrating right away
+  // would cancel that letter's speech (the child never hears it), so hold a beat
+  // first — the same treatment as Free Play — THEN chime, confetti, and say the
+  // whole word.
+  resetTimer = window.setTimeout(function() {
+    resetTimer = null;
+    audio.playChime();
+    speakText(target.toLowerCase(), { rate: 0.85 });
+    showCelebrationEmojis();
+    spawnConfetti();
+    resetTimer = window.setTimeout(startSpellRound, 2200);
+  }, 950);
 }
 
 function startSpellRound() {
@@ -583,7 +590,9 @@ function startSpellRound() {
   spellPicture.setAttribute('aria-hidden', 'false');
   renderSlots();
   spellHint.textContent = 'Spell the word!';
-  speakText(target.toLowerCase(), { rate: 0.85 });
+  // Say the word, spell it, say it again — the letters come with the prompt, not
+  // a timed reminder. The child can tap the picture to hear it all again.
+  speakWordThenSpell(target);
   hint.reset();
 }
 
@@ -620,6 +629,8 @@ function setMode(next) {
   hint.stop();
   mode = next;
   keyboardEl.dataset.mode = mode;
+  // Only Spell It lets you tap the picture to replay the word + spelling.
+  spellPicture.classList.toggle('spell-picture--speakable', mode === 'spell');
   rememberSessionMode(SPELLING_SESSION_KEY, mode);
   modeBtns.forEach(function(btn) {
     btn.classList.toggle('active', btn.dataset.mode === mode);
@@ -635,6 +646,20 @@ function setMode(next) {
   else if (mode === 'read') enterRead();
   else enterSpell();
 }
+
+// Tap the picture (Spell It only) to hear the word + spelling again, instead of
+// a reminder that repeats on a timer — like Clock's tappable face.
+function replaySpellPrompt() {
+  if (session.isSessionEnded() || mode !== 'spell' || spellTargetIndex < 0) return;
+  speakWordThenSpell(WORDS[spellTargetIndex]);
+  spellPicture.classList.remove('is-speaking');
+  void spellPicture.offsetWidth;
+  spellPicture.classList.add('is-speaking');
+}
+spellPicture.addEventListener('click', replaySpellPrompt);
+spellPicture.addEventListener('animationend', function(ev) {
+  if (ev.animationName === 'spell-tap-pulse') spellPicture.classList.remove('is-speaking');
+});
 
 buildKeyboard();
 modeBtns.forEach(function(btn) {

@@ -102,6 +102,23 @@ body {
 .spell-picture.is-visible img {
   animation: spell-pop 0.25s ease-out;
 }
+/* Spell It: the picture is tappable to replay the word + spelling. */
+.spell-picture--speakable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Pulse the container (not the img) so this never re-triggers the img's
+   spell-pop reveal animation when the class is toggled off. */
+.spell-picture.is-speaking {
+  animation: spell-tap-pulse 0.45s ease-out;
+}
+@keyframes spell-tap-pulse {
+  0%, 100% { transform: scale(1); }
+  40%      { transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spell-picture.is-speaking { animation: none; }
+}
 
 .spell-slots {
   display: flex;
