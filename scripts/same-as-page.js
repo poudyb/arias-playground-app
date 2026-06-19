@@ -321,6 +321,9 @@ let memoryLocked = false;
 let memoryUnforced = 0;
 let memoryMatchedPairs = 0;
 let memoryTimer = null;
+// Card-index pairs the child has already flipped together and seen NOT match,
+// keyed "loIdx-hiIdx". Re-creating one of these is the unforced error.
+let memoryTriedPairs = {};
 
 function memoryGroup(key) {
   return memoryGroupByKey[key] || key;
@@ -387,7 +390,7 @@ function createMemoryCard(card, index) {
 
   btn.addEventListener('click', function() { onMemoryCardTap(index); });
 
-  return { key: card.key, item: card.item, el: btn, artEl: art, faceUp: false, matched: false, seen: false };
+  return { key: card.key, item: card.item, idx: index, el: btn, artEl: art, faceUp: false, matched: false };
 }
 
 function clearMemoryTimers() {
@@ -415,6 +418,7 @@ function buildMemoryBoard() {
   memoryLocked = false;
   memoryUnforced = 0;
   memoryMatchedPairs = 0;
+  memoryTriedPairs = {};
   thumbsDown.hide();
 
   const level = MEMORY_LEVELS[memoryLevelIdx];
@@ -524,12 +528,14 @@ function resolveMemoryMatch(a, b) {
 function resolveMemoryMismatch(a, b) {
   memoryLocked = true;
 
-  // Unforced error: the second card was already seen this board, so its
-  // non-matching face was known - the child paired it anyway. Only this earns
-  // the buzzer; a first-look miss is just a gentle "your turn again".
-  const unforced = b.seen;
-  a.seen = true;
-  b.seen = true;
+  // Unforced error: the child already flipped THESE TWO cards together and saw
+  // them not match, yet paired them again - "something they have already proven
+  // not to match". Any first-time pairing (even of cards seen separately) is
+  // honest exploration and only earns the gentle "your turn again" tone. Keyed
+  // by sorted card index so it never depends on tap order.
+  const pairId = a.idx < b.idx ? a.idx + '-' + b.idx : b.idx + '-' + a.idx;
+  const unforced = !!memoryTriedPairs[pairId];
+  memoryTriedPairs[pairId] = true;
 
   if (unforced) {
     memoryUnforced += 1;
@@ -565,8 +571,6 @@ function completeMemoryLevel() {
   session.mutateStats(function(stats) {
     stats.usedMemory = true;
     stats.memoryLevelsCleared += 1;
-    const reached = Math.min(memoryLevelIdx + 2, MEMORY_LEVELS.length);
-    if (reached > stats.memoryBestLevel) stats.memoryBestLevel = reached;
   });
 
   memoryLevelEl.classList.remove('level-up');
@@ -593,6 +597,12 @@ function completeMemoryLevel() {
   }, 260);
 
   if (memoryLevelIdx < MEMORY_LEVELS.length - 1) memoryLevelIdx += 1;
+  // Credit "best level reached" against the level the child now advances to, so
+  // it matches the on-screen label and startMemory's meaning (highest entered).
+  session.mutateStats(function(stats) {
+    const reached = memoryLevelIdx + 1;
+    if (reached > stats.memoryBestLevel) stats.memoryBestLevel = reached;
+  });
   saveMemoryLevel();
 
   memoryTimer = window.setTimeout(function() {

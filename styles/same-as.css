@@ -275,11 +275,15 @@
     --cols: 2;
     --rows: 2;
     --gap: clamp(6px, 1.6vw, 14px);
-    --cell: min(
+    /* 168px reserve = body padding (52 top + 16 bottom) + board padding/gaps
+       (~58) + the level pill (~42). The max() floor keeps cards tappable on
+       short/landscape viewports (the grid then scrolls via body overflow-y
+       rather than collapsing); on a normal screen the inner min() wins. */
+    --cell: max(64px, min(
       220px,
       calc((min(92vw, 600px) - (var(--cols) - 1) * var(--gap)) / var(--cols)),
       calc((100dvh - 168px - (var(--rows) - 1) * var(--gap)) / var(--rows))
-    );
+    ));
     display: grid;
     grid-template-columns: repeat(var(--cols), var(--cell));
     grid-auto-rows: var(--cell);
