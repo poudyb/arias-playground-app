@@ -229,6 +229,176 @@
     pointer-events: none;
   }
 
+  /* ---- Memory mode ---- */
+
+  .match-board[hidden],
+  .memory-board[hidden] {
+    display: none;
+  }
+
+  .memory-board {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 2vw, 16px);
+    padding: 4px 0 8px;
+  }
+
+  .memory-level {
+    flex: 0 0 auto;
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 700;
+    font-size: clamp(1.05rem, 4.4vw, 1.55rem);
+    color: #004d40;
+    background: #fff;
+    border: 3px solid #00838f;
+    border-radius: 999px;
+    padding: 6px 20px;
+    box-shadow: 0 3px 0 #006064;
+  }
+
+  .memory-level.level-up {
+    animation: memory-levelup 0.9s ease;
+  }
+
+  @keyframes memory-levelup {
+    0% { transform: scale(1); background: #fff; }
+    35% { transform: scale(1.18); background: #fff59d; }
+    70% { transform: scale(1.05); background: #fff59d; }
+    100% { transform: scale(1); background: #fff; }
+  }
+
+  .memory-grid {
+    --cols: 2;
+    --rows: 2;
+    --gap: clamp(6px, 1.6vw, 14px);
+    --cell: min(
+      220px,
+      calc((min(92vw, 600px) - (var(--cols) - 1) * var(--gap)) / var(--cols)),
+      calc((100dvh - 168px - (var(--rows) - 1) * var(--gap)) / var(--rows))
+    );
+    display: grid;
+    grid-template-columns: repeat(var(--cols), var(--cell));
+    grid-auto-rows: var(--cell);
+    gap: var(--gap);
+    justify-content: center;
+    align-content: center;
+  }
+
+  .memory-card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    border: none;
+    background: none;
+    padding: 0;
+    perspective: 700px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .memory-card__inner {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+
+  .memory-card.is-flipped .memory-card__inner {
+    transform: rotateY(180deg);
+  }
+
+  .memory-card__face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+  }
+
+  .memory-card__back {
+    background: linear-gradient(155deg, #26c6da 0%, #00838f 100%);
+    border: 5px solid #fff;
+    box-shadow: 0 6px 0 #006064, 0 12px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  .memory-card__back::after {
+    content: "";
+    width: 42%;
+    height: 42%;
+    border-radius: 50%;
+    border: 5px solid rgba(255, 255, 255, 0.55);
+    box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.18);
+  }
+
+  .memory-card__front {
+    transform: rotateY(180deg);
+    background: linear-gradient(165deg, #fff 0%, #e0f7fa 100%);
+    border: 5px solid #fff;
+    box-shadow: 0 6px 0 #00838f, 0 12px 24px rgba(0, 0, 0, 0.1);
+  }
+
+  .memory-card:active .memory-card__inner {
+    transform: scale(0.97);
+  }
+
+  .memory-card.is-flipped:active .memory-card__inner {
+    transform: rotateY(180deg) scale(0.97);
+  }
+
+  .memory-card__art {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
+    font-size: calc(var(--cell, 6rem) * 0.52);
+    line-height: 1;
+    pointer-events: none;
+    filter: drop-shadow(0 3px 0 rgba(0, 131, 143, 0.18));
+  }
+
+  .memory-card__art .shape-tile-svg {
+    height: calc(var(--cell, 6rem) * 0.58);
+    width: auto;
+    max-width: 100%;
+    display: block;
+  }
+
+  .memory-card__art.pop {
+    animation: match-pop 0.32s ease-out;
+  }
+
+  .memory-card.is-matched {
+    opacity: 0;
+    transform: scale(0.7);
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .memory-card,
+    .memory-card__inner {
+      transition: none;
+    }
+    .memory-card__art.pop {
+      animation: none;
+    }
+    .memory-level.level-up {
+      animation: none;
+    }
+    .memory-card.is-matched {
+      transform: none;
+    }
+  }
+
   #play-timer {
     display: none;
     position: fixed;

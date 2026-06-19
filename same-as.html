@@ -24,10 +24,11 @@
 <div id="category-buttons">
   <button type="button" class="cat-btn active" data-cat="animals">Animals</button>
   <button type="button" class="cat-btn" data-cat="shapes">Shapes</button>
+  <button type="button" class="cat-btn" data-cat="memory">Memory</button>
 </div>
 
 <main id="app-main">
-  <div class="match-board">
+  <div class="match-board" id="match-board">
     <div class="match-ref-wrap">
       <button type="button" class="match-ref-card" id="ref-card" aria-label="Play the question out loud">
         <span class="match-ref-card__art" id="ref-art" aria-hidden="true"></span>
@@ -45,6 +46,11 @@
         <span class="match-choice__art" id="choice-right-art"></span>
       </button>
     </div>
+  </div>
+
+  <div class="memory-board" id="memory-board" hidden>
+    <div class="memory-level" id="memory-level" aria-live="polite"></div>
+    <div class="memory-grid" id="memory-grid" aria-label="Memory cards"></div>
   </div>
 </main>
 

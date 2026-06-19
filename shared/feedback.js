@@ -95,7 +95,59 @@ function createAudioFeedback() {
     });
   }
 
-  return { getAudioCtx, playChime, playBuzzer, playMatchTone };
+  // A soft, neutral two-note blip for "no match - your turn again". Quiet and
+  // gentle so a missed memory flip never feels like a mistake (that is what the
+  // buzzer is for, reserved for unforced errors).
+  function playSoftTone() {
+    const ctx = getAudioCtx();
+    [494.0, 440.0].forEach(function(freq, index) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.value = 0.05;
+      gain.gain.setTargetAtTime(0, ctx.currentTime + index * 0.12 + 0.05, 0.03);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + index * 0.12);
+      osc.stop(ctx.currentTime + index * 0.12 + 0.2);
+    });
+  }
+
+  // A big, bright fanfare for clearing a whole memory board - a rising run that
+  // lands on a held major chord. Reserved for level-ups so it feels like a real
+  // reward, distinct from the smaller per-match chime.
+  function playFanfare() {
+    const ctx = getAudioCtx();
+    const run = [523.25, 659.25, 783.99, 1046.5];
+    run.forEach(function(freq, index) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.value = 0.14;
+      gain.gain.setTargetAtTime(0, ctx.currentTime + index * 0.11 + 0.07, 0.03);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + index * 0.11);
+      osc.stop(ctx.currentTime + index * 0.11 + 0.22);
+    });
+    const chordStart = ctx.currentTime + run.length * 0.11 + 0.02;
+    [523.25, 659.25, 783.99, 1046.5].forEach(function(freq) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.value = 0.1;
+      gain.gain.setTargetAtTime(0, chordStart + 0.5, 0.06);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(chordStart);
+      osc.stop(chordStart + 0.95);
+    });
+  }
+
+  return { getAudioCtx, playChime, playBuzzer, playMatchTone, playSoftTone, playFanfare };
 }
 
 function setupInteractionUnlock(callbacks = []) {

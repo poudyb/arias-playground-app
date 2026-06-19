@@ -47,7 +47,12 @@ function createSameAsStats() {
     matchWrong: 0,
     struggled: [],
     usedAnimals: false,
-    usedShapes: false
+    usedShapes: false,
+    usedMemory: false,
+    memoryMatches: 0,
+    memoryLevelsCleared: 0,
+    memoryBestLevel: 1,
+    memoryUnforced: 0
   };
 }
 
@@ -61,7 +66,12 @@ function normalizeSameAsStats(parsed) {
     matchWrong: typeof parsed.matchWrong === 'number' ? parsed.matchWrong : defaults.matchWrong,
     struggled: Array.isArray(parsed.struggled) ? parsed.struggled : [],
     usedAnimals: !!parsed.usedAnimals,
-    usedShapes: !!parsed.usedShapes
+    usedShapes: !!parsed.usedShapes,
+    usedMemory: !!parsed.usedMemory,
+    memoryMatches: typeof parsed.memoryMatches === 'number' ? parsed.memoryMatches : defaults.memoryMatches,
+    memoryLevelsCleared: typeof parsed.memoryLevelsCleared === 'number' ? parsed.memoryLevelsCleared : defaults.memoryLevelsCleared,
+    memoryBestLevel: typeof parsed.memoryBestLevel === 'number' ? parsed.memoryBestLevel : defaults.memoryBestLevel,
+    memoryUnforced: typeof parsed.memoryUnforced === 'number' ? parsed.memoryUnforced : defaults.memoryUnforced
   };
 }
 
