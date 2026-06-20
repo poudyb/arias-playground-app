@@ -15,7 +15,6 @@ const SAME_AS_MODES = ['animals', 'shapes', 'memory'];
 
 const matchBoardEl = document.getElementById('match-board');
 const memoryBoardEl = document.getElementById('memory-board');
-const memoryLevelEl = document.getElementById('memory-level');
 const memoryGridEl = document.getElementById('memory-grid');
 
 let category = 'animals';
@@ -48,10 +47,9 @@ function renderSummary(board, stats) {
       icon: '🧠',
       title: 'Memory',
       body: pairs === 0
-        ? 'Flip two cards and find the pairs that match!'
-        : 'You found ' + pairs + ' pair' + (pairs === 1 ? '' : 's') +
-          (cleared ? ' and cleared ' + cleared + ' board' + (cleared === 1 ? '' : 's') : '') +
-          ' - reached Level ' + stats.memoryBestLevel + '!'
+        ? 'Flip two cards and find the pictures that match!'
+        : 'You matched ' + pairs + ' pair' + (pairs === 1 ? '' : 's') +
+          (cleared ? ' and finished ' + cleared + ' board' + (cleared === 1 ? '' : 's') + '!' : '!')
     });
   }
 
@@ -283,11 +281,15 @@ function stopMatchGame() {
 // ---------------------------------------------------------------------------
 
 const MEMORY_LEVEL_KEY = SAME_AS_SESSION_KEY + ':memory';
-const MEMORY_DEMOTE_THRESHOLD = 3;
+// True errors within one board needed to drop a level. Like chase, the level
+// only changes when the board is finished - never an immediate mid-board demote.
+const MEMORY_DEMOTE_THRESHOLD = 10;
 
-// pairs on the board + the grid shape. The last entry is the cap: clearing the
-// top board just re-deals a fresh one at the same size.
+// pairs on the board + the grid shape. Level 1 is a single pair, so the very
+// first board is impossible to get wrong - it just teaches "find the two that
+// match". The last entry is the cap: clearing the top board re-deals at size.
 const MEMORY_LEVELS = [
+  { pairs: 1, cols: 2, rows: 1 },   // 2 cards
   { pairs: 2, cols: 2, rows: 2 },   // 4 cards
   { pairs: 3, cols: 3, rows: 2 },   // 6 cards
   { pairs: 4, cols: 4, rows: 2 },   // 8 cards
@@ -296,22 +298,29 @@ const MEMORY_LEVELS = [
   { pairs: 8, cols: 4, rows: 4 }    // 16 cards
 ];
 
-// The whole pool from both Same-As modes, keyed the same way as match struggles.
-const MEMORY_DECK = ANIMALS.map(function(item) { return { key: 'a:' + item.key, item: item }; })
-  .concat(SHAPES.map(function(item) { return { key: 's:' + item.key, item: item }; }));
-
-// Items a young child could read as one another (same rough silhouette/colour).
-// A board never shows two cards from the same group, so every face is distinct.
-const MEMORY_CONFUSABLE = [
-  ['a:cat', 'a:dog'],
-  ['a:frog', 'a:caterpillar', 'a:snake'],
-  ['s:green_pentagon', 's:purple_hexagon'],
-  ['s:teal_parallelogram', 's:pink_trapezoid']
+// Hand-picked ARASAAC picture cards (shared with the Spelling game). Every entry
+// is visually distinct from the others - no two share a silhouette or dominant
+// colour - so a board can never show two cards a young child could mix up (the
+// reason the old shape pool, e.g. red circle vs red square, was dropped here).
+const MEMORY_WORDS = [
+  'dog', 'cat', 'cow', 'pig', 'owl', 'bee', 'bat', 'ram',
+  'egg', 'pie', 'nut', 'eye', 'ear', 'lip', 'cup', 'jar',
+  'pot', 'car', 'key', 'pen', 'fan', 'saw', 'map', 'sun',
+  'bed', 'top', 'gem', 'hat', 'zip', 'net'
 ];
-const memoryGroupByKey = {};
-MEMORY_CONFUSABLE.forEach(function(group, gi) {
-  group.forEach(function(key) { memoryGroupByKey[key] = 'g' + gi; });
+const MEMORY_DECK = MEMORY_WORDS.map(function(word) {
+  return { key: word, name: word, img: 'assets/spelling/' + word + '.png' };
 });
+
+const memoryPreloadCache = [];
+function preloadMemoryImages() {
+  if (memoryPreloadCache.length) return;
+  MEMORY_DECK.forEach(function(card) {
+    const img = new Image();
+    img.src = card.img;
+    memoryPreloadCache.push(img); // retain so the fetch isn't GC-cancelled
+  });
+}
 
 let memoryActive = false;
 let memoryLevelIdx = 0;
@@ -321,13 +330,7 @@ let memoryLocked = false;
 let memoryUnforced = 0;
 let memoryMatchedPairs = 0;
 let memoryTimer = null;
-// Card-index pairs the child has already flipped together and seen NOT match,
-// keyed "loIdx-hiIdx". Re-creating one of these is the unforced error.
-let memoryTriedPairs = {};
-
-function memoryGroup(key) {
-  return memoryGroupByKey[key] || key;
-}
+let memoryIntroTimer = null;
 
 function shuffleInPlace(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -340,28 +343,16 @@ function shuffleInPlace(arr) {
 }
 
 function pickMemoryItems(count) {
-  const shuffled = shuffleInPlace(MEMORY_DECK.slice());
-  const chosen = [];
-  const usedGroups = {};
-  for (let i = 0; i < shuffled.length && chosen.length < count; i++) {
-    const g = memoryGroup(shuffled[i].key);
-    if (usedGroups[g]) continue;
-    usedGroups[g] = true;
-    chosen.push(shuffled[i]);
-  }
-  return chosen;
+  return shuffleInPlace(MEMORY_DECK.slice()).slice(0, count);
 }
 
-function renderMemoryArt(el, item) {
+function renderMemoryArt(el, card) {
   el.innerHTML = '';
-  if (item.svgMarkup) {
-    el.innerHTML = item.svgMarkup;
-    return;
-  }
-  const span = document.createElement('span');
-  span.textContent = item.emoji;
-  span.setAttribute('aria-hidden', 'true');
-  el.appendChild(span);
+  const img = document.createElement('img');
+  img.src = card.img;
+  img.alt = '';
+  img.decoding = 'async';
+  el.appendChild(img);
 }
 
 function createMemoryCard(card, index) {
@@ -381,7 +372,7 @@ function createMemoryCard(card, index) {
   front.className = 'memory-card__face memory-card__front';
   const art = document.createElement('span');
   art.className = 'memory-card__art';
-  renderMemoryArt(art, card.item);
+  renderMemoryArt(art, card);
   front.appendChild(art);
 
   inner.appendChild(back);
@@ -390,7 +381,7 @@ function createMemoryCard(card, index) {
 
   btn.addEventListener('click', function() { onMemoryCardTap(index); });
 
-  return { key: card.key, item: card.item, idx: index, el: btn, artEl: art, faceUp: false, matched: false };
+  return { key: card.key, name: card.name, el: btn, artEl: art, faceUp: false, matched: false, seen: false };
 }
 
 function clearMemoryTimers() {
@@ -398,18 +389,30 @@ function clearMemoryTimers() {
     clearTimeout(memoryTimer);
     memoryTimer = null;
   }
+  if (memoryIntroTimer != null) {
+    clearTimeout(memoryIntroTimer);
+    memoryIntroTimer = null;
+  }
 }
 
 function flipMemoryUp(card) {
   card.faceUp = true;
   card.el.classList.add('is-flipped');
-  card.el.setAttribute('aria-label', card.item.name + ', face up');
+  card.el.setAttribute('aria-label', card.name + ', face up');
+  // Say what was revealed so the child sees it and hears it named.
+  if (!session.isSessionEnded()) speakText(card.name, { rate: 0.9 });
 }
 
 function flipMemoryDown(card) {
   card.faceUp = false;
-  card.el.classList.remove('is-flipped');
+  card.el.classList.remove('is-flipped', 'shake');
   card.el.setAttribute('aria-label', 'Memory card, face down');
+}
+
+function shakeMemoryCard(card) {
+  card.el.classList.remove('shake');
+  void card.el.offsetWidth;
+  card.el.classList.add('shake');
 }
 
 function buildMemoryBoard() {
@@ -418,8 +421,6 @@ function buildMemoryBoard() {
   memoryLocked = false;
   memoryUnforced = 0;
   memoryMatchedPairs = 0;
-  memoryTriedPairs = {};
-  thumbsDown.hide();
 
   const level = MEMORY_LEVELS[memoryLevelIdx];
   const picks = pickMemoryItems(level.pairs);
@@ -432,7 +433,6 @@ function buildMemoryBoard() {
 
   memoryGridEl.style.setProperty('--cols', String(level.cols));
   memoryGridEl.style.setProperty('--rows', String(level.rows));
-  memoryLevelEl.textContent = 'Level ' + (memoryLevelIdx + 1);
 
   memoryGridEl.innerHTML = '';
   memoryCards = deck.map(function(card, i) {
@@ -442,10 +442,12 @@ function buildMemoryBoard() {
   });
 
   cancelSpeech();
-  memoryTimer = window.setTimeout(function() {
-    memoryTimer = null;
-    if (memoryActive && !session.isSessionEnded()) speakText('Find the matching pairs!', { rate: 0.9 });
-  }, 340);
+  memoryIntroTimer = window.setTimeout(function() {
+    memoryIntroTimer = null;
+    if (memoryActive && !session.isSessionEnded() && memoryFirstIdx === -1) {
+      speakText('Find the ones that match!', { rate: 0.9 });
+    }
+  }, 360);
 }
 
 function spawnMemoryConfetti(el) {
@@ -474,6 +476,12 @@ function onMemoryCardTap(index) {
   if (!memoryActive || session.isSessionEnded() || memoryLocked) return;
   const card = memoryCards[index];
   if (!card || card.matched || card.faceUp) return;
+
+  // The child is engaging - drop the intro nudge so it can't talk over a card.
+  if (memoryIntroTimer != null) {
+    clearTimeout(memoryIntroTimer);
+    memoryIntroTimer = null;
+  }
 
   flipMemoryUp(card);
 
@@ -509,6 +517,8 @@ function resolveMemoryMatch(a, b) {
   spawnMemoryConfetti(a.el);
   spawnMemoryConfetti(b.el);
 
+  // Let the matched pair sit face-up for a beat so the child takes it in before
+  // it fades away.
   const total = MEMORY_LEVELS[memoryLevelIdx].pairs;
   memoryTimer = window.setTimeout(function() {
     memoryTimer = null;
@@ -518,24 +528,25 @@ function resolveMemoryMatch(a, b) {
       memoryTimer = window.setTimeout(function() {
         memoryTimer = null;
         completeMemoryLevel();
-      }, 540);
+      }, 560);
     } else {
       memoryLocked = false;
     }
-  }, 620);
+  }, 1050);
 }
 
 function resolveMemoryMismatch(a, b) {
   memoryLocked = true;
 
-  // Unforced error: the child already flipped THESE TWO cards together and saw
-  // them not match, yet paired them again - "something they have already proven
-  // not to match". Any first-time pairing (even of cards seen separately) is
-  // honest exploration and only earns the gentle "your turn again" tone. Keyed
-  // by sorted card index so it never depends on tap order.
-  const pairId = a.idx < b.idx ? a.idx + '-' + b.idx : b.idx + '-' + a.idx;
-  const unforced = !!memoryTriedPairs[pairId];
-  memoryTriedPairs[pairId] = true;
+  // A true error is picking, as your second card, one you had ALREADY revealed
+  // earlier this board - you knew its face and that it wasn't the match, but
+  // chose it anyway. A first look at a card you hadn't seen is honest
+  // exploration: no buzzer, just the gentle "your turn again" tone. Tallied per
+  // board; demotion happens later, at the end of the board (see complete
+  // MemoryLevel) - never an immediate mid-board drop.
+  const unforced = b.seen;
+  a.seen = true;
+  b.seen = true;
 
   if (unforced) {
     memoryUnforced += 1;
@@ -544,71 +555,65 @@ function resolveMemoryMismatch(a, b) {
       stats.memoryUnforced += 1;
       pushUniqueStruggle(stats.struggled, b.key);
     });
-    audio.playBuzzer();
-    thumbsDown.show();
-  } else {
-    audio.playSoftTone();
   }
 
+  // Hold both faces up long enough to see and hear them, then react and flip
+  // back. Wrong-on-purpose gets a buzzer plus a small shake (no big red X);
+  // an honest miss just gets the soft tone.
   memoryTimer = window.setTimeout(function() {
     memoryTimer = null;
-    flipMemoryDown(a);
-    flipMemoryDown(b);
-    if (unforced && memoryUnforced >= MEMORY_DEMOTE_THRESHOLD && memoryLevelIdx > 0) {
-      memoryTimer = window.setTimeout(function() {
-        memoryTimer = null;
-        memoryLevelIdx -= 1;
-        saveMemoryLevel();
-        buildMemoryBoard();
-      }, 440);
+    if (unforced) {
+      audio.playBuzzer();
+      shakeMemoryCard(a);
+      shakeMemoryCard(b);
     } else {
-      memoryLocked = false;
+      audio.playSoftTone();
     }
-  }, unforced ? 1100 : 950);
+    memoryTimer = window.setTimeout(function() {
+      memoryTimer = null;
+      flipMemoryDown(a);
+      flipMemoryDown(b);
+      memoryLocked = false;
+    }, unforced ? 520 : 280);
+  }, 1500);
 }
 
 function completeMemoryLevel() {
+  // The board is always finished; the next one grows unless this board took a
+  // lot of true errors, in which case it eases back a level (chase-style, only
+  // at the end of the board, never below the first one).
+  const demote = memoryUnforced >= MEMORY_DEMOTE_THRESHOLD && memoryLevelIdx > 0;
+
   session.mutateStats(function(stats) {
     stats.usedMemory = true;
     stats.memoryLevelsCleared += 1;
   });
 
-  memoryLevelEl.classList.remove('level-up');
-  void memoryLevelEl.offsetWidth;
-  memoryLevelEl.classList.add('level-up');
-
+  // Warm and simple - she lights up at "Hooray, you did it!", so lean on the
+  // voice and a tasteful confetti burst instead of a pile of emojis.
   spawnConfetti({
     colors: CONFETTI_HEX,
-    count: 130,
-    originTop: '42vh',
-    minDistance: 45,
-    distanceJitter: 60,
-    minDuration: 1.1,
-    durationJitter: 0.9
+    count: 80,
+    originTop: '45vh',
+    minDistance: 40,
+    distanceJitter: 55,
+    minDuration: 1.0,
+    durationJitter: 0.8
   });
-  showCelebrationEmojis({ emoji: '🎉' });
-  window.setTimeout(function() { if (memoryActive) showCelebrationEmojis({ emoji: '⭐' }); }, 560);
-  window.setTimeout(function() { if (memoryActive) showCelebrationEmojis({ emoji: '🎉' }); }, 1120);
   audio.playFanfare();
-
   cancelSpeech();
   window.setTimeout(function() {
     if (memoryActive && !session.isSessionEnded()) speakText('Hooray! You did it!', { rate: 0.95 });
-  }, 260);
+  }, 240);
 
-  if (memoryLevelIdx < MEMORY_LEVELS.length - 1) memoryLevelIdx += 1;
-  // Credit "best level reached" against the level the child now advances to, so
-  // it matches the on-screen label and startMemory's meaning (highest entered).
-  session.mutateStats(function(stats) {
-    const reached = memoryLevelIdx + 1;
-    if (reached > stats.memoryBestLevel) stats.memoryBestLevel = reached;
-  });
+  if (demote) memoryLevelIdx -= 1;
+  else if (memoryLevelIdx < MEMORY_LEVELS.length - 1) memoryLevelIdx += 1;
   saveMemoryLevel();
 
   memoryTimer = window.setTimeout(function() {
     memoryTimer = null;
     if (memoryActive && !session.isSessionEnded()) buildMemoryBoard();
-  }, 2300);
+  }, 2400);
 }
 
 function saveMemoryLevel() {
@@ -623,12 +628,9 @@ function loadMemoryLevel() {
 
 function startMemory() {
   memoryActive = true;
+  preloadMemoryImages();
   memoryLevelIdx = loadMemoryLevel();
-  session.mutateStats(function(stats) {
-    stats.usedMemory = true;
-    const reached = memoryLevelIdx + 1;
-    if (reached > stats.memoryBestLevel) stats.memoryBestLevel = reached;
-  });
+  session.mutateStats(function(stats) { stats.usedMemory = true; });
   buildMemoryBoard();
 }
 
