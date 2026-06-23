@@ -30,6 +30,9 @@ function createCollectionActivity(options) {
 
   const chaseHitMargin = 30;
   const chaseRepromptMs = 5000;
+  // After this long with no taps (correct or incorrect) on the same level, go
+  // quiet so the prompt isn't nagging in the background when nobody's playing.
+  const chaseSilenceMs = 60000;
   const chaseDifficultyMax = 15;
 
   let mode = null;
@@ -44,6 +47,7 @@ function createCollectionActivity(options) {
   let chaseRepeatId = null;
   let lastChaseTargetKey = null;
   let lastFrameTime = 0;
+  let lastChaseActivity = 0;
 
   function quizTarget() {
     return quizTargetIndex >= 0 ? items[quizTargetIndex] : null;
@@ -267,8 +271,12 @@ function createCollectionActivity(options) {
     if (stopPrompt) stopPrompt();
     promptChaseTarget();
     hint.reset();
+    lastChaseActivity = performance.now();
     chaseRepeatId = setInterval(function() {
       if (chasePaused || session.isSessionEnded()) return;
+      // Stay silent once the level's been idle for a while — the child isn't
+      // playing, so don't keep talking. A tap resumes the prompts (see onArenaClick).
+      if (performance.now() - lastChaseActivity >= chaseSilenceMs) return;
       promptChaseTarget();
     }, chaseRepromptMs);
     lastFrameTime = performance.now();
@@ -345,6 +353,9 @@ function createCollectionActivity(options) {
         y >= en.y - chaseHitMargin && y <= en.y + en.h + chaseHitMargin;
     });
     if (hits.length === 0) return;
+
+    // A tap (right or wrong) means someone's playing — keep the prompts going.
+    lastChaseActivity = performance.now();
 
     const targetKey = getTargetKey(chaseTarget());
     if (hits.some(function(en) { return getTargetKey(en.item) === targetKey; })) {
