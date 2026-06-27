@@ -590,9 +590,10 @@ function startSpellRound() {
   spellPicture.setAttribute('aria-hidden', 'false');
   renderSlots();
   spellHint.textContent = 'Spell the word!';
-  // Say the word, spell it, say it again — the letters come with the prompt, not
-  // a timed reminder. The child can tap the picture to hear it all again.
-  speakWordThenSpell(target);
+  // Just say the word — don't spell it out. Each letter is spoken as the child
+  // types it (and the ghost letter previews the next one), so spelling it aloud
+  // up front would be redundant. Tap the picture to hear the word again.
+  speakText(target.toLowerCase(), { rate: 0.85 });
   hint.reset();
 }
 
@@ -647,11 +648,11 @@ function setMode(next) {
   else enterSpell();
 }
 
-// Tap the picture (Spell It only) to hear the word + spelling again, instead of
-// a reminder that repeats on a timer — like Clock's tappable face.
+// Tap the picture (Spell It only) to hear the word again, instead of a reminder
+// that repeats on a timer — like Clock's tappable face.
 function replaySpellPrompt() {
   if (session.isSessionEnded() || mode !== 'spell' || spellTargetIndex < 0) return;
-  speakWordThenSpell(WORDS[spellTargetIndex]);
+  speakText(WORDS[spellTargetIndex].toLowerCase(), { rate: 0.85 });
   spellPicture.classList.remove('is-speaking');
   void spellPicture.offsetWidth;
   spellPicture.classList.add('is-speaking');

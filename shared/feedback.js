@@ -216,10 +216,18 @@ function spawnConfetti(options = {}) {
   }
 }
 
+// Center with a full-viewport flexbox rather than a translate: the
+// `emoji-pop` animation keyframes set `transform`, which would override an
+// inline translate and leave the emoji anchored to the left edge (showing it
+// off-center, to the right). Flex centering survives the animated transform.
 const CENTER_EMOJI_STYLE = {
-  left: '50%',
-  top: '40%',
-  transform: 'translateX(-50%) translateY(-50%)',
+  left: '0',
+  right: '0',
+  top: '0',
+  bottom: '0',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   fontSize: '28vw'
 };
 
