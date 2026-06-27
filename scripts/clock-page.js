@@ -13,14 +13,19 @@ const SEGMENTS_FOR_DIGIT = {
   9: ['a', 'b', 'c', 'd', 'f', 'g']
 };
 
+// 7-segment geometry on a 60x100 grid. Every segment is the same thickness (8)
+// and there's a uniform mitred gap (G=2) between all of them — at the outer
+// corners, around the middle bar `g`, and between the stacked verticals — so it
+// reads like a real LED display. (Previously the corners touched with no gap
+// while the middle bar floated with a much larger gap on all four sides.)
 const SEGMENT_POLYGONS = {
-  a: '12,4 48,4 52,8 48,12 12,12 8,8',
-  b: '48,12 52,8 56,12 56,40 52,44 48,40',
-  c: '48,60 52,56 56,60 56,88 52,92 48,88',
-  d: '12,88 48,88 52,92 48,96 12,96 8,92',
-  e: '4,60 8,56 12,60 12,88 8,92 4,88',
-  f: '4,12 8,8 12,12 12,40 8,44 4,40',
-  g: '12,46 48,46 52,50 48,54 12,54 8,50'
+  a: '14,4 46,4 50,8 46,12 14,12 10,8',
+  b: '48,14 52,10 56,14 56,44 52,48 48,44',
+  c: '48,56 52,52 56,56 56,86 52,90 48,86',
+  d: '14,88 46,88 50,92 46,96 14,96 10,92',
+  e: '4,56 8,52 12,56 12,86 8,90 4,86',
+  f: '4,14 8,10 12,14 12,44 8,48 4,44',
+  g: '14,46 46,46 50,50 46,54 14,54 10,50'
 };
 
 const SEGMENT_HIT_POLYGONS = {
