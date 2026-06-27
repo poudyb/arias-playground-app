@@ -202,6 +202,9 @@ function renderClockTime(face, h, m, s, opts) {
     const colonOpacity = 0.35 + 0.65 * Math.abs(Math.cos(colonPhase * Math.PI));
     face._colons.forEach(function(c) {
       c.style.setProperty('--colon-opacity', String(colonOpacity));
+      // Drive the colon's color from the same hue as the digits so it stays in
+      // sync as the running clock cycles colors (--led-hue inherits to the dots).
+      c.style.setProperty('--led-hue', String(hue));
     });
   }
 }

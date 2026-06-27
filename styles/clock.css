@@ -184,10 +184,13 @@
     width: clamp(5px, 1.2vw, 9px);
     height: clamp(5px, 1.2vw, 9px);
     border-radius: 50%;
-    background: #ff7043;
+    /* Match the digits' current color (which cycles on the running clock)
+       instead of a fixed orange. Per-face overrides below recolor it for the
+       off/manual/option/matching faces, same as their digits. */
+    background: var(--led-color);
     box-shadow:
-      0 0 6px #ff7043,
-      0 0 14px rgba(255, 112, 67, 0.6);
+      0 0 6px var(--led-color),
+      0 0 14px var(--led-color);
     opacity: var(--colon-opacity, 1);
     transition: opacity 0.18s ease;
   }
@@ -200,11 +203,13 @@
     opacity: 0.85;
   }
 
-  .clock-digit-svg {
+  .clock-digit-svg,
+  .clock-colon__dot {
     --led-color: hsl(var(--led-hue, 50), 95%, 60%);
   }
   @supports (color: oklch(0.82 0.19 50)) {
-    .clock-digit-svg {
+    .clock-digit-svg,
+    .clock-colon__dot {
       --led-color: oklch(0.82 0.19 var(--led-hue, 50));
     }
   }
