@@ -659,22 +659,11 @@ catBtns.forEach(function(btn) {
   });
 });
 
-session.initPlaySession();
-session.startSessionTimerIfNeeded();
-setCategory(readSessionMode(SAME_AS_SESSION_KEY, 'animals'));
-
-document.getElementById('link-home').addEventListener('click', function() {
-  stopMatchGame();
-  session.clearPlaySessionStorage(false);
-});
-
-document.getElementById('session-end-home').addEventListener('click', function() {
-  session.clearPlaySessionStorage(true);
-});
-
-window.addEventListener('pagehide', stopMatchGame);
-window.addEventListener('pageshow', function(event) {
-  if (event.persisted) {
+initGamePage({
+  session: session,
+  stop: stopMatchGame,
+  start: function() { setCategory(readSessionMode(SAME_AS_SESSION_KEY, 'animals')); },
+  onResume: function() {
     stopMatchGame();
     setCategory(category);
   }

@@ -180,10 +180,6 @@ activity = createCollectionActivity({
   }
 });
 
-session.initPlaySession();
-session.startSessionTimerIfNeeded();
-activity.setMode(readSessionMode(MODE_SESSION_KEY, 'freeplay'));
-
 document.addEventListener('keydown', function(event) {
   if (session.isSessionEnded()) return;
   if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
@@ -191,19 +187,12 @@ document.addEventListener('keydown', function(event) {
   if (activity.triggerItemByKey(key)) event.preventDefault();
 });
 
-window.addEventListener('pagehide', stopSymbolsGame);
-window.addEventListener('pageshow', function(event) {
-  if (event.persisted) {
+initGamePage({
+  session: session,
+  stop: stopSymbolsGame,
+  start: function() { activity.setMode(readSessionMode(MODE_SESSION_KEY, 'freeplay')); },
+  onResume: function() {
     stopSymbolsGame();
     activity.setMode(activity.getMode());
   }
-});
-
-document.getElementById('link-home').addEventListener('click', function() {
-  stopSymbolsGame();
-  session.clearPlaySessionStorage(false);
-});
-
-document.getElementById('session-end-home').addEventListener('click', function() {
-  session.clearPlaySessionStorage(true);
 });

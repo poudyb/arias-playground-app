@@ -1,0 +1,9 @@
+{
+  "name": "arias-playground-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aria's Playroom — static learning games. No runtime or dev dependencies; tests use Node's built-in test runner.",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  }
+}

@@ -217,3 +217,8 @@ function isValidIndexArray(arr, length, poolSize) {
   return Array.isArray(arr) && arr.length === length &&
     arr.every(function(i) { return isValidIndex(i, poolSize); });
 }
+
+// Exported for Node's test runner; ignored in the browser (no `module`).
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { isValidIndex, isValidIndexArray };
+}

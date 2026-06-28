@@ -1,17 +1,8 @@
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-const SEGMENTS_FOR_DIGIT = {
-  0: ['a', 'b', 'c', 'd', 'e', 'f'],
-  1: ['b', 'c'],
-  2: ['a', 'b', 'g', 'e', 'd'],
-  3: ['a', 'b', 'g', 'c', 'd'],
-  4: ['f', 'g', 'b', 'c'],
-  5: ['a', 'f', 'g', 'c', 'd'],
-  6: ['a', 'f', 'g', 'e', 'c', 'd'],
-  7: ['a', 'b', 'c'],
-  8: ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
-  9: ['a', 'b', 'c', 'd', 'f', 'g']
-};
+// SEGMENTS_FOR_DIGIT and the number/time wording helpers (numberToWords,
+// timeToWords, formatTwo, get12Hour) live in shared/clock-logic.js so they can
+// be unit-tested; this script is loaded after it and uses them as globals.
 
 // 7-segment geometry on a 60x100 grid. Every segment is the same thickness (8)
 // and there's a uniform mitred gap (G=2) between all of them — at the outer
@@ -55,40 +46,9 @@ const POSITION_LABELS = {
   m2: 'minutes ones'
 };
 
-const NUMBER_WORDS_ONES = [
-  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
-  'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'
-];
-const NUMBER_WORDS_TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty'];
-
 const CONFETTI_HEX = ['#ff7043', '#ffb74d', '#80deea', '#64b5f6', '#ba68c8', '#aed581'];
 const CLOCK_SESSION_KEY = 'ariaClockSession';
 const CLOCK_MODES = ['watch', 'match', 'quiz', 'next'];
-
-function numberToWords(n) {
-  if (n < 20) return NUMBER_WORDS_ONES[n];
-  const tens = Math.floor(n / 10);
-  const ones = n % 10;
-  if (ones === 0) return NUMBER_WORDS_TENS[tens];
-  return NUMBER_WORDS_TENS[tens] + '-' + NUMBER_WORDS_ONES[ones];
-}
-
-function timeToWords(h, m) {
-  const hourPart = NUMBER_WORDS_ONES[h];
-  if (m === 0) return hourPart + " o'clock";
-  if (m < 10) return hourPart + ' oh ' + NUMBER_WORDS_ONES[m];
-  return hourPart + ' ' + numberToWords(m);
-}
-
-function formatTwo(n) {
-  return n < 10 ? '0' + n : String(n);
-}
-
-function get12Hour(date) {
-  let h = date.getHours() % 12;
-  if (h === 0) h = 12;
-  return h;
-}
 
 function createDigitSvg() {
   const svg = document.createElementNS(SVG_NS, 'svg');
@@ -851,22 +811,11 @@ document.querySelectorAll('.mode-btn').forEach(function(btn) {
   });
 });
 
-session.initPlaySession();
-session.startSessionTimerIfNeeded();
-setMode(readSessionMode(CLOCK_SESSION_KEY, 'watch'));
-
-document.getElementById('link-home').addEventListener('click', function() {
-  stopClockGame();
-  session.clearPlaySessionStorage(false);
-});
-
-document.getElementById('session-end-home').addEventListener('click', function() {
-  session.clearPlaySessionStorage(true);
-});
-
-window.addEventListener('pagehide', stopClockGame);
-window.addEventListener('pageshow', function(event) {
-  if (event.persisted) {
+initGamePage({
+  session: session,
+  stop: stopClockGame,
+  start: function() { setMode(readSessionMode(CLOCK_SESSION_KEY, 'watch')); },
+  onResume: function() {
     stopClockGame();
     setMode(currentMode || 'watch');
   }

@@ -137,17 +137,8 @@ const hint = createHintNudge({
   }
 });
 
-// Letters that can extend `prefix` toward some valid word.
-function allowedNext(prefix) {
-  const set = {};
-  for (let i = 0; i < WORDS.length; i++) {
-    const w = WORDS[i];
-    if (w.length > prefix.length && w.startsWith(prefix)) {
-      set[w[prefix.length]] = true;
-    }
-  }
-  return set;
-}
+// allowedNext(prefix, words) and isLookAlike(a, b) live in shared/word-logic.js
+// so they can be unit-tested; this script is loaded after it.
 
 const keyEls = {};
 function buildKeyboard() {
@@ -198,7 +189,7 @@ function updateNextKeyHint() {
 }
 
 function updateKeys() {
-  const allow = allowedNext(typed);
+  const allow = allowedNext(typed, WORDS);
   KEY_LETTERS.split('').forEach(function(ch) {
     keyEls[ch].classList.toggle('disabled', locked || !allow[ch]);
   });
@@ -207,7 +198,7 @@ function updateKeys() {
 function pressLetter(ch) {
   if (locked) return;
   if (mode === 'freeplay') {
-    if (!allowedNext(typed)[ch]) return;
+    if (!allowedNext(typed, WORDS)[ch]) return;
     typed += ch;
     speakText(ch.toLowerCase(), { rate: 0.85 });
     renderSlots();
@@ -379,19 +370,11 @@ function enterQuiz() {
 
 // ---- Read It (Quiz's inverse: picture prompt → pick the written word) ----
 
-// Two letters in common with the target (1-letter different) makes a confusable
-// look-alike (cat/can/rat). We avoid those as distractors so a child reads the
+// isLookAlike (a 1-letter-different word, like cat/can/rat) comes from
+// shared/word-logic.js. We avoid those as distractors so a child reads the
 // whole word, not just one letter — the same spirit as Clock's Quiz rejecting
 // near times. With 73 words and at most a handful of look-alikes, there are
 // always plenty of clearly-different distractors left.
-function isLookAlike(a, b) {
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) diff++;
-  }
-  return diff === 1;
-}
-
 function buildWordChoiceIndices(targetIdx) {
   const target = WORDS[targetIdx];
   const idxs = [targetIdx];
@@ -670,10 +653,6 @@ modeBtns.forEach(function(btn) {
   });
 });
 
-session.initPlaySession();
-session.startSessionTimerIfNeeded();
-setMode(readSessionMode(SPELLING_SESSION_KEY, 'freeplay'));
-
 document.addEventListener('keydown', function(event) {
   if (session.isSessionEnded()) return;
   if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
@@ -684,18 +663,12 @@ document.addEventListener('keydown', function(event) {
   }
 });
 
-window.addEventListener('pagehide', stopGame);
-window.addEventListener('pageshow', function(event) {
-  if (event.persisted) {
+initGamePage({
+  session: session,
+  stop: stopGame,
+  start: function() { setMode(readSessionMode(SPELLING_SESSION_KEY, 'freeplay')); },
+  onResume: function() {
     stopGame();
     setMode(mode);
   }
-});
-
-document.getElementById('link-home').addEventListener('click', function() {
-  stopGame();
-  session.clearPlaySessionStorage(false);
-});
-document.getElementById('session-end-home').addEventListener('click', function() {
-  session.clearPlaySessionStorage(true);
 });

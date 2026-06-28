@@ -218,20 +218,9 @@ activity = createCollectionActivity({
   }
 });
 
-session.initPlaySession();
-session.startSessionTimerIfNeeded();
-activity.setMode(readSessionMode(MODE_SESSION_KEY, 'freeplay'));
-
-document.getElementById('link-home').addEventListener('click', function() {
-  stopAnimalsGame();
-  session.clearPlaySessionStorage(false);
-});
-
-document.getElementById('session-end-home').addEventListener('click', function() {
-  session.clearPlaySessionStorage(true);
-});
-
-window.addEventListener('pagehide', stopAnimalsGame);
-window.addEventListener('pageshow', function(event) {
-  if (event.persisted) activity.setMode(activity.getMode());
+initGamePage({
+  session: session,
+  stop: stopAnimalsGame,
+  start: function() { activity.setMode(readSessionMode(MODE_SESSION_KEY, 'freeplay')); },
+  onResume: function() { activity.setMode(activity.getMode()); }
 });

@@ -32,6 +32,21 @@ try {
 
 let activeUtterance = null;
 
+// Voices can load asynchronously on first use; speaking before they're ready
+// drops the utterance silently. Run `go` now if voices are present, otherwise
+// once `voiceschanged` fires (one-shot).
+function whenVoicesReady(synth, go) {
+  if (synth.getVoices().length > 0) {
+    go();
+    return;
+  }
+  function onReady() {
+    synth.removeEventListener('voiceschanged', onReady);
+    go();
+  }
+  synth.addEventListener('voiceschanged', onReady);
+}
+
 function speakText(text, options = {}) {
   const { rate = 0.9 } = options;
   const synth = window.speechSynthesis;
@@ -58,16 +73,9 @@ function speakText(text, options = {}) {
   }
 
   activeUtterance = utterance;
-
-  if (synth.getVoices().length > 0) {
-    go();
-  } else {
-    function onReady() {
-      synth.removeEventListener('voiceschanged', onReady);
-      if (activeUtterance === utterance) go();
-    }
-    synth.addEventListener('voiceschanged', onReady);
-  }
+  whenVoicesReady(synth, function() {
+    if (activeUtterance === utterance) go();
+  });
   return utterance;
 }
 
@@ -106,16 +114,9 @@ function speakSequence(parts, options = {}) {
   }
 
   activeUtterance = first;
-
-  if (synth.getVoices().length > 0) {
-    go();
-  } else {
-    function onReady() {
-      synth.removeEventListener('voiceschanged', onReady);
-      if (activeUtterance === first) go();
-    }
-    synth.addEventListener('voiceschanged', onReady);
-  }
+  whenVoicesReady(synth, function() {
+    if (activeUtterance === first) go();
+  });
 }
 
 document.addEventListener('visibilitychange', function() {

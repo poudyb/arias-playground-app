@@ -1,3 +1,35 @@
+// Build a normalized stats object from whatever was parsed out of
+// sessionStorage, validating each field against a fresh `defaults` object:
+//   - number default  -> keep parsed value only if it's a number
+//   - array default   -> keep a copy of the parsed array, else an empty one
+//   - boolean default -> coerce to boolean
+//   - anything else    -> keep parsed value if present, else the default
+// Unknown keys in `parsed` are preserved. This is the single place that decides
+// how a stat field is validated, so adding a field to a create* function below
+// is all it takes — there's no parallel per-field list to keep in sync.
+function normalizeStatsBySchema(parsed, defaults) {
+  if (!parsed || typeof parsed !== 'object') return defaults;
+  const out = { ...parsed };
+  for (const key in defaults) {
+    const def = defaults[key];
+    const val = parsed[key];
+    if (Array.isArray(def)) {
+      out[key] = Array.isArray(val) ? val.slice() : def.slice();
+    } else if (typeof def === 'number') {
+      out[key] = typeof val === 'number' ? val : def;
+    } else if (typeof def === 'boolean') {
+      out[key] = !!val;
+    } else if (!(key in parsed)) {
+      out[key] = def;
+    }
+  }
+  return out;
+}
+
+function pushUniqueStruggle(arr, key) {
+  if (!arr.includes(key)) arr.push(key);
+}
+
 function createModeStats(freeField) {
   return {
     [freeField]: 0,
@@ -13,32 +45,18 @@ function createModeStats(freeField) {
 
 function normalizeModeStats(parsed, freeField, legacyFreeFields = []) {
   const defaults = createModeStats(freeField);
-  if (!parsed || typeof parsed !== 'object') return defaults;
-
-  let freeValue = typeof parsed[freeField] === 'number' ? parsed[freeField] : null;
-  if (freeValue == null) {
+  const out = normalizeStatsBySchema(parsed, defaults);
+  // Pre-rename builds stored the free-play count under a different field name
+  // (e.g. animals -> shapes). Carry it forward if the current field is missing.
+  if (out !== defaults && typeof parsed[freeField] !== 'number') {
     for (const field of legacyFreeFields) {
       if (typeof parsed[field] === 'number') {
-        freeValue = parsed[field];
+        out[freeField] = parsed[field];
         break;
       }
     }
   }
-
-  return {
-    ...defaults,
-    ...parsed,
-    [freeField]: typeof freeValue === 'number' ? freeValue : defaults[freeField],
-    quizStruggled: Array.isArray(parsed.quizStruggled) ? parsed.quizStruggled : [],
-    chaseStruggled: Array.isArray(parsed.chaseStruggled) ? parsed.chaseStruggled : [],
-    visitedFreeplay: !!parsed.visitedFreeplay,
-    visitedQuiz: !!parsed.visitedQuiz,
-    visitedChase: !!parsed.visitedChase
-  };
-}
-
-function pushUniqueStruggle(arr, key) {
-  if (!arr.includes(key)) arr.push(key);
+  return out;
 }
 
 function createSameAsStats() {
@@ -56,21 +74,7 @@ function createSameAsStats() {
 }
 
 function normalizeSameAsStats(parsed) {
-  const defaults = createSameAsStats();
-  if (!parsed || typeof parsed !== 'object') return defaults;
-  return {
-    ...defaults,
-    ...parsed,
-    matchCorrect: typeof parsed.matchCorrect === 'number' ? parsed.matchCorrect : defaults.matchCorrect,
-    matchWrong: typeof parsed.matchWrong === 'number' ? parsed.matchWrong : defaults.matchWrong,
-    struggled: Array.isArray(parsed.struggled) ? parsed.struggled : [],
-    usedAnimals: !!parsed.usedAnimals,
-    usedShapes: !!parsed.usedShapes,
-    usedMemory: !!parsed.usedMemory,
-    memoryMatches: typeof parsed.memoryMatches === 'number' ? parsed.memoryMatches : defaults.memoryMatches,
-    memoryLevelsCleared: typeof parsed.memoryLevelsCleared === 'number' ? parsed.memoryLevelsCleared : defaults.memoryLevelsCleared,
-    memoryUnforced: typeof parsed.memoryUnforced === 'number' ? parsed.memoryUnforced : defaults.memoryUnforced
-  };
+  return normalizeStatsBySchema(parsed, createSameAsStats());
 }
 
 function createClockStats() {
@@ -90,23 +94,7 @@ function createClockStats() {
 }
 
 function normalizeClockStats(parsed) {
-  const defaults = createClockStats();
-  if (!parsed || typeof parsed !== 'object') return defaults;
-  return {
-    ...defaults,
-    ...parsed,
-    matchSuccesses: typeof parsed.matchSuccesses === 'number' ? parsed.matchSuccesses : defaults.matchSuccesses,
-    quizCorrect: typeof parsed.quizCorrect === 'number' ? parsed.quizCorrect : defaults.quizCorrect,
-    quizWrong: typeof parsed.quizWrong === 'number' ? parsed.quizWrong : defaults.quizWrong,
-    quizStruggled: Array.isArray(parsed.quizStruggled) ? parsed.quizStruggled : [],
-    nextCorrect: typeof parsed.nextCorrect === 'number' ? parsed.nextCorrect : defaults.nextCorrect,
-    nextWrong: typeof parsed.nextWrong === 'number' ? parsed.nextWrong : defaults.nextWrong,
-    nextStruggled: Array.isArray(parsed.nextStruggled) ? parsed.nextStruggled : [],
-    usedWatch: !!parsed.usedWatch,
-    usedMatch: !!parsed.usedMatch,
-    usedQuiz: !!parsed.usedQuiz,
-    usedNext: !!parsed.usedNext
-  };
+  return normalizeStatsBySchema(parsed, createClockStats());
 }
 
 function createSpellingStats() {
@@ -128,23 +116,21 @@ function createSpellingStats() {
 }
 
 function normalizeSpellingStats(parsed) {
-  const defaults = createSpellingStats();
-  if (!parsed || typeof parsed !== 'object') return defaults;
-  return {
-    ...defaults,
-    ...parsed,
-    freeWords: typeof parsed.freeWords === 'number' ? parsed.freeWords : defaults.freeWords,
-    quizCorrect: typeof parsed.quizCorrect === 'number' ? parsed.quizCorrect : defaults.quizCorrect,
-    quizWrong: typeof parsed.quizWrong === 'number' ? parsed.quizWrong : defaults.quizWrong,
-    quizStruggled: Array.isArray(parsed.quizStruggled) ? parsed.quizStruggled : [],
-    spellCorrect: typeof parsed.spellCorrect === 'number' ? parsed.spellCorrect : defaults.spellCorrect,
-    spellStruggled: Array.isArray(parsed.spellStruggled) ? parsed.spellStruggled : [],
-    readCorrect: typeof parsed.readCorrect === 'number' ? parsed.readCorrect : defaults.readCorrect,
-    readWrong: typeof parsed.readWrong === 'number' ? parsed.readWrong : defaults.readWrong,
-    readStruggled: Array.isArray(parsed.readStruggled) ? parsed.readStruggled : [],
-    usedFreeplay: !!parsed.usedFreeplay,
-    usedQuiz: !!parsed.usedQuiz,
-    usedSpell: !!parsed.usedSpell,
-    usedRead: !!parsed.usedRead
+  return normalizeStatsBySchema(parsed, createSpellingStats());
+}
+
+// Exported for Node's test runner; ignored in the browser (no `module`).
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    normalizeStatsBySchema,
+    pushUniqueStruggle,
+    createModeStats,
+    normalizeModeStats,
+    createSameAsStats,
+    normalizeSameAsStats,
+    createClockStats,
+    normalizeClockStats,
+    createSpellingStats,
+    normalizeSpellingStats
   };
 }
