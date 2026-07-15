@@ -431,8 +431,8 @@ function enterMatch() {
   const wrap = document.createElement('div');
   wrap.className = 'match-wrap';
 
-  const realFace = buildClockFace({ showSeconds: true, sizeClass: 'clock-face--real' });
-  const manualFace = buildClockFace({ showSeconds: true, sizeClass: 'clock-face--manual' });
+  const realFace = buildClockFace({ showSeconds: true, sizeClass: 'clock-face--real clock-face--big' });
+  const manualFace = buildClockFace({ showSeconds: true, sizeClass: 'clock-face--manual clock-face--big' });
   enableSpeakOnTap(realFace);
 
   // Stack both clocks left-aligned so HH lines up under HH and MM under MM.
