@@ -887,6 +887,45 @@ function playBuzzer() {
   osc.stop(ctx.currentTime + 0.35);
 }
 
+function clampChaseBounds(bounds, w, h) {
+  if (!(w > 0) || !(h > 0)) {
+    return { left: 0, top: 0, right: Math.max(0, w), bottom: Math.max(0, h) };
+  }
+  const left = Math.max(0, Math.min(w, bounds.left));
+  const top = Math.max(0, Math.min(h, bounds.top));
+  const right = Math.max(left, Math.min(w, bounds.right));
+  const bottom = Math.max(top, Math.min(h, bounds.bottom));
+  if (right <= left || bottom <= top) {
+    return { left: 0, top: 0, right: w, bottom: h };
+  }
+  return { left: left, top: top, right: right, bottom: bottom };
+}
+
+function getChaseContentBounds(el) {
+  const w = el.offsetWidth;
+  const h = el.offsetHeight;
+  if (!(w > 0) || !(h > 0)) return { left: 0, top: 0, right: w, bottom: h };
+
+  if (el.firstChild && el.firstChild.nodeType === Node.TEXT_NODE && el.textContent) {
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const elRect = el.getBoundingClientRect();
+      const textRect = range.getBoundingClientRect();
+      if (textRect.width > 0 && textRect.height > 0) {
+        return clampChaseBounds({
+          left: textRect.left - elRect.left,
+          top: textRect.top - elRect.top,
+          right: textRect.right - elRect.left,
+          bottom: textRect.bottom - elRect.top
+        }, w, h);
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  return { left: 0, top: 0, right: w, bottom: h };
+}
+
 function spawnConfetti() {
   const count = 60;
   const shapes = ['square', 'circle'];
@@ -1030,7 +1069,20 @@ function startChaseRound() {
     el.style.fontSize = fontSize + 'vmin';
     el.style.color = colors[i % colors.length];
     chaseArena.appendChild(el);
-    chaseChars.push({ el, ch, x: 0, y: 0, vx: 0, vy: 0, w: 0, h: 0 });
+    chaseChars.push({
+      el,
+      ch,
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      w: 0,
+      h: 0,
+      hitLeft: 0,
+      hitTop: 0,
+      hitRight: 0,
+      hitBottom: 0
+    });
   });
 
   requestAnimationFrame(() => {
@@ -1038,6 +1090,11 @@ function startChaseRound() {
     chaseChars.forEach(c => {
       c.w = c.el.offsetWidth;
       c.h = c.el.offsetHeight;
+      const bounds = getChaseContentBounds(c.el);
+      c.hitLeft = bounds.left;
+      c.hitTop = bounds.top;
+      c.hitRight = bounds.right;
+      c.hitBottom = bounds.bottom;
       c.x = Math.random() * (window.innerWidth - c.w);
       c.y = Math.random() * (window.innerHeight - c.h);
       const angle = Math.random() * 2 * Math.PI;
@@ -1078,10 +1135,10 @@ function animateChase(timestamp) {
     chaseChars.forEach(c => {
       c.x += c.vx * dt;
       c.y += c.vy * dt;
-      if (c.x < 0) { c.x = 0; c.vx = Math.abs(c.vx); }
-      if (c.y < 0) { c.y = 0; c.vy = Math.abs(c.vy); }
-      if (c.x + c.w > W) { c.x = W - c.w; c.vx = -Math.abs(c.vx); }
-      if (c.y + c.h > H) { c.y = H - c.h; c.vy = -Math.abs(c.vy); }
+      if (c.x + c.hitLeft < 0) { c.x = -c.hitLeft; c.vx = Math.abs(c.vx); }
+      if (c.y + c.hitTop < 0) { c.y = -c.hitTop; c.vy = Math.abs(c.vy); }
+      if (c.x + c.hitRight > W) { c.x = W - c.hitRight; c.vx = -Math.abs(c.vx); }
+      if (c.y + c.hitBottom > H) { c.y = H - c.hitBottom; c.vy = -Math.abs(c.vy); }
       c.el.style.left = c.x + 'px';
       c.el.style.top = c.y + 'px';
     });
@@ -1089,8 +1146,8 @@ function animateChase(timestamp) {
     for (let i = 0; i < chaseChars.length; i++) {
       for (let j = i + 1; j < chaseChars.length; j++) {
         const a = chaseChars[i], b = chaseChars[j];
-        const overlapX = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
-        const overlapY = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+        const overlapX = Math.min(a.x + a.hitRight, b.x + b.hitRight) - Math.max(a.x + a.hitLeft, b.x + b.hitLeft);
+        const overlapY = Math.min(a.y + a.hitBottom, b.y + b.hitBottom) - Math.max(a.y + a.hitTop, b.y + b.hitTop);
         if (overlapX > 0 && overlapY > 0) {
           if (overlapX < overlapY) {
             const half = overlapX / 2;
