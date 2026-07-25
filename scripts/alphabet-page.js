@@ -206,9 +206,12 @@ activity = createCollectionActivity({
   onQuizStart: function(item) {
     showChar(item, pickColor());
   },
-  onQuizRoundResolved: function(firstTry) {
+  onQuizRoundResolved: function(round) {
     if (!caseProgression) return;
-    if (caseProgression.recordRound(firstTry)) applyCasePairing();
+    // A round she waited out until the hint pointed at the answer proves
+    // nothing either way, so it neither promotes nor breaks a streak.
+    const outcome = !round.firstTry ? 'missed' : round.hinted ? 'assisted' : 'clean';
+    if (caseProgression.recordRound(outcome)) applyCasePairing();
   }
 });
 

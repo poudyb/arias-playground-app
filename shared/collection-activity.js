@@ -40,6 +40,7 @@ function createCollectionActivity(options) {
   let quizTargetIndex = -1;
   let quizLocked = false;
   let quizRoundMissed = false;
+  let quizRoundHinted = false;
   let chaseDifficulty = 0;
   let chaseItems = [];
   let chaseAnimId = null;
@@ -63,6 +64,9 @@ function createCollectionActivity(options) {
 
   function flashHintTarget() {
     if (mode === 'quiz') {
+      // The round has been given away — onQuizRoundResolved reports it as
+      // hinted so callers don't treat a waited-out answer as a clean solve.
+      quizRoundHinted = true;
       flashHintEl(gridTiles[quizTargetIndex]);
     } else if (mode === 'chase') {
       const target = chaseTarget();
@@ -166,7 +170,9 @@ function createCollectionActivity(options) {
       hint.stop();
       // Report the round before the celebration so anything the outcome
       // changes on screen lands with the confetti rather than after it.
-      if (onQuizRoundResolved) onQuizRoundResolved(!quizRoundMissed, item);
+      if (onQuizRoundResolved) {
+        onQuizRoundResolved({ firstTry: !quizRoundMissed, hinted: quizRoundHinted, item });
+      }
       spawnConfetti({ colors: confetti.colors });
       showCelebrationEmojis();
       audio.playChime();
@@ -186,6 +192,7 @@ function createCollectionActivity(options) {
     if (session.isSessionEnded() || mode !== 'quiz') return;
     quizLocked = false;
     quizRoundMissed = false;
+    quizRoundHinted = false;
     thumbsDown.hide();
 
     if (modeSessionKey) {
