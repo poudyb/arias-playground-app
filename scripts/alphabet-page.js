@@ -11,10 +11,36 @@ const FREEPLAY_HINT = isTouch ? SYMBOL_CONFIG.touchHint : SYMBOL_CONFIG.keyboard
 const SYMBOL_ITEMS = SYMBOL_CONFIG.items;
 const MODE_SESSION_KEY = SYMBOL_CONFIG.sessionKey;
 
+// Only the alphabet defines this — numbers stay plain digits.
+const CASE_CONFIG = SYMBOL_CONFIG.caseProgression || null;
+const caseProgression = CASE_CONFIG ? createStreakProgression({
+  storageKey: CASE_CONFIG.storageKey,
+  promoteAfter: CASE_CONFIG.promoteAfter,
+  demoteAfter: CASE_CONFIG.demoteAfter
+}) : null;
+
 let lastColor = '';
 let fadeTimer = null;
 let chaseRoundColors = [];
 let activity = null;
+let shownChar = null;
+
+function isCasePaired() {
+  return !!(caseProgression && caseProgression.isOn());
+}
+
+// What a letter looks like right now: "A" normally, "Aa" once she's earned it.
+function itemText(ch) {
+  return isCasePaired() ? CASE_CONFIG.pairText(ch) : ch;
+}
+
+// Re-paint everything that spells a letter out. Called when the pairing flips
+// mid-game so the change shows up with the celebration, not on the next round.
+function applyCasePairing() {
+  touchGrid.classList.toggle('is-pair', isCasePaired());
+  if (activity) activity.refreshTiles();
+  if (shownChar && letter.style.display === 'block') showChar(shownChar, lastColor);
+}
 
 function renderSummary(board, stats) {
   renderThreeModeSummary(board, stats, buildModeSummaryConfig({
@@ -89,10 +115,12 @@ function pickColor() {
 
 function showChar(ch, color) {
   if (fadeTimer != null) clearTimeout(fadeTimer);
+  shownChar = ch;
   hint.style.display = 'none';
   letter.style.display = 'block';
   letter.style.opacity = '1';
-  letter.textContent = ch;
+  letter.textContent = itemText(ch);
+  letter.classList.toggle('is-pair', isCasePaired());
   letter.style.color = color;
   letter.classList.remove('pop', 'fade-out');
   void letter.offsetWidth;
@@ -123,7 +151,7 @@ activity = createCollectionActivity({
     const btn = document.createElement('button');
     btn.className = 'grid-btn';
     btn.dataset.key = ch;
-    btn.textContent = ch;
+    btn.textContent = itemText(ch);
     return btn;
   },
   createChaseElement: function(ch, position) {
@@ -177,8 +205,14 @@ activity = createCollectionActivity({
   },
   onQuizStart: function(item) {
     showChar(item, pickColor());
+  },
+  onQuizRoundResolved: function(firstTry) {
+    if (!caseProgression) return;
+    if (caseProgression.recordRound(firstTry)) applyCasePairing();
   }
 });
+
+touchGrid.classList.toggle('is-pair', isCasePaired());
 
 document.addEventListener('keydown', function(event) {
   if (session.isSessionEnded()) return;

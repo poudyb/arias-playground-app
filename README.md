@@ -15,7 +15,8 @@ Open [http://localhost:8080](http://localhost:8080) and use `index.html` as the 
 ## Tests
 
 The pure logic (stats normalization, clock wording / digit segments, the
-spelling word helpers, and session index validation) is unit-tested with
+spelling word helpers, session index validation, and the streak progression
+that steps a game's difficulty up and down) is unit-tested with
 **Node's built-in test runner** — no dependencies to install.
 
 ```bash

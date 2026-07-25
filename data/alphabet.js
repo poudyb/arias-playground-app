@@ -22,5 +22,15 @@ const LEARNING_SYMBOLS_CONFIG = {
   },
   speakItem: function(item) {
     return item.toLowerCase();
+  },
+  // Once she's solving quiz rounds on the first try, the capital gets its
+  // lowercase twin beside it ("Aa") everywhere she reads letters — the prompt,
+  // the on-screen keyboard, and free play. A run of missed rounds puts it back
+  // to plain capitals. See shared/progression.js for the streak rules.
+  caseProgression: {
+    storageKey: 'ariaAlphabetCasePairing',
+    promoteAfter: 3,
+    demoteAfter: 3,
+    pairText: function(item) { return item + item.toLowerCase(); }
   }
 };

@@ -53,6 +53,12 @@
     display: none;
   }
 
+  /* "Aa" is roughly 1.6x as wide as a lone capital, so the pair steps down a
+     size to stay on screen for the widest letters (Ww, Mm). */
+  #letter.is-pair {
+    font-size: 40vw;
+  }
+
   #letter.pop {
     animation: pop 0.2s ease-out;
   }
@@ -154,6 +160,10 @@
       font-size: 35vw;
     }
 
+    #letter.is-pair {
+      font-size: 30vw;
+    }
+
     #touch-grid {
       flex: 1;
       display: grid;
@@ -183,6 +193,11 @@
 
     .alphabet-page .grid-btn {
       grid-column: span 2;
+    }
+
+    /* Key caps hold two glyphs in pair mode; shrink so "Ww" clears the edges. */
+    .alphabet-page #touch-grid.is-pair .grid-btn {
+      font-size: 3.7vw;
     }
 
     .alphabet-page .grid-btn[data-key="A"] {

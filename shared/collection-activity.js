@@ -21,6 +21,7 @@ function createCollectionActivity(options) {
     modeSessionKey,
     onFreeplayInteract,
     onQuizStart,
+    onQuizRoundResolved,
     onModeEnter
   } = options;
 
@@ -38,6 +39,7 @@ function createCollectionActivity(options) {
   let mode = null;
   let quizTargetIndex = -1;
   let quizLocked = false;
+  let quizRoundMissed = false;
   let chaseDifficulty = 0;
   let chaseItems = [];
   let chaseAnimId = null;
@@ -162,11 +164,15 @@ function createCollectionActivity(options) {
       quizLocked = true;
       if (modeSessionKey) saveRoundState(modeSessionKey + ':quiz', null);
       hint.stop();
+      // Report the round before the celebration so anything the outcome
+      // changes on screen lands with the confetti rather than after it.
+      if (onQuizRoundResolved) onQuizRoundResolved(!quizRoundMissed, item);
       spawnConfetti({ colors: confetti.colors });
       showCelebrationEmojis();
       audio.playChime();
       setTimeout(startQuizRound, 2000);
     } else {
+      quizRoundMissed = true;
       session.mutateStats(function(stats) {
         pushUniqueStruggle(stats.quizStruggled, getTargetKey(quizTarget()));
       });
@@ -179,6 +185,7 @@ function createCollectionActivity(options) {
   function startQuizRound() {
     if (session.isSessionEnded() || mode !== 'quiz') return;
     quizLocked = false;
+    quizRoundMissed = false;
     thumbsDown.hide();
 
     if (modeSessionKey) {
@@ -414,6 +421,9 @@ function createCollectionActivity(options) {
   buildGrid();
   return {
     setMode,
+    // Re-run renderTile for every tile — for callers whose tiles change look
+    // partway through play (e.g. the alphabet grid switching to "Aa" pairs).
+    refreshTiles: buildGrid,
     stop: function() {
       hint.stop();
       stopChase();
