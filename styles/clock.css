@@ -265,17 +265,38 @@
     border-color: rgba(100, 181, 246, 0.7);
   }
 
-  .clock-face--manual.matching .clock-digit-svg {
-    --led-color: #64b5f6;
-  }
-
-  .clock-face--manual.matching .clock-digit-svg .seg.on {
-    filter: drop-shadow(0 0 3px #64b5f6) drop-shadow(0 0 9px #42a5f5);
-  }
-
+  /* The matched face is deliberately NOT recolored to a flat blue: every one of
+     its segments has already taken on the running clock's color below, so it
+     now looks exactly like the clock it was copied from. That likeness is the
+     reward — the frame glow just frames it. */
   .clock-face--manual.matching .clock-colon__dot {
-    background: #64b5f6;
-    box-shadow: 0 0 6px #64b5f6;
+    background: var(--led-match-color);
+    box-shadow: 0 0 6px var(--led-match-color);
+  }
+
+  /* The live color of the clock above, tracked per tick via --led-hue. */
+  .clock-face--manual {
+    --led-match-color: hsl(var(--led-hue, 50), 95%, 60%);
+  }
+  @supports (color: oklch(0.82 0.19 50)) {
+    .clock-face--manual {
+      --led-match-color: oklch(0.82 0.19 var(--led-hue, 50));
+    }
+  }
+
+  /* A segment she lit that belongs in the time: wears the real clock's color. */
+  .clock-face--manual .clock-digit-svg .seg.on.seg-right {
+    fill: var(--led-match-color);
+    filter:
+      drop-shadow(0 0 3px var(--led-match-color))
+      drop-shadow(0 0 8px var(--led-match-color));
+  }
+
+  /* A segment she lit that doesn't belong: visible, but flat and unlit-looking,
+     so it reads as "this line isn't joining in" rather than as a mistake. */
+  .clock-face--manual .clock-digit-svg .seg.on.seg-wrong {
+    fill: rgba(178, 235, 242, 0.32);
+    filter: none;
   }
 
   .clock-digit-svg .seg {

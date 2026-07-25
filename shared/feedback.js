@@ -76,23 +76,54 @@ function createAudioFeedback() {
     osc.stop(ctx.currentTime + 0.35);
   }
 
+  // A C-major chime for "your clock matches". Three things here are deliberate,
+  // because the obvious way to write this sounds bad on real hardware:
+  //
+  //  - ONE start time, captured once with a little lookahead, shared by all
+  //    three notes. Scheduling each note off its own ctx.currentTime let them
+  //    begin a fraction of a millisecond apart, which smears the chord into
+  //    what sounds like two chimes overlapping.
+  //  - ONE envelope on a shared gain, ramped up over ~20ms instead of jumping
+  //    straight to full volume. An instant jump is a step discontinuity in the
+  //    waveform — a click — and it's loudest exactly when all three notes start
+  //    in phase together.
+  //  - A guard against re-triggering while the chord is still ringing, so a
+  //    match that flickers off and back on can't stack two copies.
+  let matchToneRingingUntil = 0;
+
   function playMatchTone() {
     const ctx = getAudioCtx();
-    const root = 523.25;
-    const third = 659.25;
-    const fifth = 783.99;
-    [root, third, fifth].forEach(function(freq) {
+    const start = ctx.currentTime + 0.02;
+    if (start < matchToneRingingUntil) return;
+
+    const attack = 0.02;
+    const hold = 0.3;
+    const release = 0.26;
+    const end = start + attack + hold + release;
+    // Three sines sum to ~3x this at their loudest, landing the chord at the
+    // same level as before the rewrite — the fix is the shape, not the volume.
+    const peak = 0.08;
+    // exponentialRamp can't touch zero, so the envelope starts and ends just
+    // above silence rather than at it.
+    const silence = 0.0001;
+
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(silence, start);
+    master.gain.exponentialRampToValueAtTime(peak, start + attack);
+    master.gain.setValueAtTime(peak, start + attack + hold);
+    master.gain.exponentialRampToValueAtTime(silence, end);
+    master.connect(ctx.destination);
+
+    [523.25, 659.25, 783.99].forEach(function(freq) {
       const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
       osc.type = 'sine';
       osc.frequency.value = freq;
-      gain.gain.value = 0.08;
-      gain.gain.setTargetAtTime(0, ctx.currentTime + 0.32, 0.04);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.55);
+      osc.connect(master);
+      osc.start(start);
+      osc.stop(end + 0.02);
     });
+
+    matchToneRingingUntil = end;
   }
 
   // A soft, neutral two-note blip for "no match - your turn again". Quiet and

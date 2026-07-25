@@ -47,3 +47,24 @@ test('SEGMENTS_FOR_DIGIT covers 0-9 with valid, unique segments', () => {
   assert.deepStrictEqual([...clock.SEGMENTS_FOR_DIGIT[1]].sort(), ['b', 'c']);
   assert.strictEqual(clock.SEGMENTS_FOR_DIGIT[8].length, 7); // 8 lights every segment
 });
+
+// The clock face builds its leading digit with only the two right-hand segments,
+// which is only safe while every hour it can show needs nothing else.
+test('the leading hour digit never needs more than the two right segments', () => {
+  const allowed = new Set(['b', 'c']);
+  for (let h = 1; h <= 12; h++) {
+    if (h < 10) continue; // blank — nothing lit at all
+    const tens = Math.floor(h / 10);
+    assert.strictEqual(tens, 1, h + " o'clock would put " + tens + ' in the leading slot');
+    for (const seg of clock.SEGMENTS_FOR_DIGIT[tens]) {
+      assert.ok(allowed.has(seg), 'hour ' + h + ' needs segment ' + seg + ' in the leading slot');
+    }
+  }
+});
+
+test('12-hour conversion never yields an hour outside 1-12', () => {
+  for (let hour = 0; hour < 24; hour++) {
+    const h = clock.get12Hour(new Date(2026, 0, 1, hour, 0, 0));
+    assert.ok(h >= 1 && h <= 12, hour + ':00 became ' + h);
+  }
+});

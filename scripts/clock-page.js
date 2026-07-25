@@ -29,6 +29,14 @@ const SEGMENT_HIT_POLYGONS = {
   g: '0,45 60,45 60,55 0,55'
 };
 
+const ALL_SEGMENTS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+
+// On a 12-hour clock the leading digit is only ever blank or 1, so the only
+// segments it can ever light are the two on the right. The other five would sit
+// there permanently dark — real LED clocks don't fit them at all, so neither do
+// we. (test/clock-logic.test.js pins the "only ever 1" assumption.)
+const LEADING_HOUR_SEGMENTS = ['b', 'c'];
+
 const SEG_LABELS = {
   a: 'top',
   b: 'top right',
@@ -50,12 +58,14 @@ const CONFETTI_HEX = ['#ff7043', '#ffb74d', '#80deea', '#64b5f6', '#ba68c8', '#a
 const CLOCK_SESSION_KEY = 'ariaClockSession';
 const CLOCK_MODES = ['watch', 'match', 'quiz', 'next'];
 
-function createDigitSvg() {
+// `segNames` limits which segments this digit is built with; it keeps its full
+// width either way so the columns still line up under the clock above.
+function createDigitSvg(segNames) {
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', '0 0 60 100');
   svg.setAttribute('class', 'clock-digit-svg');
   svg.setAttribute('aria-hidden', 'true');
-  ['a', 'b', 'c', 'd', 'e', 'f', 'g'].forEach(function(seg) {
+  (segNames || ALL_SEGMENTS).forEach(function(seg) {
     const poly = document.createElementNS(SVG_NS, 'polygon');
     poly.setAttribute('points', SEGMENT_POLYGONS[seg]);
     poly.setAttribute('class', 'seg seg-' + seg);
@@ -98,7 +108,7 @@ function buildClockFace(opts) {
   const colons = [];
 
   ['h1', 'h2'].forEach(function(name) {
-    const svg = createDigitSvg();
+    const svg = createDigitSvg(name === 'h1' ? LEADING_HOUR_SEGMENTS : null);
     svg.setAttribute('data-pos', name);
     face.appendChild(svg);
     slots[name] = svg;
@@ -155,8 +165,7 @@ function renderClockTime(face, h, m, s, opts) {
   if (opts && opts.colorCycling) {
     const mf = opts.msFraction || 0;
     const secondsVal = s == null ? 0 : s;
-    const elapsed = h * 3600 + m * 60 + secondsVal + mf;
-    const hue = (elapsed * 360 / 600) % 360;
+    const hue = ledHueFor(h, m, secondsVal, mf);
     slots.h1.style.setProperty('--led-hue', String(hue));
     slots.h2.style.setProperty('--led-hue', String(hue));
     slots.m1.style.setProperty('--led-hue', String(hue));
@@ -172,6 +181,14 @@ function renderClockTime(face, h, m, s, opts) {
       c.style.setProperty('--led-hue', String(hue));
     });
   }
+}
+
+// The running clock's color drifts through the spectrum over ten minutes. Match
+// mode reads the same hue so a correctly-placed segment can wear the exact
+// color the clock above is wearing at that moment.
+function ledHueFor(h, m, s, msFraction) {
+  const elapsed = h * 3600 + m * 60 + s + (msFraction || 0);
+  return (elapsed * 360 / 600) % 360;
 }
 
 function segsForDigitArray(value) {
@@ -447,6 +464,24 @@ function enterMatch() {
   const manualState = { h1: new Set(), h2: new Set(), m1: new Set(), m2: new Set() };
   let isMatching = false;
 
+  // Grade every lit segment against the clock above, one line at a time: a line
+  // that belongs takes on that clock's live color right away, so she can see
+  // each stroke land instead of waiting for the whole digit to be right. A line
+  // that doesn't belong stays flat and unlit-looking. Segments she hasn't
+  // turned on are left alone — colouring those in would just trace the answer.
+  function paintSegments(targets) {
+    ['h1', 'h2', 'm1', 'm2'].forEach(function(pos) {
+      const target = targets[pos];
+      const segs = manualFace._slots[pos].querySelectorAll('.seg');
+      for (let i = 0; i < segs.length; i++) {
+        const name = segs[i].getAttribute('data-seg');
+        const lit = manualState[pos].has(name);
+        segs[i].classList.toggle('seg-right', lit && target.has(name));
+        segs[i].classList.toggle('seg-wrong', lit && !target.has(name));
+      }
+    });
+  }
+
   function evaluateMatch() {
     const now = new Date();
     const h = get12Hour(now);
@@ -458,6 +493,7 @@ function enterMatch() {
       m1: new Set(segsForDigitArray(Number(mm[0]))),
       m2: new Set(segsForDigitArray(Number(mm[1])))
     };
+    paintSegments(targets);
     const matches =
       setsEqual(manualState.h1, targets.h1) &&
       setsEqual(manualState.h2, targets.h2) &&
@@ -486,7 +522,9 @@ function enterMatch() {
 
   ['h1', 'h2', 'm1', 'm2'].forEach(function(pos) {
     const svg = manualFace._slots[pos];
-    ['a', 'b', 'c', 'd', 'e', 'f', 'g'].forEach(function(segName) {
+    // Only the segments this digit was actually built with are tappable — the
+    // leading hour has just the two on the right.
+    (pos === 'h1' ? LEADING_HOUR_SEGMENTS : ALL_SEGMENTS).forEach(function(segName) {
       const hit = document.createElementNS(SVG_NS, 'polygon');
       hit.setAttribute('points', SEGMENT_HIT_POLYGONS[segName]);
       hit.setAttribute('class', 'seg-hit');
@@ -507,6 +545,11 @@ function enterMatch() {
 
   startTickLoop(function(now) {
     renderClockTime(realFace, get12Hour(now), now.getMinutes(), now.getSeconds(), realClockOpts(now));
+    // Hand the manual face the live hue so its correct segments stay in step
+    // with the real clock's color as it drifts.
+    manualFace.style.setProperty('--led-hue', String(
+      ledHueFor(get12Hour(now), now.getMinutes(), now.getSeconds(), now.getMilliseconds() / 1000)
+    ));
     const ss = formatTwo(now.getSeconds());
     renderDigit(manualFace._slots.s1, Number(ss[0]));
     renderDigit(manualFace._slots.s2, Number(ss[1]));
