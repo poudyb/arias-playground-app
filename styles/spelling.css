@@ -270,8 +270,9 @@ body {
   }
   .key[data-key="A"] { grid-column: 2 / span 2; }
   .key[data-key="Z"] { grid-column: 4 / span 2; }
-  .key:active { transform: scale(0.94); }
-  .key.disabled { opacity: 0.28; pointer-events: none; }
+  .key:not(.disabled):active { transform: scale(0.94); }
+  /* Safari 14 can leave a button's old color painted when pointer-events changes. */
+  .key.disabled { opacity: 0.28; }
   .key:not(.disabled) {
     background: var(--key-bg);
     border-color: rgba(var(--key-rgb), 0.75);

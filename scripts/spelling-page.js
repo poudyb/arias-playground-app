@@ -337,7 +337,6 @@ function onChoice(word, btn, target) {
     btn.classList.add('correct');
     audio.playChime();
     speakText(target.toLowerCase(), { rate: 0.85 });
-    showCelebrationEmojis();
     spawnConfetti();
     session.mutateStats(function(stats) {
       stats.quizCorrect += 1;
@@ -461,7 +460,6 @@ function onWordChoice(word, btn, target) {
     btn.classList.add('correct');
     audio.playChime();
     speakText(target.toLowerCase(), { rate: 0.85 });
-    showCelebrationEmojis();
     spawnConfetti();
     session.mutateStats(function(stats) {
       stats.readCorrect += 1;
@@ -542,7 +540,6 @@ function completeSpell(target) {
     resetTimer = null;
     audio.playChime();
     speakText(target.toLowerCase(), { rate: 0.85 });
-    showCelebrationEmojis();
     spawnConfetti();
     resetTimer = window.setTimeout(startSpellRound, 2200);
   }, 950);

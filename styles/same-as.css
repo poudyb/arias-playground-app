@@ -3,6 +3,7 @@
   body {
     min-height: 100vh;
     min-height: 100dvh;
+    height: 100vh;
     height: 100dvh;
     overflow-x: hidden;
     overflow-y: auto;
@@ -152,6 +153,7 @@
 
   .match-choices {
     flex: 1 1 auto;
+    min-height: min(42vh, 16rem);
     min-height: min(42dvh, 16rem);
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -251,6 +253,7 @@
     --cols: 2;
     --rows: 2;
     --gap: clamp(6px, 1.6vw, 14px);
+    --viewport-height: 100vh;
     /* 120px reserve = body padding (52 top + 16 bottom) + board padding/gaps.
        The max() floor keeps cards tappable on short/landscape viewports (the
        grid then scrolls via body overflow-y rather than collapsing); on a
@@ -258,7 +261,7 @@
     --cell: max(64px, min(
       240px,
       calc((min(92vw, 600px) - (var(--cols) - 1) * var(--gap)) / var(--cols)),
-      calc((100dvh - 120px - (var(--rows) - 1) * var(--gap)) / var(--rows))
+      calc((var(--viewport-height) - 120px - (var(--rows) - 1) * var(--gap)) / var(--rows))
     ));
     display: grid;
     grid-template-columns: repeat(var(--cols), var(--cell));
@@ -266,6 +269,10 @@
     gap: var(--gap);
     justify-content: center;
     align-content: center;
+  }
+
+  @supports (height: 100dvh) {
+    .memory-grid { --viewport-height: 100dvh; }
   }
 
   .memory-card {
