@@ -4,13 +4,22 @@
 
 ## Run locally
 
-From this directory:
+Open `index.html` directly. The app supports `file://` and needs no server
+or build step.
+
+For browser automation that requires HTTP, run:
 
 ```bash
 python3 -m http.server 8080
 ```
 
 Open [http://localhost:8080](http://localhost:8080) and use `index.html` as the home screen.
+
+## Open design question
+
+`Clock Next` has no gentle idle hint because waiting is the game and revealing
+the future time would solve it. Revisit that only with a hint design that keeps
+the prediction intact.
 
 ## Tests
 

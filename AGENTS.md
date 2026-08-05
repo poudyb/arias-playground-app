@@ -1,0 +1,17 @@
+# Aria's Playroom
+
+This is a static child-facing web app. It works directly from `file://`; use a
+local server only when a browser automation tool requires one. There is no build
+step.
+
+Before extending a game, read the closest existing mode from start to finish and
+match its round, difficulty, feedback, and cleanup patterns. Difficulty changes
+at a round or board boundary. Never show a numeric level to the child; progress
+belongs in a parent-facing summary.
+
+Keep feedback warm and small. A correct answer may use sound and confetti;
+errors use a small shake and sound, not a full-screen failure mark. Reuse the
+ARASAAC image pool in `assets/spelling/` when it fits, and verify the image
+rather than trusting its filename.
+
+Run `node --test "test/*.test.js"` for the shared logic.
