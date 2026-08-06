@@ -163,12 +163,24 @@
     display: block;
   }
 
+  .clock-digit-svg--leading {
+    width: clamp(11px, 3vw, 21px);
+  }
+
   .clock-face--big .clock-digit-svg {
     width: clamp(52px, 13vw, 96px);
   }
 
+  .clock-face--big .clock-digit-svg--leading {
+    width: clamp(17px, 4.33vw, 32px);
+  }
+
   .clock-face--option .clock-digit-svg {
     width: clamp(26px, 7vw, 48px);
+  }
+
+  .clock-face--option .clock-digit-svg--leading {
+    width: clamp(9px, 2.33vw, 16px);
   }
 
   .clock-colon {

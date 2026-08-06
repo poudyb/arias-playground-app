@@ -174,6 +174,7 @@ activity = createCollectionActivity({
     el.style.fontSize = params.fontSize + 'vmin';
   },
   getChaseParams: function(difficulty) {
+    if (SYMBOL_CONFIG.getChaseParams) return SYMBOL_CONFIG.getChaseParams(difficulty);
     const count = Math.min(3 + Math.floor(difficulty / 2), 8);
     return {
       count,
@@ -182,6 +183,8 @@ activity = createCollectionActivity({
     };
   },
   chasePool: SYMBOL_CONFIG.chasePool,
+  chaseItemWeight: SYMBOL_CONFIG.chaseItemWeight,
+  chaseDifficultyMax: SYMBOL_CONFIG.chaseDifficultyMax,
   speakChase: function(item) { speakChar(item); },
   thumbsDown,
   confetti: { colors: RAINBOW_PALETTE },

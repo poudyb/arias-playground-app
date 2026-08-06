@@ -260,7 +260,7 @@
        normal screen the inner min() wins. */
     --cell: max(64px, min(
       240px,
-      calc((min(92vw, 600px) - (var(--cols) - 1) * var(--gap)) / var(--cols)),
+      calc((92vw - (var(--cols) - 1) * var(--gap)) / var(--cols)),
       calc((var(--viewport-height) - 120px - (var(--rows) - 1) * var(--gap)) / var(--rows))
     ));
     display: grid;
@@ -269,6 +269,10 @@
     gap: var(--gap);
     justify-content: center;
     align-content: center;
+  }
+
+  .memory-grid--center-last-pair .memory-card:nth-child(9) {
+    grid-column: 2;
   }
 
   @supports (height: 100dvh) {

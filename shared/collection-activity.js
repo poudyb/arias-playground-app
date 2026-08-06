@@ -13,6 +13,8 @@ function createCollectionActivity(options) {
     sizeChaseElement,
     getChaseParams,
     chasePool,
+    chaseItemWeight,
+    chaseDifficultyMax = 15,
     speakChase,
     gridQuizClass,
     thumbsDown,
@@ -34,7 +36,6 @@ function createCollectionActivity(options) {
   // After this long with no taps (correct or incorrect) on the same level, go
   // quiet so the prompt isn't nagging in the background when nobody's playing.
   const chaseSilenceMs = 60000;
-  const chaseDifficultyMax = 15;
 
   let mode = null;
   let quizTargetIndex = -1;
@@ -240,29 +241,52 @@ function createCollectionActivity(options) {
     const pool = chasePool ? chasePool(chaseDifficulty) : items;
     const indices = pool.map(function(_, i) { return i; });
     const count = Math.min(params.count, indices.length);
-    const shuffled = [];
-    for (let i = 0; i < count; i++) {
-      const j = i + Math.floor(Math.random() * (indices.length - i));
-      const tmp = indices[i];
-      indices[i] = indices[j];
-      indices[j] = tmp;
-      shuffled.push(indices[i]);
-    }
-    let targetCandidates = shuffled;
+    let targetCandidates = indices;
     if (preferTargetKey) {
-      const preferred = shuffled.filter(function(idx) {
+      const preferred = indices.filter(function(idx) {
         return getTargetKey(pool[idx]) === preferTargetKey;
       });
       if (preferred.length > 0) targetCandidates = preferred;
-    } else if (lastChaseTargetKey != null && shuffled.length > 1) {
-      const filtered = shuffled.filter(function(idx) {
+    } else if (lastChaseTargetKey != null && indices.length > 1) {
+      const filtered = indices.filter(function(idx) {
         return getTargetKey(pool[idx]) !== lastChaseTargetKey;
       });
       if (filtered.length > 0) targetCandidates = filtered;
     }
-    chaseTargetItem = pool[targetCandidates[Math.floor(Math.random() * targetCandidates.length)]];
+    const targetIndex = targetCandidates[Math.floor(Math.random() * targetCandidates.length)];
+    chaseTargetItem = pool[targetIndex];
     lastChaseTargetKey = getTargetKey(chaseTargetItem);
     if (modeSessionKey) saveRoundState(modeSessionKey + ':chase', { difficulty: chaseDifficulty, targetKey: lastChaseTargetKey });
+
+    // Pick the target first so every item in the learned pool remains equally
+    // likely to be asked. A game may weight only the distractors; Numbers uses
+    // that to favour familiar single digits without hiding the newer targets.
+    const shuffled = [targetIndex];
+    const remaining = indices.filter(function(idx) { return idx !== targetIndex; });
+    while (shuffled.length < count) {
+      let totalWeight = 0;
+      const weights = remaining.map(function(idx) {
+        const weight = chaseItemWeight ? Number(chaseItemWeight(pool[idx], chaseDifficulty)) : 1;
+        const safeWeight = Number.isFinite(weight) && weight > 0 ? weight : 0;
+        totalWeight += safeWeight;
+        return safeWeight;
+      });
+      let pickedAt;
+      if (totalWeight === 0) {
+        pickedAt = Math.floor(Math.random() * remaining.length);
+      } else {
+        let roll = Math.random() * totalWeight;
+        pickedAt = weights.length - 1;
+        for (let i = 0; i < weights.length; i++) {
+          roll -= weights[i];
+          if (roll < 0) {
+            pickedAt = i;
+            break;
+          }
+        }
+      }
+      shuffled.push(remaining.splice(pickedAt, 1)[0]);
+    }
 
     shuffled.forEach(function(idx, position) {
       const item = pool[idx];

@@ -293,7 +293,7 @@ const MEMORY_LEVELS = [
   { pairs: 2, cols: 2, rows: 2 },   // 4 cards
   { pairs: 3, cols: 3, rows: 2 },   // 6 cards
   { pairs: 4, cols: 4, rows: 2 },   // 8 cards
-  { pairs: 5, cols: 5, rows: 2 },   // 10 cards
+  { pairs: 5, cols: 4, rows: 3 },   // 10 cards, with the last pair centred
   { pairs: 6, cols: 4, rows: 3 },   // 12 cards
   { pairs: 8, cols: 4, rows: 4 }    // 16 cards
 ];
@@ -433,6 +433,7 @@ function buildMemoryBoard() {
 
   memoryGridEl.style.setProperty('--cols', String(level.cols));
   memoryGridEl.style.setProperty('--rows', String(level.rows));
+  memoryGridEl.classList.toggle('memory-grid--center-last-pair', deck.length === 10);
 
   memoryGridEl.innerHTML = '';
   memoryCards = deck.map(function(card, i) {

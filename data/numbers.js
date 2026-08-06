@@ -23,6 +23,28 @@ const NUMBER_WORDS = {
 };
 
 const NUMBERS_CHASE_MAX_VALUE = 20;
+const NUMBERS_CHASE_ROUNDS_PER_NEW_VALUE = 2;
+const NUMBERS_CHASE_MAX_DIFFICULTY =
+  (NUMBERS_CHASE_MAX_VALUE - 9) * NUMBERS_CHASE_ROUNDS_PER_NEW_VALUE;
+
+function numbersChaseHighest(difficulty) {
+  const rangeStep = Math.floor(Math.max(0, difficulty) / NUMBERS_CHASE_ROUNDS_PER_NEW_VALUE);
+  return Math.min(9 + rangeStep, NUMBERS_CHASE_MAX_VALUE);
+}
+
+function numbersChaseParams(difficulty) {
+  // Preserve the fun of a busier arena as the range grows, but don't combine
+  // new spoken names with faster motion and shrinking type.
+  return {
+    count: Math.min(3 + Math.floor(Math.max(0, difficulty) / 2), 8),
+    speed: 100,
+    fontSize: 15
+  };
+}
+
+function numbersChaseItemWeight(item) {
+  return Number(item) < 10 ? 2 : 1;
+}
 
 const LEARNING_SYMBOLS_CONFIG = {
   items: '0123456789'.split(''),
@@ -50,9 +72,23 @@ const LEARNING_SYMBOLS_CONFIG = {
     return NUMBER_WORDS[item] || item;
   },
   chasePool: function(difficulty) {
-    const highest = Math.min(9 + difficulty, NUMBERS_CHASE_MAX_VALUE);
+    const highest = numbersChaseHighest(difficulty);
     const pool = [];
     for (let n = 0; n <= highest; n++) pool.push(String(n));
     return pool;
-  }
+  },
+  chaseItemWeight: numbersChaseItemWeight,
+  chaseDifficultyMax: NUMBERS_CHASE_MAX_DIFFICULTY,
+  getChaseParams: numbersChaseParams
 };
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    NUMBERS_CHASE_MAX_VALUE,
+    NUMBERS_CHASE_ROUNDS_PER_NEW_VALUE,
+    NUMBERS_CHASE_MAX_DIFFICULTY,
+    numbersChaseHighest,
+    numbersChaseParams,
+    numbersChaseItemWeight
+  };
+}

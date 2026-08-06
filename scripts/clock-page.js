@@ -58,12 +58,14 @@ const CONFETTI_HEX = ['#ff7043', '#ffb74d', '#80deea', '#64b5f6', '#ba68c8', '#a
 const CLOCK_SESSION_KEY = 'ariaClockSession';
 const CLOCK_MODES = ['watch', 'match', 'quiz', 'next'];
 
-// `segNames` limits which segments this digit is built with; it keeps its full
-// width either way so the columns still line up under the clock above.
+// `segNames` limits which segments this digit is built with. The leading hour
+// only needs the right-hand third of the normal digit grid, including its tap
+// targets in Match mode, so crop away the unused space as well as the segments.
 function createDigitSvg(segNames) {
   const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 60 100');
-  svg.setAttribute('class', 'clock-digit-svg');
+  const isLeadingHour = segNames === LEADING_HOUR_SEGMENTS;
+  svg.setAttribute('viewBox', isLeadingHour ? '40 0 20 100' : '0 0 60 100');
+  svg.setAttribute('class', 'clock-digit-svg' + (isLeadingHour ? ' clock-digit-svg--leading' : ''));
   svg.setAttribute('aria-hidden', 'true');
   (segNames || ALL_SEGMENTS).forEach(function(seg) {
     const poly = document.createElementNS(SVG_NS, 'polygon');
@@ -415,7 +417,12 @@ function enableSpeakOnTap(face) {
     face.classList.add('is-speaking');
   }
 
-  face.addEventListener('click', speakNow);
+  face.addEventListener('click', function() {
+    speakNow();
+    // A tap can leave Safari's focus ring stuck around this custom button.
+    // Keyboard activation uses the key handler below and keeps its focus.
+    face.blur();
+  });
   face.addEventListener('keydown', function(ev) {
     if (ev.key === 'Enter' || ev.key === ' ') {
       ev.preventDefault();
