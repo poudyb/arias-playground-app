@@ -1,3 +1,147 @@
+// Chase collisions run on the visible content, not the element box. A glyph
+// sits inside a box padded out by its line box, and an SVG shape sits inside
+// whatever empty margin its viewBox carries, so box-to-box collisions made
+// characters bounce off each other's empty space with a visible gap between
+// them — and stop short of the wall. These helpers find where the ink actually
+// is; the chase measures it once per round, alongside the element size.
+//
+// Note this deliberately does NOT move the tap targets, which stay on the full
+// box plus a generous margin: collisions should look right, but a child aiming
+// at a letter should never be told they missed something they clearly hit.
+function clampChaseBounds(bounds, w, h) {
+  if (!(w > 0) || !(h > 0)) {
+    return { left: 0, top: 0, right: Math.max(0, w), bottom: Math.max(0, h) };
+  }
+  const left = Math.max(0, Math.min(w, bounds.left));
+  const top = Math.max(0, Math.min(h, bounds.top));
+  const right = Math.max(left, Math.min(w, bounds.right));
+  const bottom = Math.max(top, Math.min(h, bounds.bottom));
+  // A degenerate measurement (zero-area, or inverted) means we learned nothing
+  // useful — fall back to the whole box rather than to a collider of nothing.
+  if (right <= left || bottom <= top) {
+    return { left: 0, top: 0, right: w, bottom: h };
+  }
+  return { left: left, top: top, right: right, bottom: bottom };
+}
+
+// Bounds of the element's visible content, relative to its own top-left corner.
+// SVG first (shapes), then a text range (letters, numbers, emoji); anything
+// else — a Colors dot, which is a bare filled box — keeps its full box.
+function getChaseContentBounds(el) {
+  const w = el.offsetWidth;
+  const h = el.offsetHeight;
+  if (!(w > 0) || !(h > 0)) return { left: 0, top: 0, right: w, bottom: h };
+
+  const svg = el.querySelector('svg');
+  if (svg && svg.viewBox && svg.viewBox.baseVal && typeof svg.getBBox === 'function') {
+    try {
+      const box = svg.getBBox();
+      const viewBox = svg.viewBox.baseVal;
+      if (viewBox.width > 0 && viewBox.height > 0) {
+        const elRect = el.getBoundingClientRect();
+        const svgRect = svg.getBoundingClientRect();
+        const scaleX = svgRect.width / viewBox.width;
+        const scaleY = svgRect.height / viewBox.height;
+        return clampChaseBounds({
+          left: (svgRect.left - elRect.left) + (box.x - viewBox.x) * scaleX,
+          top: (svgRect.top - elRect.top) + (box.y - viewBox.y) * scaleY,
+          right: (svgRect.left - elRect.left) + (box.x - viewBox.x + box.width) * scaleX,
+          bottom: (svgRect.top - elRect.top) + (box.y - viewBox.y + box.height) * scaleY
+        }, w, h);
+      }
+    } catch (e) { /* getBBox throws if it isn't rendered yet; use the box */ }
+  }
+
+  if (el.firstChild && el.firstChild.nodeType === 3 && el.textContent.trim()) {
+    const ink = getChaseTextInkBounds(el, w, h);
+    if (ink) return clampChaseBounds(ink, w, h);
+  }
+
+  return { left: 0, top: 0, right: w, bottom: h };
+}
+
+// One canvas, reused for every measurement — creating one per glyph per round
+// would be pure garbage.
+let chaseMeasureCtx = null;
+
+function getChaseMeasureCtx() {
+  if (chaseMeasureCtx === null && typeof document !== 'undefined') {
+    const canvas = document.createElement('canvas');
+    chaseMeasureCtx = canvas.getContext ? canvas.getContext('2d') : false;
+  }
+  return chaseMeasureCtx || null;
+}
+
+// Where the glyph's ink actually sits inside its box.
+//
+// A DOM Range would be the obvious tool here and is what the original draft of
+// this used, but a range over a text node reports the *line box* — full advance
+// width, full line-height — which for these shrink-wrapped, zero-padding
+// elements is exactly the element box, so it tightened nothing. Canvas
+// TextMetrics is the only thing that reports real ink extents: a bold Georgia
+// "G" only inks about the middle three-quarters of the line box it sits in.
+function getChaseTextInkBounds(el, w, h) {
+  const ctx = getChaseMeasureCtx();
+  if (!ctx) return null;
+  const text = el.textContent.trim();
+  const style = window.getComputedStyle(el);
+  ctx.font = style.fontStyle + ' ' + style.fontWeight + ' ' + style.fontSize + ' ' + style.fontFamily;
+
+  const m = ctx.measureText(text);
+  const ascent = m.actualBoundingBoxAscent;
+  const descent = m.actualBoundingBoxDescent;
+  const leftExtent = m.actualBoundingBoxLeft;
+  const rightExtent = m.actualBoundingBoxRight;
+  // Older engines omit the actualBoundingBox* family entirely; anything
+  // non-finite means we learned nothing and should keep the full box.
+  if (![ascent, descent, leftExtent, rightExtent, m.fontBoundingBoxAscent,
+    m.fontBoundingBoxDescent].every(Number.isFinite)) return null;
+
+  // The baseline sits below the top of the box by the half-leading (the line
+  // box is taller or shorter than the font's natural height by line-height)
+  // plus the font's ascent.
+  const fontHeight = m.fontBoundingBoxAscent + m.fontBoundingBoxDescent;
+  const baselineY = (h - fontHeight) / 2 + m.fontBoundingBoxAscent;
+
+  // Text is laid out from the content's left edge, so the drawing origin is
+  // x=0 — unless the box is wider than the text and centres it.
+  let originX = 0;
+  if (style.textAlign === 'center') originX = (w - m.width) / 2;
+  else if (style.textAlign === 'right' || style.textAlign === 'end') originX = w - m.width;
+
+  return {
+    left: originX - leftExtent,
+    top: baselineY - ascent,
+    right: originX + rightExtent,
+    bottom: baselineY + descent
+  };
+}
+
+// Keep the content inside the viewport and send it back inwards. Assigning the
+// direction outright (rather than negating, as this did before) matters: an
+// item sitting on a wall would otherwise have its velocity flipped again on
+// every frame, buzzing against the edge instead of leaving it. Each axis tests
+// both walls in sequence rather than as an either/or, so content too big to fit
+// settles against one wall instead of alternating between them.
+function bounceChaseOffWalls(entry, width, height) {
+  if (entry.x + entry.hitLeft < 0) {
+    entry.x = -entry.hitLeft;
+    entry.vx = Math.abs(entry.vx);
+  }
+  if (entry.x + entry.hitRight > width) {
+    entry.x = width - entry.hitRight;
+    entry.vx = -Math.abs(entry.vx);
+  }
+  if (entry.y + entry.hitTop < 0) {
+    entry.y = -entry.hitTop;
+    entry.vy = Math.abs(entry.vy);
+  }
+  if (entry.y + entry.hitBottom > height) {
+    entry.y = height - entry.hitBottom;
+    entry.vy = -Math.abs(entry.vy);
+  }
+}
+
 function createCollectionActivity(options) {
   const {
     items,
@@ -293,12 +437,23 @@ function createCollectionActivity(options) {
       const el = createChaseElement(item, position);
       sizeChaseElement(el, params);
       chaseArena.appendChild(el);
-      chaseItems.push({ el, item, x: 0, y: 0, vx: 0, vy: 0, w: 0, h: 0 });
+      chaseItems.push({
+        el, item, x: 0, y: 0, vx: 0, vy: 0, w: 0, h: 0,
+        hitLeft: 0, hitTop: 0, hitRight: 0, hitBottom: 0
+      });
     });
 
     chaseItems.forEach(function(entry) {
       entry.w = entry.el.offsetWidth;
       entry.h = entry.el.offsetHeight;
+      // Measured before any transform is applied, so these stay relative to the
+      // element's own corner and hold good for the whole round.
+      const bounds = getChaseContentBounds(entry.el);
+      entry.hitLeft = bounds.left;
+      entry.hitTop = bounds.top;
+      entry.hitRight = bounds.right;
+      entry.hitBottom = bounds.bottom;
+      // Placed by the full box, so an item never starts with content off-screen.
       entry.x = Math.random() * (window.innerWidth - entry.w);
       entry.y = Math.random() * (window.innerHeight - entry.h);
       const angle = Math.random() * Math.PI * 2;
@@ -331,23 +486,17 @@ function createCollectionActivity(options) {
       chaseItems.forEach(function(entry) {
         entry.x += entry.vx * dt;
         entry.y += entry.vy * dt;
-
-        if (entry.x <= 0 || entry.x >= width - entry.w) {
-          entry.vx *= -1;
-          entry.x = Math.max(0, Math.min(entry.x, width - entry.w));
-        }
-        if (entry.y <= 0 || entry.y >= height - entry.h) {
-          entry.vy *= -1;
-          entry.y = Math.max(0, Math.min(entry.y, height - entry.h));
-        }
+        bounceChaseOffWalls(entry, width, height);
       });
 
       for (let i = 0; i < chaseItems.length; i++) {
         for (let j = i + 1; j < chaseItems.length; j++) {
           const a = chaseItems[i];
           const b = chaseItems[j];
-          const overlapX = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
-          const overlapY = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+          const overlapX = Math.min(a.x + a.hitRight, b.x + b.hitRight) -
+            Math.max(a.x + a.hitLeft, b.x + b.hitLeft);
+          const overlapY = Math.min(a.y + a.hitBottom, b.y + b.hitBottom) -
+            Math.max(a.y + a.hitTop, b.y + b.hitTop);
           if (overlapX <= 0 || overlapY <= 0) continue;
 
           if (overlapX < overlapY) {
@@ -386,6 +535,8 @@ function createCollectionActivity(options) {
     if (chasePaused || session.isSessionEnded()) return;
     const x = e.clientX;
     const y = e.clientY;
+    // Full box plus a margin, on purpose — see getChaseContentBounds. Tighter
+    // collisions must not turn into a tighter target to aim at.
     const hits = chaseItems.filter(function(en) {
       return x >= en.x - chaseHitMargin && x <= en.x + en.w + chaseHitMargin &&
         y >= en.y - chaseHitMargin && y <= en.y + en.h + chaseHitMargin;
@@ -474,4 +625,9 @@ function createCollectionActivity(options) {
     },
     getMode: function() { return mode; }
   };
+}
+
+// Exported for Node's test runner; ignored in the browser (no `module`).
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { clampChaseBounds, bounceChaseOffWalls };
 }
