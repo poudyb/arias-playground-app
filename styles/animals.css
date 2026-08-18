@@ -1,6 +1,4 @@
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
+body {
     min-height: 100vh;
     min-height: 100dvh;
     height: 100dvh;
@@ -16,21 +14,10 @@
     background: linear-gradient(180deg, #e8f5e9 0%, #c8e6c9 35%, #b2dfdb 100%);
     padding: 52px 12px 16px;
   }
-
-  body.chase-active {
+body.chase-active {
     overflow: hidden;
   }
-
-  body.session-ended {
-    pointer-events: none;
-  }
-
-  body.session-ended #session-end-overlay,
-  body.session-ended #session-end-overlay * {
-    pointer-events: auto;
-  }
-
-  .home-btn {
+.home-btn {
     position: fixed;
     top: 12px;
     left: 12px;
@@ -47,13 +34,11 @@
     box-shadow: 0 3px 0 #1b5e20;
     -webkit-tap-highlight-color: transparent;
   }
-
-  .home-btn:active {
+.home-btn:active {
     transform: translateY(2px);
     box-shadow: 0 1px 0 #1b5e20;
   }
-
-  #mode-buttons {
+#mode-buttons {
     position: fixed;
     top: 12px;
     right: 12px;
@@ -64,8 +49,7 @@
     gap: 6px;
     max-width: 62vw;
   }
-
-  .mode-btn {
+.mode-btn {
     background: #eee;
     border: 1px solid #ccc;
     border-radius: 6px;
@@ -75,15 +59,13 @@
     color: #666;
     cursor: pointer;
   }
-  .mode-btn:hover { background: #ddd; }
-  .mode-btn.active {
+.mode-btn.active {
     background: #2e7d32;
     border-color: #1b5e20;
     color: #fff;
   }
-  .mode-btn.active { pointer-events: none; }
-
-  #app-main {
+.mode-btn.active { pointer-events: none; }
+#app-main {
     width: min(80vw, calc(100% - 24px));
     max-width: 960px;
     flex: 1 1 auto;
@@ -92,8 +74,7 @@
     flex-direction: column;
     align-items: center;
   }
-
-  .freeplay-hint {
+.freeplay-hint {
     font-family: var(--font-letters);
     font-size: clamp(1rem, 3.5vw, 1.2rem);
     font-weight: 600;
@@ -102,20 +83,17 @@
     margin-bottom: 8px;
     flex-shrink: 0;
   }
-
-  #view-freeplay {
+#view-freeplay {
     width: 100%;
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
   }
-
-  #view-freeplay[hidden] {
+#view-freeplay[hidden] {
     display: none !important;
   }
-
-  .animal-grid {
+.animal-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(4, minmax(0, 1fr));
@@ -126,8 +104,7 @@
     min-height: calc(80vh - 5.5rem);
     padding: 4px 0 12px;
   }
-
-  .animal-tile {
+.animal-tile {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -144,34 +121,33 @@
     -webkit-tap-highlight-color: transparent;
     transition: transform 0.12s ease, box-shadow 0.12s ease;
   }
-
-  .animal-tile:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 0 #689f38;
-  }
-
-  .animal-tile:active {
+.animal-tile:active {
     transform: translateY(2px);
     box-shadow: 0 2px 0 #689f38;
   }
-
-  .animal-tile.pop {
+.animal-tile.pop {
     animation: tile-pop 0.25s ease-out;
   }
-
-  @keyframes tile-pop {
+@keyframes tile-pop {
     0% { transform: scale(0.92); }
     60% { transform: scale(1.05); }
     100% { transform: scale(1); }
   }
+@media (prefers-reduced-motion: reduce) {.animal-tile { transition: none; }
+.animal-tile.pop { animation: none; }
 
-  @media (prefers-reduced-motion: reduce) {
-    .animal-tile { transition: none; }
-    .animal-tile:hover { transform: none; }
-    .animal-tile.pop { animation: none; }
+  
+
+  /* Hover styling is gated on a device that can actually hover. A tablet has no
+     pointer to hover with, and Safari fakes it: a tap leaves :hover stuck on
+     whatever was tapped until something else is tapped. With the tiles lifting
+     on hover, pressing one game made the previously-pressed one look pressed
+     too - two cards animating for one tap. */
+  @media (hover: hover) {
+  .animal-tile:hover { transform: none; }
   }
-
-  .animal-tile__emoji {
+}
+.animal-tile__emoji {
     flex: 1 1 auto;
     display: flex;
     align-items: center;
@@ -182,8 +158,7 @@
     line-height: 1;
     filter: drop-shadow(0 2px 0 rgba(46, 125, 50, 0.2));
   }
-
-  .animal-tile__name {
+.animal-tile__name {
     flex-shrink: 0;
     font-family: var(--font-letters);
     font-size: clamp(0.85rem, 2.5vmin, 1.1rem);
@@ -192,9 +167,7 @@
     text-align: center;
     line-height: 1.15;
   }
-
-  /* Quiz: keep labels in the DOM for accessibility (aria on button); hide visually so kids match by sound + emoji. */
-  .animal-grid--quiz .animal-tile__name {
+.animal-grid--quiz .animal-tile__name {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -206,24 +179,20 @@
     white-space: nowrap;
     border: 0;
   }
-
-  /* Quiz layout: top half = replay; bottom half = 6×2 grid, spaced for touch. */
-  #app-main.app-main--quiz {
+#app-main.app-main--quiz {
     width: 100%;
     max-width: min(960px, 100%);
     flex: 1 1 auto;
     min-height: 0;
   }
-
-  #view-freeplay.view-freeplay--quiz {
+#view-freeplay.view-freeplay--quiz {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
     width: 100%;
   }
-
-  #quiz-top {
+#quiz-top {
     flex: 0 0 auto;
     min-height: 0;
     max-height: min(34dvh, 260px);
@@ -235,12 +204,10 @@
     padding: 6px 12px 10px;
     box-sizing: border-box;
   }
-
-  #view-freeplay.view-freeplay--quiz #quiz-top:not([hidden]) {
+#view-freeplay.view-freeplay--quiz #quiz-top:not([hidden]) {
     display: flex;
   }
-
-  .quiz-top__title {
+.quiz-top__title {
     font-family: var(--font-letters);
     font-size: clamp(0.95rem, 3.8vw, 1.15rem);
     font-weight: 700;
@@ -249,8 +216,7 @@
     max-width: 22ch;
     line-height: 1.25;
   }
-
-  .quiz-top__sub {
+.quiz-top__sub {
     font-family: var(--font-letters);
     font-size: clamp(0.8rem, 3.2vw, 0.95rem);
     font-weight: 600;
@@ -260,8 +226,7 @@
     line-height: 1.35;
     opacity: 0.95;
   }
-
-  .quiz-replay-btn {
+.quiz-replay-btn {
     width: min(32vmin, 9.5rem);
     height: min(32vmin, 9.5rem);
     min-width: 6.75rem;
@@ -280,18 +245,11 @@
     touch-action: manipulation;
     transition: transform 0.1s ease, box-shadow 0.1s ease;
   }
-
-  .quiz-replay-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 0 #558b2f, 0 12px 30px rgba(27, 94, 32, 0.2);
-  }
-
-  .quiz-replay-btn:active {
+.quiz-replay-btn:active {
     transform: translateY(3px) scale(0.98);
     box-shadow: 0 3px 0 #558b2f;
   }
-
-  .view-freeplay--quiz .animal-grid {
+.view-freeplay--quiz .animal-grid {
     flex: 1 1 auto;
     min-height: min(52dvh, 28rem);
     max-height: none;
@@ -303,24 +261,20 @@
     align-content: center;
     justify-content: center;
   }
-
-  /* iPad / narrow width: wider cells (12 tiles → 4×3 or 3×4). */
-  @media (max-width: 1024px) {
+@media (max-width: 1024px) {
     .view-freeplay--quiz .animal-grid {
       grid-template-columns: repeat(4, minmax(0, 1fr));
       grid-template-rows: repeat(3, minmax(4.75rem, min(36vw, 10rem)));
     }
   }
-
-  @media (max-width: 520px) {
+@media (max-width: 520px) {
     .view-freeplay--quiz .animal-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
       grid-template-rows: repeat(4, minmax(4.5rem, min(30vw, 9rem)));
       gap: clamp(10px, 2.5vw, 16px);
     }
   }
-
-  .view-freeplay--quiz .animal-tile {
+.view-freeplay--quiz .animal-tile {
     min-height: 0;
     min-width: 0;
     height: 100%;
@@ -334,9 +288,7 @@
     border-width: 3px;
     overflow: hidden;
   }
-
-  /* Fallback when container query units are unavailable */
-  .view-freeplay--quiz .animal-tile__emoji {
+.view-freeplay--quiz .animal-tile__emoji {
     flex: 1 1 auto;
     width: 100%;
     height: 100%;
@@ -348,9 +300,7 @@
     font-size: clamp(3.75rem, min(24vmin, 26vw), 8rem);
     line-height: 1;
   }
-
-  /* Scale emoji from tile size so quiz animals fill most of the tile without changing tile dimensions. */
-  @supports (container-type: size) {
+@supports (container-type: size) {
     .view-freeplay--quiz .animal-tile {
       container-type: size;
     }
@@ -363,15 +313,13 @@
       font-size: clamp(3.75rem, min(80cqw, 80cqh), 8rem);
     }
   }
-
-  @media (min-width: 520px) {
+@media (min-width: 520px) {
     .animal-grid:not(.animal-grid--quiz) {
       grid-template-columns: repeat(4, 1fr);
       grid-template-rows: repeat(3, minmax(0, 1fr));
     }
   }
-
-  #play-timer {
+#play-timer {
     display: none;
     position: fixed;
     top: 12px;
@@ -388,27 +336,7 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     pointer-events: none;
   }
-
-  #play-timer.is-visible {
-    display: block;
-  }
-
-  #session-end-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 300;
-    background: rgba(0, 0, 0, 0.45);
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-  }
-
-  body.session-ended #session-end-overlay {
-    display: flex;
-  }
-
-  .session-end-card {
+.session-end-card {
     max-width: 24rem;
     width: 100%;
     background: linear-gradient(160deg, #e8f5e9 0%, #c8e6c9 40%, #b2dfdb 100%);
@@ -422,8 +350,7 @@
     position: relative;
     overflow: hidden;
   }
-
-  .session-end-card::before {
+.session-end-card::before {
     content: "🌿";
     position: absolute;
     top: 0.5rem;
@@ -432,8 +359,7 @@
     opacity: 0.9;
     pointer-events: none;
   }
-
-  .session-end-card::after {
+.session-end-card::after {
     content: "🐾";
     position: absolute;
     bottom: 3.5rem;
@@ -442,87 +368,51 @@
     opacity: 0.85;
     pointer-events: none;
   }
-
-  .session-end-card h2 {
+.session-end-card h2 {
     font-size: clamp(1.5rem, 5.5vw, 1.85rem);
     color: #1b5e20;
     margin-bottom: 0.25rem;
     text-align: center;
     text-shadow: 0 2px 0 rgba(255, 255, 255, 0.8);
   }
-
-  .session-end-card .session-end-sub {
-    font-size: clamp(0.95rem, 3.2vw, 1.05rem);
-    font-weight: 600;
+.session-end-card .session-end-sub {
     color: #33691e;
-    text-align: center;
-    margin-bottom: 1.1rem;
   }
-
-  .session-end-stats {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin: 0 0 1.2rem;
-  }
-
-  .score-section {
+.score-section {
     border-radius: 16px;
     padding: 0.75rem 0.85rem;
     border: 3px solid rgba(255, 255, 255, 0.95);
     box-shadow: 0 3px 0 rgba(0, 0, 0, 0.08);
   }
-
-  .score-section--free {
+.score-section--free {
     background: linear-gradient(135deg, #fff59d 0%, #dce775 100%);
   }
-
-  .score-section--quiz {
+.score-section--quiz {
     background: linear-gradient(135deg, #b3e5fc 0%, #81d4fa 100%);
   }
-
-  .score-section--chase {
+.score-section--chase {
     background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%);
   }
-
-  .score-section__head {
+.score-section__head {
     display: flex;
     align-items: center;
     gap: 0.4rem;
     margin-bottom: 0.35rem;
   }
-
-  .score-section__icon {
-    font-size: 1.35rem;
-    line-height: 1;
-  }
-
-  .score-section__title {
-    font-size: clamp(1rem, 3.5vw, 1.15rem);
-    font-weight: 700;
+.score-section__title {
     color: #1b5e20;
   }
-
-  .score-section__body {
-    font-size: clamp(0.88rem, 3vw, 0.98rem);
-    font-weight: 600;
-    color: #333;
-    line-height: 1.45;
-  }
-
-  .score-section--muted .score-section__body {
+.score-section--muted .score-section__body {
     color: #555;
     font-weight: 500;
   }
-
-  .score-pills {
+.score-pills {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
     margin-top: 0.4rem;
   }
-
-  .score-pill {
+.score-pill {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -536,39 +426,26 @@
     border: 2px solid rgba(46, 125, 50, 0.25);
     box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06);
   }
-
-  .score-celebrate {
+.score-celebrate {
     font-size: 0.95rem;
     font-weight: 700;
     color: #1b5e20;
   }
-
-  .session-end-home {
-    display: block;
-    text-align: center;
-    font-weight: 600;
-    font-size: 1rem;
-    padding: 12px 16px;
-    border-radius: 999px;
+.session-end-home {
     background: #2e7d32;
-    color: #fff;
-    text-decoration: none;
     box-shadow: 0 3px 0 #1b5e20;
   }
-
-  .session-end-home:active {
+.session-end-home:active {
     transform: translateY(2px);
     box-shadow: 0 1px 0 #1b5e20;
   }
-
-  #chase-arena {
+#chase-arena {
     display: none;
     position: fixed;
     inset: 0;
     z-index: 10;
   }
-
-  .chase-animal {
+.chase-animal {
     position: absolute;
     line-height: 1;
     cursor: pointer;
@@ -584,45 +461,25 @@
     font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
     filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.18));
   }
-
-  .chase-animal:focus {
+.chase-animal:focus {
     outline: none;
   }
-
-  .chase-animal:focus-visible {
+.chase-animal:focus-visible {
     outline: 3px solid rgba(46, 125, 50, 0.75);
     outline-offset: 6px;
     border-radius: 12px;
   }
-
-  .chase-animal:active {
+.chase-animal:active {
     transform: scale(0.92);
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.14));
   }
-
-  .celebration-emoji {
-    position: fixed;
-    z-index: 55;
-    font-size: 12vw;
-    pointer-events: none;
-    animation: emoji-pop 1.5s ease-out forwards;
-  }
-
-  @keyframes emoji-pop {
+@keyframes emoji-pop {
     0%   { transform: scale(0) rotate(-20deg); opacity: 1; }
     30%  { transform: scale(1.2) rotate(5deg); opacity: 1; }
     50%  { transform: scale(1) rotate(0deg); opacity: 1; }
     100% { transform: scale(1.3) rotate(10deg); opacity: 0; }
   }
-
-  .confetti {
-    position: fixed;
-    pointer-events: none;
-    z-index: 60;
-    animation: confetti-burst var(--duration) ease-out forwards;
-  }
-
-  @keyframes confetti-burst {
+@keyframes confetti-burst {
     0% {
       transform: translate(0, 0) rotate(0deg);
       opacity: 1;
@@ -632,16 +489,28 @@
       opacity: 0;
     }
   }
-
-  @media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce) {
     .session-end-card::before,
     .session-end-card::after { opacity: 0.5; }
   }
-  .hint-flash {
-    animation: hint-flash-pulse 1.1s ease-out;
-  }
-
-  @keyframes hint-flash-pulse {
+@keyframes hint-flash-pulse {
     0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 179, 0, 0)); }
     45% { filter: drop-shadow(0 0 13px rgba(255, 179, 0, 0.95)); }
+  }
+
+  /* Hover styling is gated on a device that can actually hover. A tablet has no
+     pointer to hover with, and Safari fakes it: a tap leaves :hover stuck on
+     whatever was tapped until something else is tapped. With the tiles lifting
+     on hover, pressing one game made the previously-pressed one look pressed
+     too - two cards animating for one tap. */
+  @media (hover: hover) {
+  .mode-btn:hover { background: #ddd; }
+  .animal-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 #689f38;
+  }
+  .quiz-replay-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 0 #558b2f, 0 12px 30px rgba(27, 94, 32, 0.2);
+  }
   }
