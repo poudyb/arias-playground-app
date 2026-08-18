@@ -474,7 +474,9 @@ function enterMatch() {
   // Grade every lit segment against the clock above, one line at a time: a line
   // that belongs takes on that clock's live color right away, so she can see
   // each stroke land instead of waiting for the whole digit to be right. A line
-  // that doesn't belong stays flat and unlit-looking. Segments she hasn't
+  // that doesn't belong turns pulsing red — it has to shout as loudly as the
+  // correct ones do, or a stray stroke leaves the clock looking right while
+  // the chime never comes and she can't tell why. Segments she hasn't
   // turned on are left alone — colouring those in would just trace the answer.
   function paintSegments(targets) {
     ['h1', 'h2', 'm1', 'm2'].forEach(function(pos) {

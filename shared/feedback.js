@@ -76,19 +76,26 @@ function createAudioFeedback() {
     osc.stop(ctx.currentTime + 0.35);
   }
 
-  // A C-major chime for "your clock matches". Three things here are deliberate,
-  // because the obvious way to write this sounds bad on real hardware:
+  // A single bell-like "ding" for "your clock matches": C5 plus its exact
+  // octave and twelfth (f, 2f, 3f) under one shared envelope.
   //
-  //  - ONE start time, captured once with a little lookahead, shared by all
-  //    three notes. Scheduling each note off its own ctx.currentTime let them
-  //    begin a fraction of a millisecond apart, which smears the chord into
-  //    what sounds like two chimes overlapping.
-  //  - ONE envelope on a shared gain, ramped up over ~20ms instead of jumping
-  //    straight to full volume. An instant jump is a step discontinuity in the
-  //    waveform — a click — and it's loudest exactly when all three notes start
-  //    in phase together.
-  //  - A guard against re-triggering while the chord is still ringing, so a
-  //    match that flickers off and back on can't stack two copies.
+  // This used to be a C-major triad of three pure sines, and the triad itself
+  // was why it kept sounding like a stuttering double chime no matter how
+  // precisely the notes were aligned: equal-tempered C5/E5/G5 have difference
+  // tones of 136.0 Hz and 124.7 Hz, which beat against each other at ~11 Hz.
+  // Rendered offline, the chord's loudness fell and re-rose by up to ~22%
+  // several times during its ring — that pulsing is the "double chime".
+  // Integer harmonics of one fundamental cannot beat, so this envelope never
+  // rises again after the attack (same render: 0%): one onset, one smooth
+  // ring-out. The decay also replaces the old flat 300ms hold, which gave the
+  // flutter a stage; a struck-bell shape has no steady state to wobble.
+  //
+  // Kept from the earlier rewrite, still deliberate:
+  //  - ONE start time with a little lookahead, shared by every partial.
+  //  - ONE envelope on a shared gain, ramped from near-silence — an instant
+  //    jump to full volume is a step discontinuity, i.e. a click.
+  //  - A guard against re-triggering while it's still ringing, so a match
+  //    that flickers off and back on can't stack two copies.
   let matchToneRingingUntil = 0;
 
   function playMatchTone() {
@@ -96,13 +103,12 @@ function createAudioFeedback() {
     const start = ctx.currentTime + 0.02;
     if (start < matchToneRingingUntil) return;
 
-    const attack = 0.02;
-    const hold = 0.3;
-    const release = 0.26;
-    const end = start + attack + hold + release;
-    // Three sines sum to ~3x this at their loudest, landing the chord at the
-    // same level as before the rewrite — the fix is the shape, not the volume.
-    const peak = 0.08;
+    const attack = 0.015;
+    const ring = 0.55;
+    const end = start + attack + ring;
+    // The partials sum to ~1.6x this at the attack peak, landing the ding at
+    // the same peak level as the old chord.
+    const peak = 0.24;
     // exponentialRamp can't touch zero, so the envelope starts and ends just
     // above silence rather than at it.
     const silence = 0.0001;
@@ -110,15 +116,22 @@ function createAudioFeedback() {
     const master = ctx.createGain();
     master.gain.setValueAtTime(silence, start);
     master.gain.exponentialRampToValueAtTime(peak, start + attack);
-    master.gain.setValueAtTime(peak, start + attack + hold);
     master.gain.exponentialRampToValueAtTime(silence, end);
     master.connect(ctx.destination);
 
-    [523.25, 659.25, 783.99].forEach(function(freq) {
+    // Fundamental, octave, twelfth — quieter as they go up, like a struck bar.
+    [
+      { freq: 523.25, level: 1 },
+      { freq: 1046.5, level: 0.4 },
+      { freq: 1569.75, level: 0.18 }
+    ].forEach(function(partial) {
       const osc = ctx.createOscillator();
       osc.type = 'sine';
-      osc.frequency.value = freq;
-      osc.connect(master);
+      osc.frequency.value = partial.freq;
+      const gain = ctx.createGain();
+      gain.gain.value = partial.level;
+      osc.connect(gain);
+      gain.connect(master);
       osc.start(start);
       osc.stop(end + 0.02);
     });

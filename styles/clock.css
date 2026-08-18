@@ -304,11 +304,24 @@
       drop-shadow(0 0 8px var(--led-match-color));
   }
 
-  /* A segment she lit that doesn't belong: visible, but flat and unlit-looking,
-     so it reads as "this line isn't joining in" rather than as a mistake. */
+  /* A segment she lit that doesn't belong: unmistakably red, pulsing gently.
+     This used to be flat and nearly invisible so a wrong line wouldn't feel
+     punishing — but that just hid the reason the clocks weren't matching,
+     and a clock that LOOKS right yet never earns the chime is the harshest
+     outcome of all. The deep red sits well apart from the pastel LED colors
+     the cycling hue can produce, and the pulse tells it apart from steady
+     correct segments even when the cycle passes through red. */
   .clock-face--manual .clock-digit-svg .seg.on.seg-wrong {
-    fill: rgba(178, 235, 242, 0.32);
-    filter: none;
+    fill: #ff1744;
+    filter:
+      drop-shadow(0 0 3px rgba(255, 23, 68, 0.85))
+      drop-shadow(0 0 8px rgba(213, 0, 0, 0.6));
+    animation: seg-wrong-pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes seg-wrong-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
   }
 
   .clock-digit-svg .seg {
@@ -454,6 +467,8 @@
     .clock-option:hover { transform: none; }
     .clock-option.pop { animation: none; }
     .clock-digit-svg .seg { transition: none; }
+    /* Without the pulse the steady red + glow still reads as wrong. */
+    .clock-face--manual .clock-digit-svg .seg.on.seg-wrong { animation: none; }
   }
 
   #play-timer {
