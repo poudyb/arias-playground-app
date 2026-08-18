@@ -14,4 +14,10 @@ errors use a small shake and sound, not a full-screen failure mark. Reuse the
 ARASAAC image pool in `assets/spelling/` when it fits, and verify the image
 rather than trusting its filename.
 
+Type comes from `styles/fonts.css`, which every page links before its own
+stylesheet: `var(--font-letters)` for anything the child reads as letters, and
+`var(--font-ui)` for small parent-facing chrome. Don't hard-code a family. The
+letter face has to keep I, l and 1 as three different shapes, since capitals and
+lowercase are shown side by side.
+
 Run `node --test "test/*.test.js"` for the shared logic.

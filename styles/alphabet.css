@@ -9,7 +9,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: var(--font-ui);
     user-select: none;
     -webkit-user-select: none;
     touch-action: manipulation;
@@ -20,7 +20,7 @@
     top: 12px;
     left: 12px;
     z-index: 150;
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: var(--font-letters);
     font-size: 15px;
     font-weight: 600;
     padding: 10px 16px;
@@ -46,7 +46,7 @@
   }
 
   #letter {
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: var(--font-letters);
     font-size: 50vw;
     font-weight: bold;
     line-height: 1;
@@ -91,7 +91,7 @@
     border-radius: 6px;
     padding: 6px 14px;
     font-size: 14px;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: var(--font-ui);
     color: #666;
     cursor: pointer;
   }
@@ -180,7 +180,7 @@
       background: #f0f0f0;
       font-size: 5vw;
       font-weight: bold;
-      font-family: Georgia, "Times New Roman", serif;
+      font-family: var(--font-letters);
       color: #333;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
@@ -232,7 +232,7 @@
 
   .chase-char {
     position: absolute;
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: var(--font-letters);
     font-weight: bold;
     line-height: 1;
     cursor: pointer;
@@ -249,7 +249,7 @@
     left: 50%;
     transform: translateX(-50%);
     z-index: 140;
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: var(--font-letters);
     font-size: 14px;
     font-weight: 600;
     padding: 8px 14px;
@@ -294,7 +294,7 @@
     background: linear-gradient(160deg, #fff9e6 0%, #ffe0f0 40%, #e3f2fd 100%);
     border-radius: 24px;
     padding: clamp(1.35rem, 4vw, 1.85rem);
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: var(--font-letters);
     box-shadow:
       0 4px 0 #ff6ec7,
       0 16px 48px rgba(0, 0, 0, 0.22);

@@ -9,7 +9,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: var(--font-ui);
     user-select: none;
     -webkit-user-select: none;
     touch-action: manipulation;
@@ -35,7 +35,7 @@
     top: 12px;
     left: 12px;
     z-index: 150;
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: var(--font-letters);
     font-size: 15px;
     font-weight: 600;
     padding: 10px 16px;
@@ -71,7 +71,7 @@
     border-radius: 6px;
     padding: 6px 12px;
     font-size: 13px;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: var(--font-ui);
     color: #666;
     cursor: pointer;
   }
@@ -94,7 +94,7 @@
   }
 
   .freeplay-hint {
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: var(--font-letters);
     font-size: clamp(1rem, 3.5vw, 1.2rem);
     font-weight: 600;
     color: #bf360c;
@@ -192,7 +192,7 @@
 
   .color-tile__name {
     flex-shrink: 0;
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: var(--font-letters);
     font-size: clamp(0.95rem, 3.2vmin, 1.2rem);
     font-weight: 700;
     color: #bf360c;
@@ -246,7 +246,7 @@
   }
 
   .quiz-top__title {
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: var(--font-letters);
     font-size: clamp(0.95rem, 3.8vw, 1.15rem);
     font-weight: 700;
     color: #bf360c;
@@ -256,7 +256,7 @@
   }
 
   .quiz-top__sub {
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: var(--font-letters);
     font-size: clamp(0.8rem, 3.2vw, 0.95rem);
     font-weight: 600;
     color: #e65100;
@@ -336,7 +336,7 @@
     left: 50%;
     transform: translateX(-50%);
     z-index: 140;
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: var(--font-letters);
     font-size: 14px;
     font-weight: 600;
     padding: 8px 14px;
@@ -372,7 +372,7 @@
     background: linear-gradient(160deg, #fff8e1 0%, #ffecb3 40%, #ffcc80 100%);
     border-radius: 24px;
     padding: clamp(1.35rem, 4vw, 1.85rem);
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: var(--font-letters);
     box-shadow:
       0 4px 0 #e65100,
       0 16px 48px rgba(0, 0, 0, 0.22);

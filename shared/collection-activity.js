@@ -78,8 +78,8 @@ function getChaseMeasureCtx() {
 // this used, but a range over a text node reports the *line box* — full advance
 // width, full line-height — which for these shrink-wrapped, zero-padding
 // elements is exactly the element box, so it tightened nothing. Canvas
-// TextMetrics is the only thing that reports real ink extents: a bold Georgia
-// "G" only inks about the middle three-quarters of the line box it sits in.
+// TextMetrics is the only thing that reports real ink extents: a bold "G" only
+// inks about the middle three-quarters of the line box it sits in.
 function getChaseTextInkBounds(el, w, h) {
   const ctx = getChaseMeasureCtx();
   if (!ctx) return null;

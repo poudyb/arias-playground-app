@@ -1,0 +1,41 @@
+/* The one place the app's typefaces are decided. Every page links this before
+   its own stylesheet and then refers to the two variables below, so changing a
+   face is a one-line edit here rather than a sweep through eight files.
+
+   Why Andika and not a serif: the letters used to be set in Georgia, chosen so
+   a capital I couldn't be mistaken for a lowercase l. It solved that, but with
+   capitals and lowercase now shown side by side ("Aa"), all those serifs sat
+   next to each other and the pairs turned noisy and hard for a small child to
+   read.
+
+   Andika (SIL, OFL — see assets/fonts/OFL.txt) is drawn for exactly this
+   reader. It keeps the thing Georgia was picked for — its capital I has top and
+   bottom crossbars, so I, l and 1 stay three different shapes — and it adds
+   what a serif face can't: a single-storey "a" and "g", the shapes a child is
+   taught to write, rather than the two-storey printer's forms.
+
+   The files are the Latin subset (~19KB each), served from the repo so the app
+   still works straight from file:// with no network. */
+
+@font-face {
+  font-family: 'Andika';
+  src: url('../assets/fonts/andika-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Andika';
+  src: url('../assets/fonts/andika-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Anything a child reads as letters: the big letter, the keys, the words. */
+  --font-letters: 'Andika', 'Trebuchet MS', system-ui, sans-serif;
+  /* Small parent-facing chrome (mode buttons, timer) stays on the system UI face. */
+  --font-ui: system-ui, -apple-system, sans-serif;
+}
