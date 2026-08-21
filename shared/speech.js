@@ -47,6 +47,27 @@ function whenVoicesReady(synth, go) {
   synth.addEventListener('voiceschanged', onReady);
 }
 
+// Every word this app speaks is English, but an utterance with no voice set
+// gets the device's default one — which on a tablet set to another language
+// reads the letter names and animal words in that language's phonetics. Safari
+// was the original culprit here. Call this only once voices are ready.
+//
+// No English voice available means leaving `voice` unset: the browser's own
+// default is a better guess than an arbitrary entry from the list.
+function pickEnglishVoice(synth) {
+  try {
+    const list = synth.getVoices();
+    if (!list || !list.length) return null;
+    for (let i = 0; i < list.length; i++) {
+      const lang = list[i].lang || '';
+      if (lang.indexOf('en') === 0) return list[i];
+    }
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function speakText(text, options = {}) {
   const { rate = 0.9 } = options;
   const synth = window.speechSynthesis;
@@ -69,6 +90,10 @@ function speakText(text, options = {}) {
 
   function go() {
     if (synth.paused) synth.resume();
+    // Picked here rather than above because voices are only guaranteed loaded
+    // inside this callback.
+    const voice = pickEnglishVoice(synth);
+    if (voice) utterance.voice = voice;
     synth.speak(utterance);
   }
 
