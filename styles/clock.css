@@ -178,6 +178,14 @@ body {
     box-shadow: 0 0 4px #80deea;
     opacity: 0.85;
   }
+
+  /* The clock she is building blinks on the same beat as the one above it —
+     Match drives --colon-opacity on both faces from one value. The still
+     0.85 above stays the fallback for the faces nothing drives (the quiz
+     options and the picture-only clocks). */
+  .clock-face--manual .clock-colon__dot {
+    opacity: var(--colon-opacity, 0.85);
+  }
 .clock-digit-svg,
   .clock-colon__dot {
     --led-color: hsl(var(--led-hue, 50), 95%, 60%);

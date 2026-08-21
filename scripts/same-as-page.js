@@ -326,6 +326,7 @@ let memoryActive = false;
 let memoryLevelIdx = 0;
 let memoryCards = [];
 let memoryFirstIdx = -1;
+let memoryWordTimer = null;
 let memoryLocked = false;
 let memoryUnforced = 0;
 let memoryMatchedPairs = 0;
@@ -393,14 +394,21 @@ function clearMemoryTimers() {
     clearTimeout(memoryIntroTimer);
     memoryIntroTimer = null;
   }
+  if (memoryWordTimer != null) {
+    clearTimeout(memoryWordTimer);
+    memoryWordTimer = null;
+  }
 }
 
+// Returns the utterance for the name it just said, so a match can wait for the
+// word to finish before it celebrates (null when nothing was spoken).
 function flipMemoryUp(card) {
   card.faceUp = true;
   card.el.classList.add('is-flipped');
   card.el.setAttribute('aria-label', card.name + ', face up');
   // Say what was revealed so the child sees it and hears it named.
-  if (!session.isSessionEnded()) speakText(card.name, { rate: 0.9 });
+  if (session.isSessionEnded()) return null;
+  return speakText(card.name, { rate: 0.9 });
 }
 
 function flipMemoryDown(card) {
@@ -484,7 +492,7 @@ function onMemoryCardTap(index) {
     memoryIntroTimer = null;
   }
 
-  flipMemoryUp(card);
+  const spoken = flipMemoryUp(card);
 
   if (memoryFirstIdx === -1) {
     memoryFirstIdx = index;
@@ -495,13 +503,40 @@ function onMemoryCardTap(index) {
   memoryFirstIdx = -1;
 
   if (first.key === card.key) {
-    resolveMemoryMatch(first, card);
+    resolveMemoryMatch(first, card, spoken);
   } else {
     resolveMemoryMismatch(first, card);
   }
 }
 
-function resolveMemoryMatch(a, b) {
+// Run `go` once the card's name has finished being spoken. Speech can also
+// finish without telling us — no voice installed, the device muted, or the
+// utterance dropped because the first card of the pair is still saying the very
+// same word — so a timer always backs it up.
+function afterMemoryWord(utterance, go) {
+  let ran = false;
+  function run() {
+    if (ran) return;
+    ran = true;
+    if (memoryWordTimer != null) {
+      clearTimeout(memoryWordTimer);
+      memoryWordTimer = null;
+    }
+    if (!memoryActive || session.isSessionEnded()) return;
+    go();
+  }
+  if (utterance) {
+    utterance.addEventListener('end', run);
+    utterance.addEventListener('error', run);
+    memoryWordTimer = window.setTimeout(run, 2200);
+  } else {
+    // Nothing to listen to, but still leave a beat so the celebration doesn't
+    // land on top of the word.
+    memoryWordTimer = window.setTimeout(run, 850);
+  }
+}
+
+function resolveMemoryMatch(a, b, spoken) {
   memoryLocked = true;
   a.matched = true;
   b.matched = true;
@@ -514,26 +549,24 @@ function resolveMemoryMatch(a, b) {
 
   popMemoryArt(a);
   popMemoryArt(b);
-  audio.playChime();
-  spawnMemoryConfetti(a.el);
-  spawnMemoryConfetti(b.el);
 
-  // Let the matched pair sit face-up for a beat so the child takes it in before
-  // it fades away.
+  // Name first, celebration second. The two used to happen together, which
+  // talked over the word she had just earned. Now the pair bursts and goes in
+  // the same instant, so the confetti reads as the cards themselves popping
+  // rather than as decoration sprayed across the board.
   const total = MEMORY_LEVELS[memoryLevelIdx].pairs;
-  memoryTimer = window.setTimeout(function() {
-    memoryTimer = null;
+  afterMemoryWord(spoken, function() {
+    audio.playChime();
+    spawnMemoryConfetti(a.el);
+    spawnMemoryConfetti(b.el);
     a.el.classList.add('is-matched');
     b.el.classList.add('is-matched');
-    if (memoryMatchedPairs >= total) {
-      memoryTimer = window.setTimeout(function() {
-        memoryTimer = null;
-        completeMemoryLevel();
-      }, 560);
-    } else {
-      memoryLocked = false;
-    }
-  }, 1050);
+    memoryTimer = window.setTimeout(function() {
+      memoryTimer = null;
+      if (memoryMatchedPairs >= total) completeMemoryLevel();
+      else memoryLocked = false;
+    }, 620);
+  });
 }
 
 function resolveMemoryMismatch(a, b) {

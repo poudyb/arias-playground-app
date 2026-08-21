@@ -174,8 +174,7 @@ function renderClockTime(face, h, m, s, opts) {
     slots.m2.style.setProperty('--led-hue', String(hue));
     if (slots.s1) slots.s1.style.setProperty('--led-hue', String(hue));
     if (slots.s2) slots.s2.style.setProperty('--led-hue', String(hue));
-    const colonPhase = ((secondsVal % 2) + mf) / 2;
-    const colonOpacity = 0.35 + 0.65 * Math.abs(Math.cos(colonPhase * Math.PI));
+    const colonOpacity = colonOpacityFor(secondsVal, mf);
     face._colons.forEach(function(c) {
       c.style.setProperty('--colon-opacity', String(colonOpacity));
       // Drive the colon's color from the same hue as the digits so it stays in
@@ -191,6 +190,21 @@ function renderClockTime(face, h, m, s, opts) {
 function ledHueFor(h, m, s, msFraction) {
   const elapsed = h * 3600 + m * 60 + s + (msFraction || 0);
   return (elapsed * 360 / 600) % 360;
+}
+
+// How far into the wrong-segment pulse everything currently is. Must match the
+// seg-wrong-pulse duration in clock.css.
+const WRONG_PULSE_MS = 1000;
+
+function wrongPulseOffset() {
+  return '-' + ((performance.now() % WRONG_PULSE_MS) / 1000).toFixed(3) + 's';
+}
+
+// The running clock's colon fades in and out once a second. Match mode reads
+// the same value so the copy below blinks on the same beat.
+function colonOpacityFor(s, msFraction) {
+  const phase = ((s % 2) + (msFraction || 0)) / 2;
+  return 0.35 + 0.65 * Math.abs(Math.cos(phase * Math.PI));
 }
 
 function segsForDigitArray(value) {
@@ -485,8 +499,17 @@ function enterMatch() {
       for (let i = 0; i < segs.length; i++) {
         const name = segs[i].getAttribute('data-seg');
         const lit = manualState[pos].has(name);
+        const wrong = lit && !target.has(name);
         segs[i].classList.toggle('seg-right', lit && target.has(name));
-        segs[i].classList.toggle('seg-wrong', lit && !target.has(name));
+        if (wrong && !segs[i].classList.contains('seg-wrong')) {
+          // A CSS animation starts counting when it's applied, so segments
+          // marked wrong at different moments would each pulse to their own
+          // beat — several bits of the clock blinking out of step, which is
+          // tiring to look at. Starting each one part-way into the cycle, by
+          // exactly how far the shared clock already is, lines them all up.
+          segs[i].style.animationDelay = wrongPulseOffset();
+        }
+        segs[i].classList.toggle('seg-wrong', wrong);
       }
     });
   }
@@ -555,10 +578,16 @@ function enterMatch() {
   startTickLoop(function(now) {
     renderClockTime(realFace, get12Hour(now), now.getMinutes(), now.getSeconds(), realClockOpts(now));
     // Hand the manual face the live hue so its correct segments stay in step
-    // with the real clock's color as it drifts.
+    // with the real clock's color as it drifts, and the same colon beat so the
+    // copy blinks along with the clock it's copying instead of sitting still.
+    const msFraction = now.getMilliseconds() / 1000;
     manualFace.style.setProperty('--led-hue', String(
-      ledHueFor(get12Hour(now), now.getMinutes(), now.getSeconds(), now.getMilliseconds() / 1000)
+      ledHueFor(get12Hour(now), now.getMinutes(), now.getSeconds(), msFraction)
     ));
+    const colonOpacity = String(colonOpacityFor(now.getSeconds(), msFraction));
+    manualFace._colons.forEach(function(c) {
+      c.style.setProperty('--colon-opacity', colonOpacity);
+    });
     const ss = formatTwo(now.getSeconds());
     renderDigit(manualFace._slots.s1, Number(ss[0]));
     renderDigit(manualFace._slots.s2, Number(ss[1]));

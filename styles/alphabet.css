@@ -196,6 +196,8 @@ body {
 .chase-char {
     position: absolute;
     font-family: var(--font-letters);
+    /* Chase is the one place a two-digit number flies past on its own. */
+    letter-spacing: var(--digit-tighten);
     font-weight: bold;
     line-height: 1;
     cursor: pointer;

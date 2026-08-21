@@ -38,4 +38,12 @@
   --font-letters: 'Andika', 'Trebuchet MS', system-ui, sans-serif;
   /* Small parent-facing chrome (mode buttons, timer) stays on the system UI face. */
   --font-ui: system-ui, -apple-system, sans-serif;
+
+  /* Andika's digits are tabular: every one is drawn to the same width, so they
+     line up in columns. That's good for a table and wrong for a number a child
+     reads as one thing — a narrow "1" sits in a full-width cell, and "10" comes
+     out with a gap down the middle that makes it look like a 1 and a 0 rather
+     than ten. Apply this wherever digits stand next to each other. It's a
+     property of this typeface, so it's decided here with the typeface. */
+  --digit-tighten: -0.07em;
 }
