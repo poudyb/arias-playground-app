@@ -376,7 +376,6 @@ main {
     filter: drop-shadow(0 0 6px rgba(255, 152, 0, 0.55));
   }
 .game-tile__art--clock-digits .game-tile__art__digit {
-    letter-spacing: var(--digit-tighten);
     display: inline-flex;
     align-items: center;
     justify-content: center;

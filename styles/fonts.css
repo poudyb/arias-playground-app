@@ -43,7 +43,8 @@
      line up in columns. That's good for a table and wrong for a number a child
      reads as one thing — a narrow "1" sits in a full-width cell, and "10" comes
      out with a gap down the middle that makes it look like a 1 and a 0 rather
-     than ten. Apply this wherever digits stand next to each other. It's a
-     property of this typeface, so it's decided here with the typeface. */
+     than ten. Apply this wherever digits set in THIS face stand next to each
+     other — not to the monospace clock readouts, which are meant to be evenly
+     spaced. It's a property of this typeface, so it's decided here with it. */
   --digit-tighten: -0.07em;
 }
