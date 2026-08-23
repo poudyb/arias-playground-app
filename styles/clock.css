@@ -172,7 +172,6 @@ body {
     transition: opacity 0.18s ease;
   }
 .clock-face--off .clock-colon__dot,
-  .clock-face--manual .clock-colon__dot,
   .clock-face--option .clock-colon__dot {
     background: #80deea;
     box-shadow: 0 0 4px #80deea;
@@ -180,10 +179,22 @@ body {
   }
 
   /* The clock she is building blinks on the same beat as the one above it —
-     Match drives --colon-opacity on both faces from one value. The still
-     0.85 above stays the fallback for the faces nothing drives (the quiz
-     options and the picture-only clocks). */
+     Match drives --colon-opacity on both faces from one value — and wears the
+     same colour as it too.
+
+     A colon is punctuation on both faces, not a segment she sets, so it should
+     read the same on both. A fixed cyan here was a frozen snapshot of one point
+     in the clock's hue cycle: that cycle runs the whole way round every ten
+     minutes, so the two colons agreed for a few seconds out of every ten and
+     sat visibly apart the rest of the time — then snapped into step the instant
+     the time came out right. The blink was already shared; this is the colour
+     catching up.
+
+     The still 0.85 above stays the fallback for the faces nothing drives (the
+     quiz options and the picture-only clocks), which have no hue to follow. */
   .clock-face--manual .clock-colon__dot {
+    background: var(--led-color);
+    box-shadow: 0 0 4px var(--led-color);
     opacity: var(--colon-opacity, 0.85);
   }
 .clock-digit-svg,

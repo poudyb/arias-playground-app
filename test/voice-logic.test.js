@@ -23,9 +23,29 @@ test('an Australian iPad still gets the Australian voice', () => {
   assert.strictEqual(chooseEnglishVoice(IPAD_VOICES, ['en-AU']).name, 'Karen');
 });
 
-test("the browser's own default wins when it is already English", () => {
-  const voices = IPAD_VOICES.concat(voice('Moira', 'en-IE', true));
-  assert.strictEqual(chooseEnglishVoice(voices, ['en-US']).name, 'Moira');
+test('a default flag set on every English voice cannot resurrect Karen', () => {
+  // The failure mode we cannot verify on a real iPad: if WebKit ever reports
+  // `default` on everything, leading with that flag would hand back the first
+  // en* entry - which on iOS is en-AU. The device's own tag has to win.
+  const allFlagged = IPAD_VOICES.map((v) => ({ ...v, default: true }));
+  assert.strictEqual(chooseEnglishVoice(allFlagged, ['en-US']).name, 'Samantha');
+});
+
+test('a default flag set on no voice at all still resolves by tag', () => {
+  const noneFlagged = IPAD_VOICES.map((v) => ({ ...v, default: false }));
+  assert.strictEqual(chooseEnglishVoice(noneFlagged, ['en-US']).name, 'Samantha');
+});
+
+test('the default flag breaks ties within the language the device asked for', () => {
+  // Desktop Safari lists novelty en-US voices; the flag points at the real one.
+  const withNovelty = [voice('Albert', 'en-US'), voice('Bad News', 'en-US'),
+    voice('Samantha', 'en-US', true), voice('Karen', 'en-AU')];
+  assert.strictEqual(chooseEnglishVoice(withNovelty, ['en-US']).name, 'Samantha');
+});
+
+test('an English default is still used when no tag matches', () => {
+  const voices = [voice('Karen', 'en-AU'), voice('Moira', 'en-IE', true)];
+  assert.strictEqual(chooseEnglishVoice(voices, ['en-CA']).name, 'Moira');
 });
 
 test('a non-English default does not win — that is the case this exists for', () => {
