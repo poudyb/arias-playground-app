@@ -6,8 +6,22 @@ if (location.search.includes('debug=1')) (function () {
   document.body.appendChild(pre);
   const frames=[], longs=[], speaks=[]; let last=performance.now(), unlocked=false, vc=0, gv='n/a', longOK='off';
   const pct=(a,p)=>{ if(!a.length) return 0; const b=a.slice().sort((x,y)=>x-y); return b[Math.min(b.length-1, Math.floor((b.length-1)*p))]; };
+  // What the device actually reports, so an iPad can be diagnosed from the sofa:
+  // whether it has this code at all, what it asked for, and what it got.
+  const voiceInfo=()=>{ try {
+    const list=(s&&s.getVoices&&s.getVoices())||[];
+    const en=list.filter(v=>/^en/i.test(v.lang||''));
+    const nav=(navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language])||[];
+    const has=typeof chooseEnglishVoice==='function';
+    const picked=has?chooseEnglishVoice(list,nav):null;
+    return ['voice-logic: '+(has?'LOADED':'MISSING - this is the OLD code'),
+      'nav.languages='+nav.join(','),
+      'PICKED='+(picked?picked.name+' ['+picked.lang+']':'(browser default, voice unset)'),
+      'en voices: '+(en.map(v=>v.name+'['+v.lang+(v.default?',DEFAULT':'')+']').join(' ')||'none')].join('\n');
+  } catch(e){ return 'voiceInfo error: '+e; } };
   const draw=()=>{ const sp=speaks[speaks.length-1]||{};
     pre.textContent=[
+      voiceInfo(),
       'raf60 p50='+pct(frames,.5).toFixed(1)+' p99='+pct(frames,.99).toFixed(1)+' ms',
       'last speak gap='+(sp.gap||0).toFixed(1)+' ms call='+(sp.call||'?')+' ms',
       'before speak: '+(sp.before||'none'),
@@ -47,6 +61,49 @@ function whenVoicesReady(synth, go) {
   synth.addEventListener('voiceschanged', onReady);
 }
 
+// iOS drops any utterance spoken before the page has had a user gesture, and a
+// dropped utterance never reports back — no `start`, no `end`, no `error` — so
+// it also leaves `activeUtterance` set, and every later prompt with the same
+// words is swallowed by the duplicate guard below for the rest of the page's
+// life. A page refreshed straight into Chase restores that mode and prompts
+// immediately with no gesture behind it, which is exactly this case: the Chase
+// prompt is voice-only, so the child is left with nothing to go on and it never
+// recovers. Hold the words until the first touch rather than spending them on a
+// synth that isn't listening yet.
+const SPEECH_GESTURES = ['touchstart', 'pointerdown', 'click'];
+let speechUnlocked = false;
+let pendingSpeech = null;
+
+function onFirstSpeechGesture() {
+  if (speechUnlocked) return;
+  speechUnlocked = true;
+  SPEECH_GESTURES.forEach(function(name) {
+    document.removeEventListener(name, onFirstSpeechGesture, true);
+  });
+  const run = pendingSpeech;
+  pendingSpeech = null;
+  if (run) run();
+}
+
+SPEECH_GESTURES.forEach(function(name) {
+  document.addEventListener(name, onFirstSpeechGesture, { capture: true, passive: true });
+});
+
+// Only the newest request is worth holding: by the time the child touches the
+// screen, an older prompt has been superseded by whatever is on screen now.
+function whenSpeechUnlocked(go) {
+  if (speechUnlocked) {
+    go();
+    return;
+  }
+  pendingSpeech = go;
+}
+
+// How long to give an utterance to actually start before assuming the synth
+// swallowed it. Releasing early only risks a prompt repeating; not releasing
+// costs every prompt that follows.
+const SPEECH_START_TIMEOUT_MS = 2000;
+
 // Every word this app speaks is English. Which English voice says it is
 // decided by chooseEnglishVoice in shared/voice-logic.js — see the note there
 // for why the device's own choice has to win. Call this only once voices are
@@ -81,11 +138,16 @@ function speakText(text, options = {}) {
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = rate;
 
+  let dropWatch = null;
   function release() {
+    if (dropWatch) { clearTimeout(dropWatch); dropWatch = null; }
     if (activeUtterance === utterance) activeUtterance = null;
   }
   utterance.addEventListener('end', release);
   utterance.addEventListener('error', release);
+  utterance.addEventListener('start', function() {
+    if (dropWatch) { clearTimeout(dropWatch); dropWatch = null; }
+  });
 
   function go() {
     if (synth.paused) synth.resume();
@@ -93,12 +155,16 @@ function speakText(text, options = {}) {
     // inside this callback.
     const voice = pickEnglishVoice(synth);
     if (voice) utterance.voice = voice;
+    dropWatch = setTimeout(release, SPEECH_START_TIMEOUT_MS);
     synth.speak(utterance);
   }
 
   activeUtterance = utterance;
-  whenVoicesReady(synth, function() {
-    if (activeUtterance === utterance) go();
+  whenSpeechUnlocked(function() {
+    if (activeUtterance !== utterance) return;
+    whenVoicesReady(synth, function() {
+      if (activeUtterance === utterance) go();
+    });
   });
   return utterance;
 }
@@ -125,12 +191,17 @@ function speakSequence(parts, options = {}) {
   });
   const first = utterances[0];
 
+  let dropWatch = null;
   function release() {
+    if (dropWatch) { clearTimeout(dropWatch); dropWatch = null; }
     if (activeUtterance === first) activeUtterance = null;
   }
   const last = utterances[utterances.length - 1];
   last.addEventListener('end', release);
   last.addEventListener('error', release);
+  first.addEventListener('start', function() {
+    if (dropWatch) { clearTimeout(dropWatch); dropWatch = null; }
+  });
 
   function go() {
     if (synth.paused) synth.resume();
@@ -143,11 +214,15 @@ function speakSequence(parts, options = {}) {
       if (voice) u.voice = voice;
       synth.speak(u);
     });
+    dropWatch = setTimeout(release, SPEECH_START_TIMEOUT_MS);
   }
 
   activeUtterance = first;
-  whenVoicesReady(synth, function() {
-    if (activeUtterance === first) go();
+  whenSpeechUnlocked(function() {
+    if (activeUtterance !== first) return;
+    whenVoicesReady(synth, function() {
+      if (activeUtterance === first) go();
+    });
   });
 }
 
