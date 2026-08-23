@@ -47,25 +47,24 @@ function whenVoicesReady(synth, go) {
   synth.addEventListener('voiceschanged', onReady);
 }
 
-// Every word this app speaks is English, but an utterance with no voice set
-// gets the device's default one — which on a tablet set to another language
-// reads the letter names and animal words in that language's phonetics. Safari
-// was the original culprit here. Call this only once voices are ready.
-//
-// No English voice available means leaving `voice` unset: the browser's own
-// default is a better guess than an arbitrary entry from the list.
+// Every word this app speaks is English. Which English voice says it is
+// decided by chooseEnglishVoice in shared/voice-logic.js — see the note there
+// for why the device's own choice has to win. Call this only once voices are
+// ready; a null result leaves `voice` unset, which is the browser's default.
 function pickEnglishVoice(synth) {
   try {
-    const list = synth.getVoices();
-    if (!list || !list.length) return null;
-    for (let i = 0; i < list.length; i++) {
-      const lang = list[i].lang || '';
-      if (lang.indexOf('en') === 0) return list[i];
-    }
-    return null;
+    return chooseEnglishVoice(synth.getVoices(), preferredLangs());
   } catch (_) {
     return null;
   }
+}
+
+// The device's languages, most-wanted first.
+function preferredLangs() {
+  const nav = typeof navigator !== 'undefined' && navigator ? navigator : null;
+  if (!nav) return [];
+  if (nav.languages && nav.languages.length) return Array.prototype.slice.call(nav.languages);
+  return nav.language ? [nav.language] : [];
 }
 
 function speakText(text, options = {}) {
@@ -135,7 +134,15 @@ function speakSequence(parts, options = {}) {
 
   function go() {
     if (synth.paused) synth.resume();
-    utterances.forEach(function(u) { synth.speak(u); });
+    // One voice for every part, picked here for the same reason as speakText:
+    // voices are only guaranteed loaded inside this callback. Without this the
+    // spelled word and its letters were read by whatever voice the device fell
+    // back to while the rest of the app spoke English.
+    const voice = pickEnglishVoice(synth);
+    utterances.forEach(function(u) {
+      if (voice) u.voice = voice;
+      synth.speak(u);
+    });
   }
 
   activeUtterance = first;
