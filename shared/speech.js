@@ -6,18 +6,17 @@ if (location.search.includes('debug=1')) (function () {
   document.body.appendChild(pre);
   const frames=[], longs=[], speaks=[]; let last=performance.now(), unlocked=false, vc=0, gv='n/a', longOK='off';
   const pct=(a,p)=>{ if(!a.length) return 0; const b=a.slice().sort((x,y)=>x-y); return b[Math.min(b.length-1, Math.floor((b.length-1)*p))]; };
-  // What the device actually reports, so an iPad can be diagnosed from the sofa:
-  // whether it has this code at all, what it asked for, and what it got.
+  // Whether the last utterance carried a voice, so an iPad can be checked from
+  // the sofa: this code never sets one, so anything but VOICE SET=no is the old
+  // code still cached. The list is shown only to confirm nothing is taken from
+  // it - on iOS it holds the compact voices, not the one the device really uses.
   const voiceInfo=()=>{ try {
     const list=(s&&s.getVoices&&s.getVoices())||[];
     const en=list.filter(v=>/^en/i.test(v.lang||''));
-    const nav=(navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language])||[];
-    const has=typeof chooseEnglishVoice==='function';
-    const picked=has?chooseEnglishVoice(list,nav):null;
-    return ['voice-logic: '+(has?'LOADED':'MISSING - this is the OLD code'),
-      'nav.languages='+nav.join(','),
-      'PICKED='+(picked?picked.name+' ['+picked.lang+']':'(browser default, voice unset)'),
-      'en voices: '+(en.map(v=>v.name+'['+v.lang+(v.default?',DEFAULT':'')+']').join(' ')||'none')].join('\n');
+    const sp=speaks[speaks.length-1];
+    return ['VOICE SET='+(sp?(sp.voice?sp.voice+' - OLD code, still picking':'no (device default)'):'nothing spoken yet'),
+      'nav.languages='+((navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language])||[]).join(','),
+      'en voices listed (unused): '+(en.map(v=>v.name+'['+v.lang+(v.default?',DEFAULT':'')+']').join(' ')||'none')].join('\n');
   } catch(e){ return 'voiceInfo error: '+e; } };
   const draw=()=>{ const sp=speaks[speaks.length-1]||{};
     pre.textContent=[
@@ -34,7 +33,7 @@ if (location.search.includes('debug=1')) (function () {
   if (s) s.addEventListener('voiceschanged',()=>{ if(unlocked) vc++; draw(); });
   if ('PerformanceObserver' in window) try { longOK='on'; new PerformanceObserver(l=>{ l.getEntries().forEach(e=>longs.push({d:e.duration,a:(e.attribution||[]).map(a=>[a.containerType,a.containerName,a.containerId,a.containerSrc].filter(Boolean).join('#')).join('|')})); while(longs.length>6) longs.shift(); draw(); }).observe({entryTypes:['longtask']}); } catch (_) { longOK='unsupported'; }
   if (s && s.getVoices) { const ogv=s.getVoices.bind(s); s.getVoices=function(){ const t=performance.now(), r=ogv(); gv=(r?r.length:0)+' voices in '+(performance.now()-t).toFixed(1)+'ms'; return r; }; }
-  if (s && s.speak) { const os=s.speak.bind(s); s.speak=function(u){ const t0=performance.now(), before='paused='+s.paused+' speaking='+s.speaking+' text='+u.text; let call='?'; requestAnimationFrame(t=>{speaks.push({gap:t-t0,call,before}); if(speaks.length>5) speaks.shift(); draw();}); const ret=os(u); call=(performance.now()-t0).toFixed(1); console.log('[speak]', before, 'callMs='+call); return ret; }; }
+  if (s && s.speak) { const os=s.speak.bind(s); s.speak=function(u){ const t0=performance.now(), before='paused='+s.paused+' speaking='+s.speaking+' text='+u.text, voice=u.voice&&u.voice.name; let call='?'; requestAnimationFrame(t=>{speaks.push({gap:t-t0,call,before,voice}); if(speaks.length>5) speaks.shift(); draw();}); const ret=os(u); call=(performance.now()-t0).toFixed(1); console.log('[speak]', before, 'callMs='+call); return ret; }; }
   draw();
 })();
 
@@ -45,6 +44,32 @@ try {
 } catch (_) {}
 
 let activeUtterance = null;
+
+// Never set `utterance.voice`. This has been "fixed" three times and every fix
+// made the app sound worse, so it is worth being blunt about why.
+//
+// Every page is `<html lang="en">`, so an utterance with no voice set already
+// asks for English, and the device answers with the voice it is set up to use —
+// the good one, including a voice a parent chose in Settings. Naming a voice
+// instead means naming one out of getVoices(), and on iOS that list is not the
+// device's voices: it is the *compact* ones, the cheap robotic speech that ships
+// for offline use. The device's real voice is not in it at all. So every pick
+// from that list sounds archaic no matter which entry it is, and the three
+// regressions were only ever arguments about which archaic voice to use:
+//
+//   * the first `en*` entry — iOS sorts by language tag, so every iPad went
+//     Australian (Karen);
+//   * then the first entry matching navigator.language, with the `default` flag
+//     as a tie-break that WebKit doesn't reliably set — so list order decided
+//     again and every iPad went to some other wrong voice;
+//   * then, briefly, no pick at all for an English device but a forced en-US
+//     one for a device set to another language. Nobody here has such a device,
+//     and that path would have handed a child the same robot voice, so it went
+//     too rather than sit here waiting to be "improved" back into the common
+//     case.
+//
+// If English words ever do come out with another language's phonetics, that is
+// the utterance language to fix (`utterance.lang`), not the voice.
 
 // Voices can load asynchronously on first use; speaking before they're ready
 // drops the utterance silently. Run `go` now if voices are present, otherwise
@@ -104,26 +129,6 @@ function whenSpeechUnlocked(go) {
 // costs every prompt that follows.
 const SPEECH_START_TIMEOUT_MS = 2000;
 
-// Every word this app speaks is English. Which English voice says it is
-// decided by chooseEnglishVoice in shared/voice-logic.js — see the note there
-// for why the device's own choice has to win. Call this only once voices are
-// ready; a null result leaves `voice` unset, which is the browser's default.
-function pickEnglishVoice(synth) {
-  try {
-    return chooseEnglishVoice(synth.getVoices(), preferredLangs());
-  } catch (_) {
-    return null;
-  }
-}
-
-// The device's languages, most-wanted first.
-function preferredLangs() {
-  const nav = typeof navigator !== 'undefined' && navigator ? navigator : null;
-  if (!nav) return [];
-  if (nav.languages && nav.languages.length) return Array.prototype.slice.call(nav.languages);
-  return nav.language ? [nav.language] : [];
-}
-
 function speakText(text, options = {}) {
   const { rate = 0.9 } = options;
   const synth = window.speechSynthesis;
@@ -151,10 +156,6 @@ function speakText(text, options = {}) {
 
   function go() {
     if (synth.paused) synth.resume();
-    // Picked here rather than above because voices are only guaranteed loaded
-    // inside this callback.
-    const voice = pickEnglishVoice(synth);
-    if (voice) utterance.voice = voice;
     dropWatch = setTimeout(release, SPEECH_START_TIMEOUT_MS);
     synth.speak(utterance);
   }
@@ -205,15 +206,7 @@ function speakSequence(parts, options = {}) {
 
   function go() {
     if (synth.paused) synth.resume();
-    // One voice for every part, picked here for the same reason as speakText:
-    // voices are only guaranteed loaded inside this callback. Without this the
-    // spelled word and its letters were read by whatever voice the device fell
-    // back to while the rest of the app spoke English.
-    const voice = pickEnglishVoice(synth);
-    utterances.forEach(function(u) {
-      if (voice) u.voice = voice;
-      synth.speak(u);
-    });
+    utterances.forEach(function(u) { synth.speak(u); });
     dropWatch = setTimeout(release, SPEECH_START_TIMEOUT_MS);
   }
 

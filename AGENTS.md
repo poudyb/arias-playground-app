@@ -20,4 +20,10 @@ stylesheet: `var(--font-letters)` for anything the child reads as letters, and
 letter face has to keep I, l and 1 as three different shapes, since capitals and
 lowercase are shown side by side.
 
+Speech never sets `utterance.voice`. Pages are `<html lang="en">`, so the device
+answers with the voice it is set up to use; naming one instead means naming one
+out of `getVoices()`, which on iOS lists only the cheap compact voices. Three
+separate attempts to choose a voice each made the app sound worse — see the note
+in `shared/speech.js` before making a fourth.
+
 Run `node --test "test/*.test.js"` for the shared logic.
