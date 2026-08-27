@@ -27,3 +27,9 @@ separate attempts to choose a voice each made the app sound worse — see the no
 in `shared/speech.js` before making a fourth.
 
 Run `node --test "test/*.test.js"` for the shared logic.
+
+Finished work goes straight to `master`: no feature branch, no pull request, and
+no need to ask first. One person works on this and there is no CI, so a PR has
+nobody to review it and nothing to run. Push once the tests pass and the change
+has been tried in a browser. If a session starts you on a branch anyway, land it
+on `master` before you finish rather than leaving it open.
