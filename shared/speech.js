@@ -104,10 +104,12 @@ function whenSpeechUnlocked(go) {
 // costs every prompt that follows.
 const SPEECH_START_TIMEOUT_MS = 2000;
 
-// Every word this app speaks is English. Which English voice says it is
-// decided by chooseEnglishVoice in shared/voice-logic.js — see the note there
-// for why the device's own choice has to win. Call this only once voices are
-// ready; a null result leaves `voice` unset, which is the browser's default.
+// Every word this app speaks is English, and on an English device the browser
+// already reads an `<html lang="en">` page in the device's own voice — so the
+// usual answer here is null, leaving `voice` unset and that voice in charge.
+// chooseEnglishVoice in shared/voice-logic.js names one only for a device that
+// asks for no English at all; see the note there for why anything more than
+// that has regressed the voice twice. Call this only once voices are ready.
 function pickEnglishVoice(synth) {
   try {
     return chooseEnglishVoice(synth.getVoices(), preferredLangs());
@@ -205,10 +207,9 @@ function speakSequence(parts, options = {}) {
 
   function go() {
     if (synth.paused) synth.resume();
-    // One voice for every part, picked here for the same reason as speakText:
-    // voices are only guaranteed loaded inside this callback. Without this the
-    // spelled word and its letters were read by whatever voice the device fell
-    // back to while the rest of the app spoke English.
+    // Whatever speakText would use, for every part, so the spelled word and its
+    // letters sound like the rest of the app. Picked here for the same reason as
+    // speakText: voices are only guaranteed loaded inside this callback.
     const voice = pickEnglishVoice(synth);
     utterances.forEach(function(u) {
       if (voice) u.voice = voice;

@@ -2,27 +2,40 @@
 // it can be unit-tested under Node and reused by shared/speech.js (loaded after
 // this one).
 //
+// The short version: almost always this app should choose nothing at all.
+//
 // Every page is `<html lang="en">`, so an utterance with no `voice` set already
 // asks the browser for an *English* voice, and the browser answers with the one
-// the device is set up for. That answer is the right one almost always. The one
-// case worth overriding is old iOS Safari ignoring the utterance language and
-// reading English words with a non-English default voice, which comes out in
-// that language's phonetics.
+// the device is set up to use — including a voice a parent picked in Settings,
+// which nothing in getVoices() reveals. That answer is the right one on any
+// device that speaks English, and it is the voice this app had before it
+// started guessing.
 //
-// Overriding more than that is what put the Australian voice on the iPad: an
-// earlier pass set the voice to the first `en*` entry in getVoices(), which
-// throws away what the device asked for. iOS orders that list by language tag,
-// so `en-AU` leads every English voice on it and every word came out Australian
-// no matter how the iPad was set. So: what the device asked for comes first
-// here — navigator.language, the one signal every engine reports honestly —
-// and a hard-coded English voice is only ever for a device that wants no
-// English at all.
+// Guessing has now regressed the voice twice, each time by picking a real
+// English voice that simply wasn't the device's own:
 //
-// The `default` flag is used only to break ties inside a language the device
-// asked for. It is never the lead signal: what WebKit reports there could not
-// be checked on a real iPad from here, and if it ever came back set on every
-// voice, leading with it would hand back the first `en*` entry — Karen, and
-// the exact bug this replaced.
+//   * taking the first `en*` entry in getVoices() made every iPad Australian —
+//     iOS orders that list by language tag, so `en-AU` (Karen) leads it no
+//     matter how the iPad is set;
+//   * then taking the first entry matching navigator.language, with the
+//     `default` flag as a tie-break, made every iPad *some other* voice: iOS
+//     lists alternates and novelty voices (Aaron, Junior, "Bad News") under
+//     en-US too, and WebKit doesn't reliably flag the real system voice as
+//     `default`, so the tie-break silently didn't apply and the list order
+//     decided again.
+//
+// Both were the same mistake — answering a question the browser had already
+// answered better. So the only case left here is the one this file was
+// created for: a device that asks for no English at all, where old iOS Safari
+// ignores the utterance language and reads English words with the non-English
+// system voice, coming out in that language's phonetics. Only there is a
+// hard-coded English voice better than what the browser would have done.
+//
+// The device's language list is the single signal used, because it is the one
+// every engine reports honestly. The `default` flag is deliberately not
+// consulted: it is the signal that could never be verified against a real
+// iPad from here, and every past regression came from trusting the voice list
+// over the device.
 
 // Some engines report `en_US` rather than `en-US`.
 function normalizeLangTag(lang) {
@@ -46,52 +59,27 @@ function findVoiceByTag(voices, tag) {
 }
 
 // `preferredLangs` is the device's own language list, most-wanted first
-// (navigator.languages). Returns null when there's no English voice to pick,
-// which leaves `voice` unset and the browser's default in charge.
+// (navigator.languages). Returns null whenever the browser's own choice should
+// stand, which leaves `voice` unset — the default, and the common case.
 function chooseEnglishVoice(voices, preferredLangs) {
   const list = Array.isArray(voices) ? voices : [];
   const english = list.filter(function (v) { return v && isEnglishLang(v.lang); });
   if (!english.length) return null;
 
-  const wanted = (Array.isArray(preferredLangs) ? preferredLangs : [])
-    .map(normalizeLangTag)
-    .filter(isEnglishLang);
+  const wanted = (Array.isArray(preferredLangs) ? preferredLangs : []).map(normalizeLangTag);
 
-  // 1. What the device asked for, in the order it ranked it. navigator.language
-  //    is the one signal every engine reports honestly, so it leads.
-  //
-  //    Within a tag, a `default` flag breaks the tie: on desktop Safari the
-  //    en-US voices include the novelty ones (Albert, Bad News, Bubbles), and
-  //    taking the first en-US entry could hand a child "Bad News" reading the
-  //    alphabet. The flag points at the real system voice.
-  for (let i = 0; i < wanted.length; i++) {
-    const matches = english.filter(function (v) {
-      return normalizeLangTag(v.lang) === wanted[i];
-    });
-    if (matches.length) return preferDefault(matches);
-  }
+  // The device speaks English — or didn't say, in which case guessing is how
+  // this went wrong before. Either way the browser's answer stands: no voice
+  // this code could name is more likely to be the one the child had yesterday.
+  if (!wanted.length || wanted.some(isEnglishLang)) return null;
 
-  // 2. Nothing matched the device's tags, but the browser still nominated an
-  //    English voice as its default. Deliberately below the tag match: the flag
-  //    is the signal this code cannot verify on iOS, so it never gets to
-  //    outvote a device that plainly said which English it wants.
-  const flagged = english.filter(function (v) { return v.default; });
-  if (flagged.length) return flagged[0];
-
-  // 3. The device wants no English at all — the case this function exists for.
-  //    Any English voice beats hearing "elephant" with Spanish phonetics.
+  // The device wants no English at all — the case this function exists for.
+  // Any English voice beats hearing "elephant" with Spanish phonetics.
   for (let i = 0; i < FALLBACK_ENGLISH_TAGS.length; i++) {
     const match = findVoiceByTag(english, FALLBACK_ENGLISH_TAGS[i]);
     if (match) return match;
   }
   return english[0];
-}
-
-function preferDefault(voices) {
-  for (let i = 0; i < voices.length; i++) {
-    if (voices[i].default) return voices[i];
-  }
-  return voices[0];
 }
 
 // Exported for Node's test runner; ignored in the browser (no `module`).
