@@ -94,6 +94,17 @@ const SPELLING_WORDS = [
   { word: 'mud', img: 'mud.png', id: 34050 },
   { word: 'ice', img: 'ice.png', id: 7128 },
   { word: 'gem', img: 'gem.png', id: 6475 },
+  { word: 'sky', img: 'sky.png', id: 38270 },
+  { word: 'fig', img: 'fig.png', id: 2979 },
+  { word: 'elf', img: 'elf.png', id: 36388 },
+  { word: 'sad', img: 'sad.png', id: 31939 },
+  // A color and some actions, each drawn so the hue or the doing is the whole
+  // picture rather than a person or object the child would name instead.
+  { word: 'red', img: 'red.png', id: 2808 },
+  { word: 'hug', img: 'hug.png', id: 4550 },
+  { word: 'run', img: 'run.png', id: 2719 },
+  { word: 'dig', img: 'dig.png', id: 5952 },
+  { word: 'eat', img: 'eat.png', id: 2349 },
 ];
 
 // Exported for Node's test runner; ignored in the browser (no `module`).
