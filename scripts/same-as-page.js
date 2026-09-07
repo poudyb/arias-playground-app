@@ -298,29 +298,21 @@ const MEMORY_LEVELS = [
   { pairs: 8, cols: 4, rows: 4 }    // 16 cards
 ];
 
-// Hand-picked ARASAAC picture cards (shared with the Spelling game). Every entry
-// is visually distinct from the others - no two share a silhouette or dominant
-// colour - so a board can never show two cards a young child could mix up (the
-// reason the old shape pool, e.g. red circle vs red square, was dropped here).
-const MEMORY_WORDS = [
-  'dog', 'cat', 'cow', 'pig', 'owl', 'bee', 'bat', 'ram',
-  'egg', 'pie', 'nut', 'eye', 'ear', 'lip', 'cup', 'jar',
-  'pot', 'car', 'key', 'pen', 'fan', 'saw', 'map', 'sun',
-  'bed', 'top', 'gem', 'hat', 'zip', 'net'
-];
-const MEMORY_DECK = MEMORY_WORDS.map(function(word) {
-  return { key: word, name: word, img: 'assets/spelling/' + word + '.png' };
+// The deck is the Spelling game's whole picture pool (data/spelling.js), so it
+// grows whenever Spelling does. It used to be a hand-picked 30 chosen so no two
+// cards shared a silhouette or colour, a rule carried over from the shape pool
+// (red circle beside red square). Pictures of different things turned out not
+// to need it: dog and ram, both brown and both in profile, sat side by side for
+// months without ever being confused, so the extra list was only maintenance.
+//
+// No preload: each board's pictures are fetched when its cards are built, face
+// down, and they are cached from the first board on. Fetching the whole pool up
+// front bought nothing a 2-second look at the card backs doesn't already buy.
+const MEMORY_DECK = SPELLING_WORDS.map(function(w) {
+  return { key: w.word, name: w.word, img: 'assets/spelling/' + w.img };
 });
-
-const memoryPreloadCache = [];
-function preloadMemoryImages() {
-  if (memoryPreloadCache.length) return;
-  MEMORY_DECK.forEach(function(card) {
-    const img = new Image();
-    img.src = card.img;
-    memoryPreloadCache.push(img); // retain so the fetch isn't GC-cancelled
-  });
-}
+const MEMORY_KEYS = {};
+MEMORY_DECK.forEach(function(card) { MEMORY_KEYS[card.key] = true; });
 
 let memoryActive = false;
 let memoryLevelIdx = 0;
@@ -345,7 +337,7 @@ function shuffleInPlace(arr) {
 
 // Every board avoids the pictures that were on the one before it, so clearing
 // a board always brings new faces rather than the same ones shuffled. The deck
-// is 30 cards and the biggest board 8 pairs, so a full fresh deal always fits.
+// is far bigger than the largest board (8 pairs), so a fresh deal always fits.
 let memoryLastKeys = [];
 function pickMemoryItems(count) {
   return dealAvoiding(MEMORY_DECK, count, memoryLastKeys, function(card) { return card.key; });
@@ -665,7 +657,7 @@ function saveMemoryLevel() {
 function loadMemoryLevel() {
   const saved = loadRoundState(MEMORY_LEVEL_KEY);
   memoryLastKeys = (saved && Array.isArray(saved.lastKeys))
-    ? saved.lastKeys.filter(function(k) { return MEMORY_WORDS.indexOf(k) !== -1; })
+    ? saved.lastKeys.filter(function(k) { return MEMORY_KEYS[k] === true; })
     : [];
   if (saved && isValidIndex(saved.level, MEMORY_LEVELS.length)) return saved.level;
   return 0;
@@ -673,7 +665,6 @@ function loadMemoryLevel() {
 
 function startMemory() {
   memoryActive = true;
-  preloadMemoryImages();
   memoryLevelIdx = loadMemoryLevel();
   session.mutateStats(function(stats) { stats.usedMemory = true; });
   buildMemoryBoard();
