@@ -105,10 +105,12 @@ const SPELLING_WORDS = [
   { word: 'run', img: 'run.png', id: 2719 },
   { word: 'dig', img: 'dig.png', id: 5952 },
   { word: 'eat', img: 'eat.png', id: 2349 },
-  // The only Y word with usable art: a green check, which reads as "yes" to a
-  // child who can't read the word yet. Q, U and X have no three-letter word a
-  // child knows (yak, emu and urn were tried; ARASAAC has no yak, and its urn
-  // is a funeral urn), so those keys stay dark on the Free Play keyboard.
+  // The only U and Y words with usable art. The check reads as "yes" to a child
+  // who can't read the word yet; the urn is ARASAAC's funerary urn, kept because
+  // it is still a vase-shaped pot to her and the only way to light the U key.
+  // Q and X have no three-letter word a child knows, so those two keys stay
+  // dark on the Free Play keyboard.
+  { word: 'urn', img: 'urn.png', id: 26523 },
   { word: 'yes', img: 'yes.png', id: 5584 },
 ];
 
