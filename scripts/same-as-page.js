@@ -343,8 +343,12 @@ function shuffleInPlace(arr) {
   return arr;
 }
 
+// Every board avoids the pictures that were on the one before it, so clearing
+// a board always brings new faces rather than the same ones shuffled. The deck
+// is 30 cards and the biggest board 8 pairs, so a full fresh deal always fits.
+let memoryLastKeys = [];
 function pickMemoryItems(count) {
-  return shuffleInPlace(MEMORY_DECK.slice()).slice(0, count);
+  return dealAvoiding(MEMORY_DECK, count, memoryLastKeys, function(card) { return card.key; });
 }
 
 function renderMemoryArt(el, card) {
@@ -432,6 +436,10 @@ function buildMemoryBoard() {
 
   const level = MEMORY_LEVELS[memoryLevelIdx];
   const picks = pickMemoryItems(level.pairs);
+  memoryLastKeys = picks.map(function(p) { return p.key; });
+  // Remembered with the level so a board dealt after a reload also avoids the
+  // one that was on screen when the page went away.
+  saveMemoryLevel();
   const deck = [];
   picks.forEach(function(p) {
     deck.push(p);
@@ -651,11 +659,14 @@ function completeMemoryLevel() {
 }
 
 function saveMemoryLevel() {
-  saveRoundState(MEMORY_LEVEL_KEY, { level: memoryLevelIdx });
+  saveRoundState(MEMORY_LEVEL_KEY, { level: memoryLevelIdx, lastKeys: memoryLastKeys });
 }
 
 function loadMemoryLevel() {
   const saved = loadRoundState(MEMORY_LEVEL_KEY);
+  memoryLastKeys = (saved && Array.isArray(saved.lastKeys))
+    ? saved.lastKeys.filter(function(k) { return MEMORY_WORDS.indexOf(k) !== -1; })
+    : [];
   if (saved && isValidIndex(saved.level, MEMORY_LEVELS.length)) return saved.level;
   return 0;
 }
