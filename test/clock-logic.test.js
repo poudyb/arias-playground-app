@@ -68,3 +68,67 @@ test('12-hour conversion never yields an hour outside 1-12', () => {
     assert.ok(h >= 1 && h <= 12, hour + ':00 became ' + h);
   }
 });
+
+test('segmentsForSlot gives each slot the segments it is built with', () => {
+  assert.deepStrictEqual(clock.segmentsForSlot('h1'), ['b', 'c']);
+  ['h2', 'm1', 'm2'].forEach((pos) => {
+    assert.deepStrictEqual(clock.segmentsForSlot(pos), ['a', 'b', 'c', 'd', 'e', 'f', 'g']);
+  });
+});
+
+test('targetSegmentsForTime lights the slots that spell the time', () => {
+  const nine30 = clock.targetSegmentsForTime(9, 30);
+  assert.deepStrictEqual(nine30.h1, []); // single-digit hour leaves the tens dark
+  assert.deepStrictEqual(nine30.h2, clock.SEGMENTS_FOR_DIGIT[9]);
+  assert.deepStrictEqual(nine30.m1, clock.SEGMENTS_FOR_DIGIT[3]);
+  assert.deepStrictEqual(nine30.m2, clock.SEGMENTS_FOR_DIGIT[0]);
+
+  const twelve05 = clock.targetSegmentsForTime(12, 5);
+  assert.deepStrictEqual(twelve05.h1, clock.SEGMENTS_FOR_DIGIT[1]);
+  assert.deepStrictEqual(twelve05.h2, clock.SEGMENTS_FOR_DIGIT[2]);
+  assert.deepStrictEqual(twelve05.m1, clock.SEGMENTS_FOR_DIGIT[0]); // 05, not 5
+  assert.deepStrictEqual(twelve05.m2, clock.SEGMENTS_FOR_DIGIT[5]);
+});
+
+test('a target can be edited without corrupting the digit map', () => {
+  clock.targetSegmentsForTime(9, 30).h2.push('nonsense');
+  assert.deepStrictEqual(clock.targetSegmentsForTime(9, 30).h2, clock.SEGMENTS_FOR_DIGIT[9]);
+  assert.strictEqual(clock.SEGMENTS_FOR_DIGIT[9].indexOf('nonsense'), -1);
+});
+
+test('the filled Match board lights every line each slot can show', () => {
+  const filled = clock.startingBoardSegments(true);
+  assert.deepStrictEqual(Object.keys(filled).sort(), ['h1', 'h2', 'm1', 'm2']);
+  clock.CLOCK_SLOTS.forEach((pos) => {
+    assert.deepStrictEqual(filled[pos], clock.segmentsForSlot(pos));
+  });
+  filled.m1.pop(); // editing a board must not shorten the shared slot list
+  assert.strictEqual(clock.segmentsForSlot('m1').length, 7);
+});
+
+test('the blank Match board starts every slot dark', () => {
+  const blank = clock.startingBoardSegments(false);
+  clock.CLOCK_SLOTS.forEach((pos) => assert.deepStrictEqual(blank[pos], []));
+});
+
+// The filled board reads 18:88, so she always has lines to take away — no time
+// can hand her a board that is already right and rob her of the puzzle.
+test('no time is ever already showing on a filled Match board', () => {
+  const filled = clock.startingBoardSegments(true);
+  for (let h = 1; h <= 12; h++) {
+    for (let m = 0; m < 60; m++) {
+      const target = clock.targetSegmentsForTime(h, m);
+      const solved = clock.CLOCK_SLOTS.every((pos) =>
+        target[pos].length === filled[pos].length &&
+        target[pos].every((seg) => filled[pos].indexOf(seg) !== -1));
+      assert.ok(!solved, h + ':' + clock.formatTwo(m) + ' starts out already matched');
+    }
+  }
+});
+
+test('isMistakenTap counts adding a stray line and clearing a needed one', () => {
+  assert.strictEqual(clock.isMistakenTap(false, false), true);  // lit one that doesn't belong
+  assert.strictEqual(clock.isMistakenTap(true, true), true);    // cleared one that does
+  assert.strictEqual(clock.isMistakenTap(true, false), false);  // cleared a stray — the work
+  assert.strictEqual(clock.isMistakenTap(false, true), false);  // lit a missing one — the work
+});

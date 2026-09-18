@@ -267,6 +267,10 @@ body {
       drop-shadow(0 0 3px var(--led-match-color))
       drop-shadow(0 0 8px var(--led-match-color));
   }
+.clock-face--manual .clock-digit-svg .seg.seg-missing {
+    fill: var(--led-match-color);
+    opacity: 0.22;
+  }
 .clock-face--manual .clock-digit-svg .seg.on.seg-wrong {
     fill: #ff1744;
     filter:

@@ -1,8 +1,11 @@
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-// SEGMENTS_FOR_DIGIT and the number/time wording helpers (numberToWords,
-// timeToWords, formatTwo, get12Hour) live in shared/clock-logic.js so they can
-// be unit-tested; this script is loaded after it and uses them as globals.
+// SEGMENTS_FOR_DIGIT, the segment-slot constants (ALL_SEGMENTS,
+// LEADING_HOUR_SEGMENTS, CLOCK_SLOTS), the Match board helpers
+// (targetSegmentsForTime, startingBoardSegments, isMistakenTap) and the
+// number/time wording helpers (numberToWords, timeToWords, formatTwo,
+// get12Hour) live in shared/clock-logic.js so they can be unit-tested; this
+// script is loaded after it and uses them as globals.
 
 // 7-segment geometry on a 60x100 grid. Every segment is the same thickness (8)
 // and there's a uniform mitred gap (G=2) between all of them — at the outer
@@ -29,14 +32,6 @@ const SEGMENT_HIT_POLYGONS = {
   g: '0,45 60,45 60,55 0,55'
 };
 
-const ALL_SEGMENTS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
-
-// On a 12-hour clock the leading digit is only ever blank or 1, so the only
-// segments it can ever light are the two on the right. The other five would sit
-// there permanently dark — real LED clocks don't fit them at all, so neither do
-// we. (test/clock-logic.test.js pins the "only ever 1" assumption.)
-const LEADING_HOUR_SEGMENTS = ['b', 'c'];
-
 const SEG_LABELS = {
   a: 'top',
   b: 'top right',
@@ -57,6 +52,24 @@ const POSITION_LABELS = {
 const CONFETTI_HEX = ['#ff7043', '#ffb74d', '#80deea', '#64b5f6', '#ba68c8', '#aed581'];
 const CLOCK_SESSION_KEY = 'ariaClockSession';
 const CLOCK_MODES = ['watch', 'match', 'quiz', 'next'];
+
+// Match hands her a board with every line already lit, so the game is taking
+// the wrong lines away rather than drawing each digit from a dark face. Once
+// she's cleared a few boards without a wrong tap the step turns on and she
+// builds them herself; a couple of scrappy boards puts the filled-in start
+// back. Demoting is quicker than promoting on purpose — the easy start is
+// where a child who's struggling should land. Remembered between visits, and
+// never spelled out to her: the board just looks different.
+const matchStartProgression = createStreakProgression({
+  storageKey: 'ariaClockMatchFromBlank',
+  promoteAfter: 3,
+  demoteAfter: 2
+});
+
+// How long a finished board holds its celebration before the next one fills
+// in. Without it a match landing a moment before the minute turns would be
+// wiped mid-chime.
+const MATCH_REFILL_DELAY_MS = 1200;
 
 // `segNames` limits which segments this digit is built with. The leading hour
 // only needs the right-hand third of the normal digit grid, including its tap
@@ -207,10 +220,6 @@ function colonOpacityFor(s, msFraction) {
   return 0.35 + 0.65 * Math.abs(Math.cos(phase * Math.PI));
 }
 
-function segsForDigitArray(value) {
-  return SEGMENTS_FOR_DIGIT[value] || [];
-}
-
 function setsEqual(a, b) {
   if (a.size !== b.size) return false;
   let equal = true;
@@ -293,17 +302,26 @@ function renderTimePill(pill, key) {
   pill.appendChild(face);
 }
 
-function buildModeBody(intro, struggled, struggledLabel) {
+function createIntroBody(intro) {
   const body = document.createElement('div');
   const introDiv = document.createElement('div');
   introDiv.textContent = intro;
   body.appendChild(introDiv);
+  return body;
+}
+
+function appendBodyNote(body, text) {
+  const note = document.createElement('div');
+  note.style.marginTop = '0.45rem';
+  note.textContent = text;
+  body.appendChild(note);
+  return note;
+}
+
+function buildModeBody(intro, struggled, struggledLabel) {
+  const body = createIntroBody(intro);
   if (struggled.length > 0) {
-    const sub = document.createElement('div');
-    sub.style.marginTop = '0.45rem';
-    sub.style.fontWeight = '600';
-    sub.textContent = struggledLabel;
-    body.appendChild(sub);
+    appendBodyNote(body, struggledLabel).style.fontWeight = '600';
     body.appendChild(createPillWrap(struggled, renderTimePill));
   }
   return body;
@@ -311,10 +329,20 @@ function buildModeBody(intro, struggled, struggledLabel) {
 
 function renderSummary(board, stats) {
   if (stats.usedMatch) {
+    const fromBlank = matchStartProgression.isOn();
     const intro = stats.matchSuccesses > 0
       ? 'You matched the clock ' + stats.matchSuccesses + ' ' + (stats.matchSuccesses === 1 ? 'time' : 'times') + '!'
-      : 'Tap segments to match the clock!';
-    appendScoreSection(board, { icon: '🧩', title: 'Match', body: intro });
+      : fromBlank
+        ? 'Tap segments to match the clock!'
+        : "Take away the lines that don't belong to match the clock!";
+    // Which board Match is handing her is the progress worth reporting here —
+    // she never sees it named, it just shows up as an easier or harder start.
+    const note = fromBlank
+      ? 'She builds each clock from a dark face now.'
+      : "Each clock starts with every line lit, so she only clears the ones that don't belong.";
+    const body = createIntroBody(intro);
+    appendBodyNote(body, note);
+    appendScoreSection(board, { icon: '🧩', title: 'Match', body: body });
   }
 
   if (stats.usedQuiz) {
@@ -484,16 +512,59 @@ function enterMatch() {
 
   const manualState = { h1: new Set(), h2: new Set(), m1: new Set(), m2: new Set() };
   let isMatching = false;
+  // Taps that went the wrong way on the board she's on now, and whether that
+  // board has been solved yet — together they decide whether the next one
+  // still comes filled in.
+  let boardMistakes = 0;
+  let boardDone = false;
+  let boardDoneAt = 0;
+  let refillPending = false;
+  let lastMinute = null;
+  let startedFilled = false;
+
+  // Start her on a fresh board: filled in with every line the face can show
+  // while she's still learning the digits, dark once she's ready to draw them.
+  function seedBoard() {
+    startedFilled = !matchStartProgression.isOn();
+    const board = startingBoardSegments(startedFilled);
+    CLOCK_SLOTS.forEach(function(pos) {
+      manualState[pos] = new Set(board[pos]);
+      setDigitState(manualFace._slots[pos], manualState[pos]);
+    });
+    boardMistakes = 0;
+    boardDone = false;
+    boardDoneAt = 0;
+    refillPending = false;
+    isMatching = false;
+    manualFace.classList.remove('matching');
+  }
+
+  function currentTargets() {
+    const now = new Date();
+    const segs = targetSegmentsForTime(get12Hour(now), now.getMinutes());
+    return {
+      h1: new Set(segs.h1),
+      h2: new Set(segs.h2),
+      m1: new Set(segs.m1),
+      m2: new Set(segs.m2)
+    };
+  }
 
   // Grade every lit segment against the clock above, one line at a time: a line
   // that belongs takes on that clock's live color right away, so she can see
   // each stroke land instead of waiting for the whole digit to be right. A line
   // that doesn't belong turns pulsing red — it has to shout as loudly as the
   // correct ones do, or a stray stroke leaves the clock looking right while
-  // the chime never comes and she can't tell why. Segments she hasn't
-  // turned on are left alone — colouring those in would just trace the answer.
+  // the chime never comes and she can't tell why.
+  //
+  // Dark segments are normally left alone, because on a board she built from a
+  // dark face colouring them in would just trace the answer. On a board that
+  // started filled in there's nothing left to trace — she was shown every line
+  // to begin with — and a dark segment means she took one away, so a needed one
+  // she's cleared by mistake gets a faint ghost of itself back. Without it the
+  // board looks entirely right, with no red anywhere, and still never chimes.
   function paintSegments(targets) {
-    ['h1', 'h2', 'm1', 'm2'].forEach(function(pos) {
+    CLOCK_SLOTS.forEach(function(pos) {
       const target = targets[pos];
       const segs = manualFace._slots[pos].querySelectorAll('.seg');
       for (let i = 0; i < segs.length; i++) {
@@ -501,6 +572,7 @@ function enterMatch() {
         const lit = manualState[pos].has(name);
         const wrong = lit && !target.has(name);
         segs[i].classList.toggle('seg-right', lit && target.has(name));
+        segs[i].classList.toggle('seg-missing', startedFilled && !lit && target.has(name));
         if (wrong && !segs[i].classList.contains('seg-wrong')) {
           // A CSS animation starts counting when it's applied, so segments
           // marked wrong at different moments would each pulse to their own
@@ -515,16 +587,7 @@ function enterMatch() {
   }
 
   function evaluateMatch() {
-    const now = new Date();
-    const h = get12Hour(now);
-    const m = now.getMinutes();
-    const mm = formatTwo(m);
-    const targets = {
-      h1: h < 10 ? new Set() : new Set(segsForDigitArray(Math.floor(h / 10))),
-      h2: new Set(segsForDigitArray(h % 10)),
-      m1: new Set(segsForDigitArray(Number(mm[0]))),
-      m2: new Set(segsForDigitArray(Number(mm[1])))
-    };
+    const targets = currentTargets();
     paintSegments(targets);
     const matches =
       setsEqual(manualState.h1, targets.h1) &&
@@ -537,6 +600,15 @@ function enterMatch() {
       manualFace.classList.add('matching');
       session.mutateStats(function(stats) { stats.matchSuccesses++; });
       audio.playMatchTone();
+      if (!boardDone) {
+        boardDone = true;
+        boardDoneAt = Date.now();
+        // A board she solved without a single tap going the wrong way is the
+        // evidence that she's ready for a darker face; one she wrestled with
+        // isn't. Nudging her back afterwards doesn't count either way, which
+        // is why this only fires the first time a board comes good.
+        matchStartProgression.recordRound(boardMistakes > 0 ? 'missed' : 'clean');
+      }
     } else if (!matches && isMatching) {
       isMatching = false;
       manualFace.classList.remove('matching');
@@ -546,17 +618,21 @@ function enterMatch() {
   function toggleSeg(pos, segName) {
     if (session.isSessionEnded()) return;
     const set = manualState[pos];
-    if (set.has(segName)) set.delete(segName);
+    const wasLit = set.has(segName);
+    if (!boardDone && isMistakenTap(wasLit, currentTargets()[pos].has(segName))) {
+      boardMistakes++;
+    }
+    if (wasLit) set.delete(segName);
     else set.add(segName);
     setDigitState(manualFace._slots[pos], set);
     evaluateMatch();
   }
 
-  ['h1', 'h2', 'm1', 'm2'].forEach(function(pos) {
+  CLOCK_SLOTS.forEach(function(pos) {
     const svg = manualFace._slots[pos];
     // Only the segments this digit was actually built with are tappable — the
     // leading hour has just the two on the right.
-    (pos === 'h1' ? LEADING_HOUR_SEGMENTS : ALL_SEGMENTS).forEach(function(segName) {
+    segmentsForSlot(pos).forEach(function(segName) {
       const hit = document.createElementNS(SVG_NS, 'polygon');
       hit.setAttribute('points', SEGMENT_HIT_POLYGONS[segName]);
       hit.setAttribute('class', 'seg-hit');
@@ -575,6 +651,8 @@ function enterMatch() {
     });
   });
 
+  seedBoard();
+
   startTickLoop(function(now) {
     renderClockTime(realFace, get12Hour(now), now.getMinutes(), now.getSeconds(), realClockOpts(now));
     // Hand the manual face the live hue so its correct segments stay in step
@@ -591,6 +669,16 @@ function enterMatch() {
     const ss = formatTwo(now.getSeconds());
     renderDigit(manualFace._slots.s1, Number(ss[0]));
     renderDigit(manualFace._slots.s2, Number(ss[1]));
+
+    // A solved board is done with: when the minute turns it fills back in and
+    // she has a fresh time to clear. A board she's still working on is left
+    // alone — the clock moving on under her is part of the game, and wiping
+    // her half-built face would be a punishment for taking her time.
+    const minute = now.getMinutes();
+    if (lastMinute != null && minute !== lastMinute && boardDone) refillPending = true;
+    lastMinute = minute;
+    if (refillPending && now.getTime() - boardDoneAt >= MATCH_REFILL_DELAY_MS) seedBoard();
+
     evaluateMatch();
   });
 

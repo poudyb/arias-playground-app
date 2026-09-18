@@ -47,6 +47,56 @@ function get12Hour(date) {
   return h;
 }
 
+// Which segments each slot of the face is built with. On a 12-hour clock the
+// leading digit is only ever blank or 1, so the only segments it can ever light
+// are the two on the right. The other five would sit there permanently dark —
+// real LED clocks don't fit them at all, so neither do we.
+// (test/clock-logic.test.js pins the "only ever 1" assumption.)
+const ALL_SEGMENTS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+const LEADING_HOUR_SEGMENTS = ['b', 'c'];
+const CLOCK_SLOTS = ['h1', 'h2', 'm1', 'm2'];
+
+function segmentsForSlot(pos) {
+  return pos === 'h1' ? LEADING_HOUR_SEGMENTS : ALL_SEGMENTS;
+}
+
+function segsForDigit(value) {
+  return (SEGMENTS_FOR_DIGIT[value] || []).slice();
+}
+
+// The lit segments each slot needs to show h:mm — what Match grades against.
+function targetSegmentsForTime(h, m) {
+  const mm = formatTwo(m);
+  return {
+    h1: h < 10 ? [] : segsForDigit(Math.floor(h / 10)),
+    h2: segsForDigit(h % 10),
+    m1: segsForDigit(Number(mm[0])),
+    m2: segsForDigit(Number(mm[1]))
+  };
+}
+
+// The board Match hands her at the start of each go. Filled in, every line the
+// face can show is already lit and the work is taking away the ones that don't
+// belong — far less to hold in your head than building a digit out of nothing.
+// Otherwise she starts from a dark face and draws the time herself.
+//
+// A filled board is never already right: that would read 18:88, which no time
+// can be (there's a test for it), so she always has something to take away.
+function startingBoardSegments(filled) {
+  const board = {};
+  CLOCK_SLOTS.forEach(function(pos) {
+    board[pos] = filled ? segmentsForSlot(pos).slice() : [];
+  });
+  return board;
+}
+
+// A tap worth counting against her: lighting a line the clock above doesn't
+// have, or putting out one it does. Clearing a stray line and adding a missing
+// one are the work itself, so neither costs her the board.
+function isMistakenTap(wasLit, inTarget) {
+  return wasLit === inTarget;
+}
+
 // Exported for Node's test runner; ignored in the browser (no `module`).
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -56,6 +106,14 @@ if (typeof module !== 'undefined' && module.exports) {
     numberToWords,
     timeToWords,
     formatTwo,
-    get12Hour
+    get12Hour,
+    ALL_SEGMENTS,
+    LEADING_HOUR_SEGMENTS,
+    CLOCK_SLOTS,
+    segmentsForSlot,
+    segsForDigit,
+    targetSegmentsForTime,
+    startingBoardSegments,
+    isMistakenTap
   };
 }
