@@ -267,9 +267,25 @@ body {
       drop-shadow(0 0 3px var(--led-match-color))
       drop-shadow(0 0 8px var(--led-match-color));
   }
+  /* A line she took away that the time still needs: an empty outline of itself,
+     dashed, with nothing filled in. This mark has to answer two questions at
+     once — is something meant to be here, and is it filled in or not — and a
+     dimmed version of the lit color answers neither. The wrong-segment marker
+     below was exactly that once, a 0.32-alpha wash of the lit color, and it
+     simply vanished; 9b313d3 replaced it with the red. Built the same way here
+     it went the same way: against a plain dark segment a 0.22-alpha wash of
+     the lit color measured 1.03:1 — indistinguishable — at all eight points
+     sampled round the color cycle.
+     So this is a different KIND of mark rather than a fainter one. Hollow, so
+     it can never read as lit however bright it gets, and edged in a fixed pale
+     line rather than the cycling hue, so it can't sink into the background
+     when that cycle rolls through a dark color. */
 .clock-face--manual .clock-digit-svg .seg.seg-missing {
-    fill: var(--led-match-color);
-    opacity: 0.22;
+    fill: rgba(255, 255, 255, 0.05);
+    stroke: rgba(255, 255, 255, 0.92);
+    stroke-width: 3;
+    stroke-dasharray: 6 4;
+    stroke-linejoin: round;
   }
 .clock-face--manual .clock-digit-svg .seg.on.seg-wrong {
     fill: #ff1744;
