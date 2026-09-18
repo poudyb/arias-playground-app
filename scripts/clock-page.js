@@ -53,15 +53,14 @@ const CONFETTI_HEX = ['#ff7043', '#ffb74d', '#80deea', '#64b5f6', '#ba68c8', '#a
 const CLOCK_SESSION_KEY = 'ariaClockSession';
 const CLOCK_MODES = ['watch', 'match', 'quiz', 'next'];
 
-// Match hands her a board with every line already lit, so the game is taking
-// the wrong lines away rather than drawing each digit from a dark face. Once
-// she's cleared a few boards without a wrong tap the step turns on and she
-// builds them herself; a couple of scrappy boards puts the filled-in start
-// back. Demoting is quicker than promoting on purpose — the easy start is
-// where a child who's struggling should land. Remembered between visits, and
-// never spelled out to her: the board just looks different.
-const matchStartProgression = createStreakProgression({
-  storageKey: 'ariaClockMatchFromBlank',
+// Where Match currently sits on the ladder in shared/clock-logic.js: three
+// clean boards climb a rung, two scrappy ones drop back. Demoting is quicker
+// than promoting on purpose — a child who is struggling should land on the
+// rung that helps, quickly. Remembered between visits, and never spelled out
+// to her: the board just behaves differently.
+const matchLadder = createLadderProgression({
+  storageKey: 'ariaClockMatchRung',
+  rungs: MATCH_RUNGS.length,
   promoteAfter: 3,
   demoteAfter: 2
 });
@@ -70,6 +69,14 @@ const matchStartProgression = createStreakProgression({
 // in. Without it a match landing a moment before the minute turns would be
 // wiped mid-chime.
 const MATCH_REFILL_DELAY_MS = 1200;
+
+// On the nudging rungs the marks aren't permanent: they swell up for about a
+// second, then fade back out, and come round again while she's still stuck.
+const MATCH_NUDGE_HOLD_MS = 1100;
+const MATCH_NUDGE_EVERY_MS = 4000;
+// A young child staring at a clock and thinking is not stuck. Give her a good
+// while longer than the quiz nudge does before stepping in.
+const MATCH_NUDGE_IDLE_MS = 12000;
 
 // `segNames` limits which segments this digit is built with. The leading hour
 // only needs the right-hand third of the normal digit grid, including its tap
@@ -329,19 +336,16 @@ function buildModeBody(intro, struggled, struggledLabel) {
 
 function renderSummary(board, stats) {
   if (stats.usedMatch) {
-    const fromBlank = matchStartProgression.isOn();
+    const rung = matchRung(matchLadder.getRung());
     const intro = stats.matchSuccesses > 0
       ? 'You matched the clock ' + stats.matchSuccesses + ' ' + (stats.matchSuccesses === 1 ? 'time' : 'times') + '!'
-      : fromBlank
-        ? 'Tap segments to match the clock!'
-        : "Take away the lines that don't belong to match the clock!";
-    // Which board Match is handing her is the progress worth reporting here —
-    // she never sees it named, it just shows up as an easier or harder start.
-    const note = fromBlank
-      ? 'She builds each clock from a dark face now.'
-      : "Each clock starts with every line lit, so she only clears the ones that don't belong.";
+      : rung.filled
+        ? "Take away the lines that don't belong to match the clock!"
+        : 'Tap segments to match the clock!';
     const body = createIntroBody(intro);
-    appendBodyNote(body, note);
+    // How far up the ladder she is, in words: the only place it is ever
+    // spelled out. She just meets a board that behaves differently.
+    appendBodyNote(body, rung.note);
     appendScoreSection(board, { icon: '🧩', title: 'Match', body: body });
   }
 
@@ -520,23 +524,55 @@ function enterMatch() {
   let boardDoneAt = 0;
   let refillPending = false;
   let lastMinute = null;
-  let startedFilled = false;
+  let rung = matchRung(matchLadder.getRung());
+  // Whether the marks have flashed at all on this board. A board she only
+  // finished once the red started flashing is not evidence she can do without
+  // it, so it counts as neither a clean board nor a missed one.
+  let boardNudged = false;
+  let nudgeShowing = false;
+  let nudgeHideTimer = null;
 
-  // Start her on a fresh board: filled in with every line the face can show
-  // while she's still learning the digits, dark once she's ready to draw them.
+  // On the nudging rungs the marks stay hidden until this fires, then swell up
+  // and fade back out. paintSegments does the actual class work on its next
+  // pass, so a line that turns wrong mid-flash joins in rather than waiting.
+  const marksNudge = createHintNudge({
+    missThreshold: 2,
+    idleMs: MATCH_NUDGE_IDLE_MS,
+    flashEveryMs: MATCH_NUDGE_EVERY_MS,
+    isActive: function() { return rung.marks === 'nudge' && !session.isSessionEnded(); },
+    onFlash: function() {
+      boardNudged = true;
+      nudgeShowing = true;
+      clearTimeout(nudgeHideTimer);
+      nudgeHideTimer = window.setTimeout(function() { nudgeShowing = false; }, MATCH_NUDGE_HOLD_MS);
+    }
+  });
+
+  // Start her on a fresh board at whatever rung she's on: filled in with every
+  // line the face can show while she's still learning the digits, dark once
+  // she's ready to draw them. A new board is the only place the ladder is
+  // allowed to move, so nothing ever changes under her mid-puzzle — the next
+  // board simply arrives different.
   function seedBoard() {
-    startedFilled = !matchStartProgression.isOn();
-    const board = startingBoardSegments(startedFilled);
+    rung = matchRung(matchLadder.getRung());
+    const board = startingBoardSegments(rung.filled);
     CLOCK_SLOTS.forEach(function(pos) {
       manualState[pos] = new Set(board[pos]);
       setDigitState(manualFace._slots[pos], manualState[pos]);
     });
+    manualFace.classList.toggle('marks-steady', rung.marks === 'steady');
+    manualFace.classList.toggle('marks-nudge', rung.marks === 'nudge');
     boardMistakes = 0;
     boardDone = false;
     boardDoneAt = 0;
     refillPending = false;
     isMatching = false;
+    boardNudged = false;
+    nudgeShowing = false;
+    clearTimeout(nudgeHideTimer);
+    nudgeHideTimer = null;
     manualFace.classList.remove('matching');
+    marksNudge.reset();
   }
 
   function currentTargets() {
@@ -571,8 +607,12 @@ function enterMatch() {
         const name = segs[i].getAttribute('data-seg');
         const lit = manualState[pos].has(name);
         const wrong = lit && !target.has(name);
+        const missing = rung.filled && !lit && target.has(name);
         segs[i].classList.toggle('seg-right', lit && target.has(name));
-        segs[i].classList.toggle('seg-missing', startedFilled && !lit && target.has(name));
+        segs[i].classList.toggle('seg-missing', missing);
+        // Whether either mark actually shows is the CSS's business (see the
+        // marks-* classes); this only says the nudge is mid-flash.
+        segs[i].classList.toggle('seg-nudging', nudgeShowing && (wrong || missing));
         if (wrong && !segs[i].classList.contains('seg-wrong')) {
           // A CSS animation starts counting when it's applied, so segments
           // marked wrong at different moments would each pulse to their own
@@ -603,11 +643,15 @@ function enterMatch() {
       if (!boardDone) {
         boardDone = true;
         boardDoneAt = Date.now();
-        // A board she solved without a single tap going the wrong way is the
-        // evidence that she's ready for a darker face; one she wrestled with
-        // isn't. Nudging her back afterwards doesn't count either way, which
-        // is why this only fires the first time a board comes good.
-        matchStartProgression.recordRound(boardMistakes > 0 ? 'missed' : 'clean');
+        marksNudge.stop();
+        // A board solved without a single tap going the wrong way, and without
+        // the marks ever having to flash, is the evidence she's ready for one
+        // rung less. A board she wrestled with drops her back. A board she
+        // finished only once the red started flashing proves neither, so it
+        // passes through. Fires once per board: putting a board right again
+        // after it broke shouldn't be scored a second time.
+        matchLadder.recordRound(
+          boardMistakes > 0 ? 'missed' : boardNudged ? 'assisted' : 'clean');
       }
     } else if (!matches && isMatching) {
       isMatching = false;
@@ -621,6 +665,10 @@ function enterMatch() {
     const wasLit = set.has(segName);
     if (!boardDone && isMistakenTap(wasLit, currentTargets()[pos].has(segName))) {
       boardMistakes++;
+      marksNudge.registerMiss();
+    } else {
+      // Working away at it is not being stuck, so put the countdown back.
+      marksNudge.poke();
     }
     if (wasLit) set.delete(segName);
     else set.add(segName);
@@ -683,7 +731,13 @@ function enterMatch() {
   });
 
   return {
-    teardown: function() { stopTickLoop(); cancelSpeech(); }
+    teardown: function() {
+      stopTickLoop();
+      cancelSpeech();
+      marksNudge.stop();
+      clearTimeout(nudgeHideTimer);
+      nudgeHideTimer = null;
+    }
   };
 }
 

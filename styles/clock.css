@@ -261,12 +261,29 @@ body {
       --led-match-color: oklch(0.82 0.19 var(--led-hue, 50));
     }
   }
-.clock-face--manual .clock-digit-svg .seg.on.seg-right {
+/* A line in the right place wears the exact colour the clock above is wearing
+     at that moment. That is a mark like any other, so it belongs to the rung
+     too: on a nudging or silent board it stays the plain unjudged colour, or
+     the board would go on quietly sorting her lines into right and wrong all
+     the time and the red would have nothing left to tell her.
+
+     The exception is a finished board. Once the whole time is right the copy
+     is, segment for segment, the same picture as the original, and that
+     likeness is the reward — the higher the rung, the more it is the ONLY
+     thing that says so, since the colour arrives all at once instead of
+     leading her there one line at a time. */
+.clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-right,
+  .clock-face--manual.matching .clock-digit-svg .seg.on.seg-right {
     fill: var(--led-match-color);
     filter:
       drop-shadow(0 0 3px var(--led-match-color))
       drop-shadow(0 0 8px var(--led-match-color));
   }
+  /* Both marks below are drawn only on the rungs that have earned them. On a
+     `marks-steady` board they are simply on; on a `marks-nudge` board they are
+     hidden until the board flashes them at a child who has got stuck, and the
+     slower transition lets them swell up and fade out rather than snap. A
+     board with neither class says nothing at all, which is the top rung. */
   /* A line she took away that the time still needs: an empty outline of itself,
      dashed, with nothing filled in. This mark has to answer two questions at
      once — is something meant to be here, and is it filled in or not — and a
@@ -280,19 +297,26 @@ body {
      it can never read as lit however bright it gets, and edged in a fixed pale
      line rather than the cycling hue, so it can't sink into the background
      when that cycle rolls through a dark color. */
-.clock-face--manual .clock-digit-svg .seg.seg-missing {
+.clock-face--manual.marks-steady .clock-digit-svg .seg.seg-missing,
+  .clock-face--manual.marks-nudge .clock-digit-svg .seg.seg-missing.seg-nudging {
     fill: rgba(255, 255, 255, 0.05);
     stroke: rgba(255, 255, 255, 0.92);
     stroke-width: 3;
     stroke-dasharray: 6 4;
     stroke-linejoin: round;
   }
-.clock-face--manual .clock-digit-svg .seg.on.seg-wrong {
+.clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-wrong,
+  .clock-face--manual.marks-nudge .clock-digit-svg .seg.on.seg-wrong.seg-nudging {
     fill: #ff1744;
     filter:
       drop-shadow(0 0 3px rgba(255, 23, 68, 0.85))
       drop-shadow(0 0 8px rgba(213, 0, 0, 0.6));
+  }
+.clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-wrong {
     animation: seg-wrong-pulse 1s ease-in-out infinite;
+  }
+.clock-face--manual.marks-nudge .clock-digit-svg .seg {
+    transition: fill 0.4s ease, stroke 0.4s ease, filter 0.4s ease;
   }
 @keyframes seg-wrong-pulse {
     0%, 100% { opacity: 1; }
@@ -413,7 +437,8 @@ body {
 @media (prefers-reduced-motion: reduce) {.clock-option { transition: none; }
 .clock-option.pop { animation: none; }
 .clock-digit-svg .seg { transition: none; }
-.clock-face--manual .clock-digit-svg .seg.on.seg-wrong { animation: none; }
+.clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-wrong { animation: none; }
+  .clock-face--manual.marks-nudge .clock-digit-svg .seg { transition: none; }
 
   
 

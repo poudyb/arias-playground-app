@@ -132,3 +132,51 @@ test('isMistakenTap counts adding a stray line and clearing a needed one', () =>
   assert.strictEqual(clock.isMistakenTap(true, false), false);  // cleared a stray — the work
   assert.strictEqual(clock.isMistakenTap(false, true), false);  // lit a missing one — the work
 });
+
+// The whole point of the ladder is that it only ever gets harder as it climbs.
+// A rung that quietly handed something back would let her bounce between two
+// settings forever without the streaks ever meaning anything.
+test('every Match rung takes support away and never gives it back', () => {
+  const rungs = clock.MATCH_RUNGS;
+  assert.ok(rungs.length >= 2, 'a ladder needs rungs to climb');
+
+  assert.strictEqual(rungs[0].filled, true, 'the bottom rung fills the board in');
+  assert.strictEqual(rungs[0].marks, 'steady', 'the bottom rung marks wrong lines outright');
+  const top = rungs[rungs.length - 1];
+  assert.strictEqual(top.filled, false, 'the top rung starts from a dark face');
+  assert.strictEqual(top.marks, 'none', 'the top rung marks nothing at all');
+
+  // How much the board is doing for her, ranked the way the ladder is built:
+  // the starting board outranks the marks, so a rung may hand the red back at
+  // the moment it takes the filled-in board away (rung 2 does exactly that),
+  // but the total must still come down at every single step.
+  const support = (r) => (r.filled ? 10 : 0) +
+    (clock.MATCH_MARK_MODES.length - 1 - clock.MATCH_MARK_MODES.indexOf(r.marks));
+
+  for (let i = 1; i < rungs.length; i++) {
+    assert.ok(support(rungs[i]) < support(rungs[i - 1]),
+      'rung ' + i + ' is no harder than rung ' + (i - 1) +
+      ' (' + support(rungs[i - 1]) + ' -> ' + support(rungs[i]) + ')');
+  }
+});
+
+test('matchRung clamps anything that is not a rung to the easiest one', () => {
+  assert.deepStrictEqual(clock.matchRung(0), clock.MATCH_RUNGS[0]);
+  assert.deepStrictEqual(clock.matchRung(2), clock.MATCH_RUNGS[2]);
+  assert.deepStrictEqual(clock.matchRung(99), clock.MATCH_RUNGS[clock.MATCH_RUNGS.length - 1]);
+  for (const junk of [-1, undefined, null, NaN, 'two', {}]) {
+    assert.deepStrictEqual(clock.matchRung(junk), clock.MATCH_RUNGS[0]);
+  }
+});
+
+test('every rung is drawable and has something to tell a parent', () => {
+  const notes = new Set();
+  clock.MATCH_RUNGS.forEach((rung, i) => {
+    assert.ok(clock.MATCH_MARK_MODES.indexOf(rung.marks) !== -1, 'rung ' + i + ' mark mode');
+    assert.strictEqual(typeof rung.filled, 'boolean', 'rung ' + i + ' board');
+    assert.ok(typeof rung.note === 'string' && rung.note.length > 0, 'rung ' + i + ' note');
+    notes.add(rung.note);
+  });
+  // Two rungs sharing a note would leave a parent unable to tell them apart.
+  assert.strictEqual(notes.size, clock.MATCH_RUNGS.length, 'every rung reads differently');
+});

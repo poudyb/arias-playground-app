@@ -97,6 +97,63 @@ function isMistakenTap(wasLit, inTarget) {
   return wasLit === inTarget;
 }
 
+// How loudly the Match board tells her a line is in the wrong place:
+// 'steady' marks it the whole time, 'nudge' only flashes it when she's stuck,
+// 'none' says nothing at all. Ordered most help to least.
+const MATCH_MARK_MODES = ['steady', 'nudge', 'none'];
+
+// The ladder Match climbs, one prop removed per rung. First the board that
+// arrives already filled in — recognising a line that doesn't belong is much
+// easier than drawing a digit out of nothing — and then, twice over, the red
+// that calls out a wrong line, until the only thing left telling her she's
+// right is the chime.
+//
+// The rung she's on is never named to her; it shows up only as a board that
+// starts differently, and in the parent summary at the end of a session.
+//
+// Note that rung 2 hands the steady red back at the same moment it takes the
+// filled-in board away. That isn't a slip in the ordering: drawing a digit
+// from a dark face is the bigger step by far, and meeting it for the first
+// time with the marks switched off as well would be two new difficulties at
+// once. The board she starts from outranks how the marks behave, which is the
+// order the test pins.
+//
+// The top rung deliberately leaves her with no feedback but the chime, which
+// is the outcome 9b313d3 called the harshest the mode has. What makes that
+// safe here is the way down: two scrappy boards and she's back on a rung that
+// flashes, so the ladder catches her rather than stranding her.
+// `note` is how the end-of-session summary puts the rung to a parent; it
+// rides along here so a rung can never exist without one.
+const MATCH_RUNGS = [
+  {
+    filled: true, marks: 'steady',
+    note: "Each clock starts with every line lit, and a line that doesn't belong turns red straight away."
+  },
+  {
+    filled: true, marks: 'nudge',
+    note: 'Each clock still starts with every line lit, but the red only comes if she gets stuck.'
+  },
+  {
+    filled: false, marks: 'steady',
+    note: 'She builds each clock from a dark face now, with a wrong line turning red straight away.'
+  },
+  {
+    filled: false, marks: 'nudge',
+    note: 'She builds each clock from a dark face, and the red only comes if she gets stuck.'
+  },
+  {
+    filled: false, marks: 'none',
+    note: 'She builds each clock from a dark face with no red at all — just the chime when it comes right.'
+  }
+];
+
+function matchRung(level) {
+  const i = typeof level === 'number' && Number.isFinite(level)
+    ? Math.max(0, Math.min(Math.floor(level), MATCH_RUNGS.length - 1))
+    : 0;
+  return MATCH_RUNGS[i];
+}
+
 // Exported for Node's test runner; ignored in the browser (no `module`).
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -114,6 +171,9 @@ if (typeof module !== 'undefined' && module.exports) {
     segsForDigit,
     targetSegmentsForTime,
     startingBoardSegments,
-    isMistakenTap
+    isMistakenTap,
+    MATCH_MARK_MODES,
+    MATCH_RUNGS,
+    matchRung
   };
 }
