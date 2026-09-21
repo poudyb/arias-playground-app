@@ -13,8 +13,9 @@ const MODE_SESSION_KEY = SYMBOL_CONFIG.sessionKey;
 
 // Only the alphabet defines this — numbers stay plain digits.
 const CASE_CONFIG = SYMBOL_CONFIG.caseProgression || null;
-const caseProgression = CASE_CONFIG ? createStreakProgression({
+const caseProgression = CASE_CONFIG ? createLadderProgression({
   storageKey: CASE_CONFIG.storageKey,
+  rungs: CASE_CONFIG.stages.length + 1,
   promoteAfter: CASE_CONFIG.promoteAfter,
   demoteAfter: CASE_CONFIG.demoteAfter
 }) : null;
@@ -25,24 +26,46 @@ let chaseRoundColors = [];
 let activity = null;
 let shownChar = null;
 
-function isCasePaired() {
-  return !!(caseProgression && caseProgression.isOn());
+function caseLevel() {
+  return caseProgression ? caseProgression.getRung() : 0;
+}
+
+// Every letter whose lowercase she has unlocked so far, in teaching order.
+function pairedLetters() {
+  return CASE_CONFIG ? [].concat.apply([], CASE_CONFIG.stages.slice(0, caseLevel())) : [];
+}
+
+// The group that opened most recently - the letters the quiz leans on.
+function newestPairedLetters() {
+  return caseLevel() > 0 ? CASE_CONFIG.stages[caseLevel() - 1] : [];
+}
+
+function isCasePaired(ch) {
+  return pairedLetters().indexOf(ch) !== -1;
 }
 
 // What a letter looks like right now: "A" normally, "Aa" once she's earned it.
 function itemText(ch) {
-  return isCasePaired() ? CASE_CONFIG.pairText(ch) : ch;
+  return isCasePaired(ch) ? CASE_CONFIG.pairText(ch) : ch;
 }
 
-// Re-paint everything that spells a letter out. Called when the pairing flips
+// Re-paint everything that spells a letter out. Called when the level changes
 // mid-game so the change shows up with the celebration, not on the next round.
 function applyCasePairing() {
-  touchGrid.classList.toggle('is-pair', isCasePaired());
+  touchGrid.classList.toggle('is-pair', caseLevel() > 0);
   if (activity) activity.refreshTiles();
   if (shownChar && letter.style.display === 'block') showChar(shownChar, lastColor);
 }
 
 function renderSummary(board, stats) {
+  if (caseLevel() > 0) {
+    appendScoreSection(board, {
+      icon: '🔡',
+      title: 'Lowercase',
+      body: 'Reading big-and-small pairs for: ' +
+        pairedLetters().map(function(ch) { return ch.toLowerCase(); }).join(' ') + '.'
+    });
+  }
   renderThreeModeSummary(board, stats, buildModeSummaryConfig({
     freeplay: {
       countField: SYMBOL_CONFIG.freeplayStatField,
@@ -120,7 +143,7 @@ function showChar(ch, color) {
   letter.style.display = 'block';
   letter.style.opacity = '1';
   letter.textContent = itemText(ch);
-  letter.classList.toggle('is-pair', isCasePaired());
+  letter.classList.toggle('is-pair', isCasePaired(ch));
   letter.style.color = color;
   letter.classList.remove('pop', 'fade-out');
   void letter.offsetWidth;
@@ -184,6 +207,11 @@ activity = createCollectionActivity({
   },
   chasePool: SYMBOL_CONFIG.chasePool,
   chaseItemWeight: SYMBOL_CONFIG.chaseItemWeight,
+  // The freshly unlocked group comes up about half the time so each new
+  // lowercase shape gets seen and matched before the next group opens.
+  quizItemWeight: function(ch) {
+    return newestPairedLetters().indexOf(ch) !== -1 ? 3 : 1;
+  },
   chaseDifficultyMax: SYMBOL_CONFIG.chaseDifficultyMax,
   speakChase: function(item) { speakChar(item); },
   thumbsDown,
@@ -218,7 +246,7 @@ activity = createCollectionActivity({
   }
 });
 
-touchGrid.classList.toggle('is-pair', isCasePaired());
+touchGrid.classList.toggle('is-pair', caseLevel() > 0);
 
 document.addEventListener('keydown', function(event) {
   if (session.isSessionEnded()) return;

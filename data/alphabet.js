@@ -23,14 +23,33 @@ const LEARNING_SYMBOLS_CONFIG = {
   speakItem: function(item) {
     return item.toLowerCase();
   },
-  // Once she's solving quiz rounds on the first try, the capital gets its
-  // lowercase twin beside it ("Aa") everywhere she reads letters — the prompt,
-  // the on-screen keyboard, and free play. A run of missed rounds puts it back
-  // to plain capitals. See shared/progression.js for the streak rules.
+  // Lowercase arrives a few letters at a time. Each clean streak of quiz
+  // rounds unlocks the next group, whose capitals then show their small twin
+  // beside them ("Cc") everywhere she reads letters — the prompt, the on-screen
+  // keyboard, and free play — and get asked more often in the quiz until the
+  // group after it opens. A run of missed rounds closes the newest group
+  // again. See shared/progression.js for the streak rules.
+  //
+  // The groups run from "already knows it" to "genuinely new": first the
+  // lowercase that is just a shrunken capital, then near-twins, then the tall
+  // stick letters, then the ones with a new shape, and last the mirror pairs
+  // (b/d, p/q) that trip up every early reader.
   caseProgression: {
     storageKey: 'ariaAlphabetCasePairing',
     promoteAfter: 3,
     demoteAfter: 3,
+    stages: [
+      'COSVWXZ'.split(''),
+      'JKPUYM'.split(''),
+      'ILTFHN'.split(''),
+      'AERG'.split(''),
+      'BDQ'.split('')
+    ],
     pairText: function(item) { return item + item.toLowerCase(); }
   }
 };
+
+// Exported for Node's test runner; ignored in the browser (no `module`).
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { LEARNING_SYMBOLS_CONFIG };
+}

@@ -24,7 +24,7 @@ the prediction intact.
 ## Tests
 
 The pure logic (stats normalization, clock wording / digit segments, the
-spelling word helpers, session index validation, and the streak progressions
+spelling word helpers, session index validation, and the ladder progressions
 that step a game's difficulty up and down — both the single on/off step and
 the multi-rung ladder Clock Match climbs) is unit-tested with
 **Node's built-in test runner** — no dependencies to install.

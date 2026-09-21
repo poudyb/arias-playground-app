@@ -158,6 +158,7 @@ function createCollectionActivity(options) {
     getChaseParams,
     chasePool,
     chaseItemWeight,
+    quizItemWeight,
     chaseDifficultyMax = 15,
     speakChase,
     gridQuizClass,
@@ -199,6 +200,25 @@ function createCollectionActivity(options) {
 
   function quizTarget() {
     return quizTargetIndex >= 0 ? items[quizTargetIndex] : null;
+  }
+
+  // Position in `candidates` of a random pick, each entry as likely as its
+  // weight; a weightless or all-zero list falls back to an even draw.
+  function pickWeighted(candidates, weightOf) {
+    let totalWeight = 0;
+    const weights = candidates.map(function(candidate) {
+      const weight = Number(weightOf(candidate));
+      const safeWeight = Number.isFinite(weight) && weight > 0 ? weight : 0;
+      totalWeight += safeWeight;
+      return safeWeight;
+    });
+    if (totalWeight === 0) return Math.floor(Math.random() * candidates.length);
+    let roll = Math.random() * totalWeight;
+    for (let i = 0; i < weights.length; i++) {
+      roll -= weights[i];
+      if (roll < 0) return i;
+    }
+    return weights.length - 1;
   }
 
   function chaseTarget() {
@@ -352,11 +372,13 @@ function createCollectionActivity(options) {
       }
     }
 
-    let nextIndex;
-    do {
-      nextIndex = Math.floor(Math.random() * items.length);
-    } while (quizTargetIndex >= 0 && getTargetKey(items[nextIndex]) === getTargetKey(items[quizTargetIndex]));
-    quizTargetIndex = nextIndex;
+    const previousKey = quizTargetIndex >= 0 ? getTargetKey(items[quizTargetIndex]) : null;
+    const candidates = items.map(function(_, i) { return i; }).filter(function(i) {
+      return previousKey === null || getTargetKey(items[i]) !== previousKey;
+    });
+    quizTargetIndex = candidates[pickWeighted(candidates, function(idx) {
+      return quizItemWeight ? quizItemWeight(items[idx]) : 1;
+    })];
     if (modeSessionKey) saveRoundState(modeSessionKey + ':quiz', { targetIndex: quizTargetIndex });
     if (stopPrompt) stopPrompt();
     if (promptItem) promptItem(quizTargetIndex);
@@ -408,27 +430,9 @@ function createCollectionActivity(options) {
     const shuffled = [targetIndex];
     const remaining = indices.filter(function(idx) { return idx !== targetIndex; });
     while (shuffled.length < count) {
-      let totalWeight = 0;
-      const weights = remaining.map(function(idx) {
-        const weight = chaseItemWeight ? Number(chaseItemWeight(pool[idx], chaseDifficulty)) : 1;
-        const safeWeight = Number.isFinite(weight) && weight > 0 ? weight : 0;
-        totalWeight += safeWeight;
-        return safeWeight;
+      const pickedAt = pickWeighted(remaining, function(idx) {
+        return chaseItemWeight ? chaseItemWeight(pool[idx], chaseDifficulty) : 1;
       });
-      let pickedAt;
-      if (totalWeight === 0) {
-        pickedAt = Math.floor(Math.random() * remaining.length);
-      } else {
-        let roll = Math.random() * totalWeight;
-        pickedAt = weights.length - 1;
-        for (let i = 0; i < weights.length; i++) {
-          roll -= weights[i];
-          if (roll < 0) {
-            pickedAt = i;
-            break;
-          }
-        }
-      }
       shuffled.push(remaining.splice(pickedAt, 1)[0]);
     }
 

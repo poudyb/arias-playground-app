@@ -29,51 +29,86 @@ document.addEventListener('visibilitychange', function() {
 });
 window.addEventListener('pagehide', suspendAllAudio);
 
+// iOS puts a bare AudioContext in the "ambient" audio session, which the
+// iPad's silent mode mutes while the spoken prompts (system speech) carry on
+// unaffected - so the child sees the ta-da but hears no chime. "playback" is
+// the category speech already effectively enjoys.
+try {
+  if (navigator.audioSession) navigator.audioSession.type = 'playback';
+} catch (_) {}
+
 function createAudioFeedback() {
   let audioCtx = null;
 
-  function getAudioCtx() {
+  function ensureAudioCtx() {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       audioContexts.push(audioCtx);
     }
-    // Stay suspended while backgrounded so nothing plays out of view; a real
-    // interaction after returning will resume it on the next call.
-    if (!document.hidden && audioCtx.state === 'suspended') {
-      const resumed = audioCtx.resume();
-      if (resumed && typeof resumed.catch === 'function') resumed.catch(function() {});
-    }
     return audioCtx;
   }
 
+  // Stay suspended while backgrounded so nothing plays out of view; a real
+  // interaction after returning resumes it. iOS also parks the context in its
+  // own "interrupted" state (speech, Siri, a call), so anything short of
+  // running gets nudged. Returns the resume promise, or null when there is
+  // nothing to do.
+  function resumeAudioCtx(ctx) {
+    if (document.hidden || ctx.state === 'running') return null;
+    return ctx.resume();
+  }
+
+  function getAudioCtx() {
+    const ctx = ensureAudioCtx();
+    const resumed = resumeAudioCtx(ctx);
+    if (resumed && typeof resumed.catch === 'function') resumed.catch(function() {});
+    return ctx;
+  }
+
+  // resume() lands asynchronously (well over a second on iOS after a fresh
+  // load), and the clock stands still until it does. Scheduling against that
+  // frozen clock plays the sound late and clipped once the context wakes, so
+  // notes are laid down only once it is actually running.
+  function whenRunning(schedule) {
+    const ctx = ensureAudioCtx();
+    const resumed = resumeAudioCtx(ctx);
+    if (!resumed) {
+      if (ctx.state === 'running') schedule(ctx);
+      return;
+    }
+    resumed.then(function() { schedule(ctx); }, function() {});
+  }
+
   function playChime() {
-    const ctx = getAudioCtx();
-    [523.25, 659.25, 783.99].forEach(function(freq, index) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.value = 0.15;
-      gain.gain.setTargetAtTime(0, ctx.currentTime + index * 0.1 + 0.08, 0.02);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + index * 0.1);
-      osc.stop(ctx.currentTime + index * 0.1 + 0.2);
+    whenRunning(function(ctx) {
+      [523.25, 659.25, 783.99].forEach(function(freq, index) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.15;
+        gain.gain.setTargetAtTime(0, ctx.currentTime + index * 0.1 + 0.08, 0.02);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + index * 0.1);
+        osc.stop(ctx.currentTime + index * 0.1 + 0.2);
+      });
     });
   }
 
   function playBuzzer() {
-    const ctx = getAudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.value = 200;
-    gain.gain.value = 0.08;
-    gain.gain.setTargetAtTime(0, ctx.currentTime + 0.25, 0.03);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.35);
+    whenRunning(function(ctx) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.value = 200;
+      gain.gain.value = 0.08;
+      gain.gain.setTargetAtTime(0, ctx.currentTime + 0.25, 0.03);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    });
   }
 
   // A C-major chord for "your clock matches" — C5, E5 and G5 together.
@@ -97,55 +132,57 @@ function createAudioFeedback() {
   let matchToneRingingUntil = 0;
 
   function playMatchTone() {
-    const ctx = getAudioCtx();
-    const start = ctx.currentTime + 0.02;
-    if (start < matchToneRingingUntil) return;
+    whenRunning(function(ctx) {
+      const start = ctx.currentTime + 0.02;
+      if (start < matchToneRingingUntil) return;
 
-    const attack = 0.02;
-    const hold = 0.3;
-    const decay = 0.23;
-    const end = start + attack + hold + decay;
-    // Three sines sum to ~3x this, matching the level the chord has always had.
-    const peak = 0.08;
-    // exponentialRamp can't touch zero, so the envelope starts and ends just
-    // above silence rather than at it.
-    const silence = 0.0001;
+      const attack = 0.02;
+      const hold = 0.3;
+      const decay = 0.23;
+      const end = start + attack + hold + decay;
+      // Three sines sum to ~3x this, matching the level the chord has always had.
+      const peak = 0.08;
+      // exponentialRamp can't touch zero, so the envelope starts and ends just
+      // above silence rather than at it.
+      const silence = 0.0001;
 
-    const master = ctx.createGain();
-    master.gain.setValueAtTime(silence, start);
-    master.gain.exponentialRampToValueAtTime(peak, start + attack);
-    master.gain.setValueAtTime(peak, start + attack + hold);
-    master.gain.exponentialRampToValueAtTime(silence, end);
-    master.connect(ctx.destination);
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(silence, start);
+      master.gain.exponentialRampToValueAtTime(peak, start + attack);
+      master.gain.setValueAtTime(peak, start + attack + hold);
+      master.gain.exponentialRampToValueAtTime(silence, end);
+      master.connect(ctx.destination);
 
-    [523.25, 659.25, 783.99].forEach(function(freq) {
-      const osc = ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      osc.connect(master);
-      osc.start(start);
-      osc.stop(end + 0.02);
+      [523.25, 659.25, 783.99].forEach(function(freq) {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        osc.connect(master);
+        osc.start(start);
+        osc.stop(end + 0.02);
+      });
+
+      matchToneRingingUntil = end;
     });
-
-    matchToneRingingUntil = end;
   }
 
   // A soft, neutral two-note blip for "no match - your turn again". Quiet and
   // gentle so a missed memory flip never feels like a mistake (that is what the
   // buzzer is for, reserved for unforced errors).
   function playSoftTone() {
-    const ctx = getAudioCtx();
-    [494.0, 440.0].forEach(function(freq, index) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.value = 0.05;
-      gain.gain.setTargetAtTime(0, ctx.currentTime + index * 0.12 + 0.05, 0.03);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + index * 0.12);
-      osc.stop(ctx.currentTime + index * 0.12 + 0.2);
+    whenRunning(function(ctx) {
+      [494.0, 440.0].forEach(function(freq, index) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.05;
+        gain.gain.setTargetAtTime(0, ctx.currentTime + index * 0.12 + 0.05, 0.03);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + index * 0.12);
+        osc.stop(ctx.currentTime + index * 0.12 + 0.2);
+      });
     });
   }
 
@@ -153,32 +190,33 @@ function createAudioFeedback() {
   // lands on a held major chord. Reserved for level-ups so it feels like a real
   // reward, distinct from the smaller per-match chime.
   function playFanfare() {
-    const ctx = getAudioCtx();
-    const run = [523.25, 659.25, 783.99, 1046.5];
-    run.forEach(function(freq, index) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.value = freq;
-      gain.gain.value = 0.14;
-      gain.gain.setTargetAtTime(0, ctx.currentTime + index * 0.11 + 0.07, 0.03);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + index * 0.11);
-      osc.stop(ctx.currentTime + index * 0.11 + 0.22);
-    });
-    const chordStart = ctx.currentTime + run.length * 0.11 + 0.02;
-    [523.25, 659.25, 783.99, 1046.5].forEach(function(freq) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.value = 0.1;
-      gain.gain.setTargetAtTime(0, chordStart + 0.5, 0.06);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(chordStart);
-      osc.stop(chordStart + 0.95);
+    whenRunning(function(ctx) {
+      const run = [523.25, 659.25, 783.99, 1046.5];
+      run.forEach(function(freq, index) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.14;
+        gain.gain.setTargetAtTime(0, ctx.currentTime + index * 0.11 + 0.07, 0.03);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + index * 0.11);
+        osc.stop(ctx.currentTime + index * 0.11 + 0.22);
+      });
+      const chordStart = ctx.currentTime + run.length * 0.11 + 0.02;
+      [523.25, 659.25, 783.99, 1046.5].forEach(function(freq) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.1;
+        gain.gain.setTargetAtTime(0, chordStart + 0.5, 0.06);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(chordStart);
+        osc.stop(chordStart + 0.95);
+      });
     });
   }
 
