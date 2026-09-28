@@ -178,8 +178,13 @@ function cancelSpeech() {
 
 // Speaks several parts back-to-back as one cancellable sequence (e.g. a word
 // followed by its letters). rates[i] sets the rate per part.
+//
+// onPart(i) fires as part i starts being spoken, so the screen can follow along
+// (light up the letter being said). onEnd() fires once when the whole sequence is
+// over. Neither fires for a sequence that was cancelled or replaced — whoever
+// cancelled it owns the screen from then on.
 function speakSequence(parts, options = {}) {
-  const { rates = [] } = options;
+  const { rates = [], onPart, onEnd } = options;
   const synth = window.speechSynthesis;
   if (!synth || parts.length === 0) return;
   if (document.hidden) return;
@@ -192,10 +197,21 @@ function speakSequence(parts, options = {}) {
   });
   const first = utterances[0];
 
+  if (onPart) {
+    utterances.forEach(function(u, i) {
+      u.addEventListener('start', function() {
+        if (activeUtterance === first) onPart(i);
+      });
+    });
+  }
+
   let dropWatch = null;
   function release() {
     if (dropWatch) { clearTimeout(dropWatch); dropWatch = null; }
-    if (activeUtterance === first) activeUtterance = null;
+    if (activeUtterance === first) {
+      activeUtterance = null;
+      if (onEnd) onEnd();
+    }
   }
   const last = utterances[utterances.length - 1];
   last.addEventListener('end', release);

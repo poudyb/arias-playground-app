@@ -2,7 +2,9 @@
 //   Free Play — build any valid 3-letter word on a prefix-constrained QWERTY
 //               keyboard (keys disable to only those extending toward a real
 //               word), then speak it and show the picture.
-//   Quiz      — show a word, pick the matching picture from three choices.
+//   Quiz      — show a word, pick the matching picture from three choices. Says
+//               "Find the picture!" first, then the word and its letters, lighting
+//               each letter in its slot colour as it is spoken.
 //   Read It   — show a picture and say the word, pick the matching written
 //               word from three choices (Quiz's inverse). Distractors avoid
 //               look-alike spellings, like Clock's Quiz avoids near times.
@@ -103,15 +105,38 @@ const audio = createAudioFeedback();
 const thumbsDown = createThumbsDownController();
 setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
 
+// Quiz shows its word as static slots. While the word is being said, each slot
+// lights up in its own colour (green / red / blue, the same first / middle / last
+// colours as everywhere else in Spelling) as its letter is spoken, and settles
+// back to a muted grey once the speaking is over: still readable, but plainly not
+// something to press. Read It has no slots on screen, so this does nothing there.
+const ALL_SLOTS = [0, 1, 2];
+function lightSpokenLetters(lit) {
+  Array.prototype.forEach.call(spellSlots.children, function(slot, i) {
+    slot.classList.toggle('speaking', lit.indexOf(i) !== -1);
+  });
+}
+
 // Says the word, spells it letter by letter, then says the word again:
 // "dad … d a d … dad". The separate utterances give the pauses between each.
-function speakWordThenSpell(word) {
+// `lead`, when given, is spoken first ("Find the picture!") and lights nothing.
+function speakWordThenSpell(word, lead) {
   const w = word.toLowerCase();
-  const parts = [w].concat(w.split('')).concat([w]);
+  const offset = lead ? 1 : 0;
+  const parts = (lead ? [lead] : []).concat([w], w.split(''), [w]);
+  lightSpokenLetters([]);
   speakSequence(parts, {
     rates: parts.map(function(_, i) {
-      return (i === 0 || i === parts.length - 1) ? 0.85 : 0.7;
-    })
+      if (i < offset) return 0.9;
+      return (i === offset || i === parts.length - 1) ? 0.85 : 0.7;
+    }),
+    onPart: function(i) {
+      const p = i - offset;
+      if (p < 0) lightSpokenLetters([]);
+      else if (p === 0 || p === parts.length - 1 - offset) lightSpokenLetters(ALL_SLOTS);
+      else lightSpokenLetters([p - 1]);
+    },
+    onEnd: function() { lightSpokenLetters([]); }
   });
 }
 
@@ -291,6 +316,9 @@ function renderChoices(indices, target) {
   });
 }
 
+// Said aloud at the start of every Quiz round, like Memory's "Find the ones that
+// match!" — the word and picture cards alone don't tell her to touch a picture.
+const QUIZ_PROMPT = 'Find the picture!';
 const QUIZ_STATE_KEY = SPELLING_SESSION_KEY + ':quiz';
 const SPELL_STATE_KEY = SPELLING_SESSION_KEY + ':spell';
 const READ_STATE_KEY = SPELLING_SESSION_KEY + ':read';
@@ -307,8 +335,8 @@ function startQuizRound() {
     const target = WORDS[quizTargetIndex];
     renderWord(target);
     renderChoices(saved.choiceIndices, target);
-    spellHint.textContent = 'Find the picture!';
-    speakWordThenSpell(target);
+    spellHint.textContent = QUIZ_PROMPT;
+    speakWordThenSpell(target, QUIZ_PROMPT);
     hint.reset();
     return;
   }
@@ -323,8 +351,8 @@ function startQuizRound() {
   const target = WORDS[quizTargetIndex];
   renderWord(target);
   renderChoices(choiceIndices, target);
-  spellHint.textContent = 'Find the picture!';
-  speakWordThenSpell(target);
+  spellHint.textContent = QUIZ_PROMPT;
+  speakWordThenSpell(target, QUIZ_PROMPT);
   hint.reset();
 }
 
@@ -335,6 +363,13 @@ function onChoice(word, btn, target) {
     hint.stop();
     saveRoundState(QUIZ_STATE_KEY, null);
     btn.classList.add('correct');
+    // Celebrate the instant she taps: cut off whatever is still being said or
+    // spelled first. Leaving it to speakText isn't enough — a hint replay opens
+    // with this very word, so speakText treats it as already being said and skips
+    // it, and the spelling carried on to the end with the celebration unheard.
+    cancelSpeech();
+    thumbsDown.hide();
+    lightSpokenLetters(ALL_SLOTS);
     audio.playChime();
     speakText(target.toLowerCase(), { rate: 0.85 });
     spawnConfetti();
@@ -458,6 +493,8 @@ function onWordChoice(word, btn, target) {
     hint.stop();
     saveRoundState(READ_STATE_KEY, null);
     btn.classList.add('correct');
+    cancelSpeech();
+    thumbsDown.hide();
     audio.playChime();
     speakText(target.toLowerCase(), { rate: 0.85 });
     spawnConfetti();

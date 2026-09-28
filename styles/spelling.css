@@ -143,26 +143,38 @@ body {
   animation: slot-shake 0.4s ease-out;
   border-color: #e53935;
 }
+/* The answers are a zone of their own below #spell-main, not a row tucked under
+   the word: they sit where the keyboard sits in the other modes, so the word she
+   is reading and the things she taps are clearly two different places. */
 .spell-choices {
   display: none;
+  flex: 0 0 auto;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: clamp(10px, 3vw, 28px);
+  gap: clamp(14px, 3.6vw, 40px);
+  padding: 8px 8px clamp(28px, 9vh, 96px);
 }
 .spell-choices.is-visible { display: flex; }
+/* Raised, pressable tiles: the same purple-rimmed white with a solid ledge under
+   it as the Home button, so they read as buttons where the word above does not. */
 .choice {
-  border: 4px solid #e0e0e0;
-  border-radius: 18px;
-  background: #fff;
-  padding: clamp(6px, 1.5vw, 14px);
+  border: 4px solid #7c4dff;
+  border-radius: 22px;
+  background: linear-gradient(165deg, #fff 0%, #f3edff 100%);
+  box-shadow: 0 6px 0 #5e35b1, 0 12px 24px rgba(0, 0, 0, 0.1);
+  padding: clamp(8px, 2vw, 18px);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
-.choice:active { transform: scale(0.96); }
+.choice:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #5e35b1, 0 4px 10px rgba(0, 0, 0, 0.1);
+}
 .choice img {
-  width: clamp(80px, 22vw, 170px);
-  height: clamp(80px, 22vw, 170px);
+  width: clamp(64px, min(21vw, 24vh), 170px);
+  height: clamp(64px, min(21vw, 24vh), 170px);
   object-fit: contain;
   pointer-events: none;
 }
@@ -178,16 +190,29 @@ body {
 }
 .choice.correct {
   border-color: #43a047;
-  box-shadow: 0 0 0 4px rgba(67, 160, 71, 0.3);
+  box-shadow: 0 6px 0 #2e7d32, 0 0 0 5px rgba(67, 160, 71, 0.3);
 }
 .choice.wrong {
   border-color: #e53935;
+  box-shadow: 0 6px 0 #b71c1c, 0 12px 24px rgba(0, 0, 0, 0.1);
   animation: slot-shake 0.4s ease-out;
 }
+/* Quiz's word: flat, pale and grey, so it is plainly something to read and not
+   to press. Each letter lights up in its slot colour while it is being spoken
+   (.speaking) and goes back to grey afterwards. */
 .slot.shown {
-  border-color: #b0bec5;
+  border-color: #e3e8eb;
+  background: #f4f6f7;
+  color: #78909c;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease,
+    box-shadow 0.2s ease, transform 0.2s ease;
+}
+.slot.shown.speaking {
+  border-color: var(--slot-color);
   background: #fff;
-  color: #37474f;
+  color: var(--slot-color);
+  box-shadow: 0 0 0 4px var(--slot-shadow);
+  transform: scale(1.08);
 }
 @keyframes hint-flash-pulse {
   0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 179, 0, 0)); }
@@ -196,6 +221,7 @@ body {
 .keyboard { display: none; }
 @media (pointer: coarse) {
   #spell-main { flex: 0 0 56%; }
+  .spell-choices.is-visible { flex: 1 1 0; min-height: 0; }
   
   .spell-picture { flex: 0 1 34vh; min-height: 0; }
   .spell-picture img { max-height: 100%; }
@@ -263,6 +289,9 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .key.next-key:not(.disabled) { animation: none; }
+  .slot.shown { transition: none; }
+  .slot.shown.speaking { transform: none; }
+  .choice { transition: none; }
 }
 @keyframes emoji-pop {
   0%   { transform: scale(0) rotate(-20deg); opacity: 1; }
@@ -386,4 +415,5 @@ body {
      too - two cards animating for one tap. */
   @media (hover: hover) {
   .mode-btn:hover { background: #ddd; }
+  .choice:hover:not(:active):not(.correct):not(.wrong) { transform: translateY(-2px); }
   }
