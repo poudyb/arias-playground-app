@@ -3,7 +3,7 @@
 //               keyboard (keys disable to only those extending toward a real
 //               word), then speak it and show the picture.
 //   Quiz      — show a word, pick the matching picture from three choices. Says
-//               "Find the picture!" first, then the word and its letters, lighting
+//               "Which one is ___?" first, then its letters and the word, lighting
 //               each letter in its slot colour as it is spoken.
 //   Read It   — show a picture and say the word, pick the matching written
 //               word from three choices (Quiz's inverse). Distractors avoid
@@ -119,22 +119,21 @@ function lightSpokenLetters(lit) {
 
 // Says the word, spells it letter by letter, then says the word again:
 // "dad … d a d … dad". The separate utterances give the pauses between each.
-// `lead`, when given, is spoken first ("Find the picture!") and lights nothing.
-function speakWordThenSpell(word, lead) {
+// `opening`, when given, replaces the first bare word with a sentence that
+// contains it ("Which one is dad?"), so the task and its target come in one breath.
+function speakWordThenSpell(word, opening) {
   const w = word.toLowerCase();
-  const offset = lead ? 1 : 0;
-  const parts = (lead ? [lead] : []).concat([w], w.split(''), [w]);
+  const parts = [opening || w].concat(w.split(''), [w]);
   lightSpokenLetters([]);
   speakSequence(parts, {
     rates: parts.map(function(_, i) {
-      if (i < offset) return 0.9;
-      return (i === offset || i === parts.length - 1) ? 0.85 : 0.7;
+      return (i === 0 || i === parts.length - 1) ? 0.85 : 0.7;
     }),
+    // The word is in the first and last parts, so those light all three letters;
+    // in between, one letter at a time.
     onPart: function(i) {
-      const p = i - offset;
-      if (p < 0) lightSpokenLetters([]);
-      else if (p === 0 || p === parts.length - 1 - offset) lightSpokenLetters(ALL_SLOTS);
-      else lightSpokenLetters([p - 1]);
+      if (i === 0 || i === parts.length - 1) lightSpokenLetters(ALL_SLOTS);
+      else lightSpokenLetters([i - 1]);
     },
     onEnd: function() { lightSpokenLetters([]); }
   });
@@ -316,9 +315,12 @@ function renderChoices(indices, target) {
   });
 }
 
-// Said aloud at the start of every Quiz round, like Memory's "Find the ones that
-// match!" — the word and picture cards alone don't tell her to touch a picture.
+// Every Quiz round opens by asking for the word out loud, like Match's "Which one
+// is the same as this?" — the word and picture cards alone don't tell her to touch
+// a picture. "Which one is ___?" (not "Find the ___") because some words aren't
+// things you can put "the" in front of: red, run, sad, mom.
 const QUIZ_PROMPT = 'Find the picture!';
+function quizOpening(word) { return 'Which one is ' + word.toLowerCase() + '?'; }
 const QUIZ_STATE_KEY = SPELLING_SESSION_KEY + ':quiz';
 const SPELL_STATE_KEY = SPELLING_SESSION_KEY + ':spell';
 const READ_STATE_KEY = SPELLING_SESSION_KEY + ':read';
@@ -336,7 +338,7 @@ function startQuizRound() {
     renderWord(target);
     renderChoices(saved.choiceIndices, target);
     spellHint.textContent = QUIZ_PROMPT;
-    speakWordThenSpell(target, QUIZ_PROMPT);
+    speakWordThenSpell(target, quizOpening(target));
     hint.reset();
     return;
   }
@@ -352,7 +354,7 @@ function startQuizRound() {
   renderWord(target);
   renderChoices(choiceIndices, target);
   spellHint.textContent = QUIZ_PROMPT;
-  speakWordThenSpell(target, QUIZ_PROMPT);
+  speakWordThenSpell(target, quizOpening(target));
   hint.reset();
 }
 
