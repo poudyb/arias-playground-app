@@ -9,10 +9,15 @@ match its round, difficulty, feedback, and cleanup patterns. Difficulty changes
 at a round or board boundary. Never show a numeric level to the child; progress
 belongs in a parent-facing summary.
 
-Keep feedback warm and small. A correct answer may use sound and confetti;
-errors use a small shake and sound, not a full-screen failure mark. Reuse the
-ARASAAC image pool in `assets/spelling/` when it fits, and verify the image
-rather than trusting its filename.
+Keep feedback warm. A correct answer uses sound and confetti. A wrong answer to
+a question (picking a picture, a word, a clock) gets the big red X and the
+buzzer: that is the normal feedback, and Quiz, Read It, Match and Clock all use
+it. Leave the X off only where it would be too harsh, which is a step she is
+still working toward rather than an answer she gave: a wrong letter while
+spelling a word (Spell It), or a Memory flip that was just looking. Those get a
+small shake and a sound instead. Reuse the ARASAAC image pool in
+`assets/spelling/` when it fits, and verify the image rather than trusting its
+filename.
 
 Type comes from `styles/fonts.css`, which every page links before its own
 stylesheet: `var(--font-letters)` for anything the child reads as letters, and
