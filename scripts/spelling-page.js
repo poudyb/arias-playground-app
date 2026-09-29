@@ -3,8 +3,9 @@
 //               keyboard (keys disable to only those extending toward a real
 //               word), then speak it and show the picture.
 //   Quiz      — show a word, pick the matching picture from three choices. Says
-//               "Which one is ___?" first, then its letters and the word, lighting
-//               each letter in its slot colour as it is spoken.
+//               the word's letters aloud, lighting each in its slot colour as it
+//               is spoken, with less said around them the better she is doing
+//               (see QUIZ_RUNGS in shared/word-logic.js).
 //   Read It   — show a picture and say the word, pick the matching written
 //               word from three choices (Quiz's inverse). Distractors avoid
 //               look-alike spellings, like Clock's Quiz avoids near times.
@@ -40,6 +41,20 @@ let spellTargetIndex = -1;
 let readTargetIndex = -1;
 let readLocked = false;
 
+// How much Quiz says at the start of a round, on the ladder in shared/word-logic.js.
+// Three clean rounds climb a rung (less is said); two messy ones drop back, which is
+// deliberately quicker so a child who is struggling is caught fast. Remembered
+// between visits and never named to her: the round just sounds different.
+const quizLadder = createLadderProgression({
+  storageKey: 'ariaSpellingQuizRung',
+  rungs: QUIZ_RUNGS.length,
+  promoteAfter: 3,
+  demoteAfter: 2
+});
+// What the round in front of her has cost so far, for scoring it when she solves it.
+let quizRoundMissed = false;
+let quizRoundHinted = false;
+
 function renderSummary(board, stats) {
   appendScoreSection(board, {
     modClass: 'score-section--free',
@@ -50,13 +65,16 @@ function renderSummary(board, stats) {
       : 'You opened Free Play - tap letters to build words next time!'
   });
   if (stats.usedQuiz || stats.quizCorrect > 0) {
+    const body = createIntroBody(stats.quizCorrect > 0
+      ? 'You found ' + stats.quizCorrect + ' ' + (stats.quizCorrect === 1 ? 'picture' : 'pictures') + '!'
+      : 'You opened Quiz - match the word to its picture next time!');
+    // How much help she is on, in words: the only place it is ever spelled out.
+    appendBodyNote(body, quizRung(quizLadder.getRung()).note);
     appendScoreSection(board, {
       modClass: 'score-section--quiz',
       icon: '🧩',
       title: 'Quiz',
-      body: stats.quizCorrect > 0
-        ? 'You found ' + stats.quizCorrect + ' ' + (stats.quizCorrect === 1 ? 'picture' : 'pictures') + '!'
-        : 'You opened Quiz - match the word to its picture next time!'
+      body: body
     });
   }
   if (stats.usedRead || stats.readCorrect > 0) {
@@ -117,24 +135,16 @@ function lightSpokenLetters(lit) {
   });
 }
 
-// Says the word, spells it letter by letter, then says the word again:
-// "dad … d a d … dad". The separate utterances give the pauses between each.
-// `opening`, when given, replaces the first bare word with a sentence that
-// contains it ("Which one is dad?"), so the task and its target come in one breath.
-function speakWordThenSpell(word, opening) {
-  const w = word.toLowerCase();
-  const parts = [opening || w].concat(w.split(''), [w]);
+// Says a round's words aloud (see quizSpeech: the letters, with the word and the
+// question around them depending on the rung), lighting each part's slots as it is
+// spoken. With no rung it says the fullest version, "dad … d a d … dad", which is
+// what a hint replay wants. The separate utterances give the pauses between each.
+function speakWordThenSpell(word, rung) {
+  const parts = quizSpeech(word, rung || QUIZ_HELP);
   lightSpokenLetters([]);
-  speakSequence(parts, {
-    rates: parts.map(function(_, i) {
-      return (i === 0 || i === parts.length - 1) ? 0.85 : 0.7;
-    }),
-    // The word is in the first and last parts, so those light all three letters;
-    // in between, one letter at a time.
-    onPart: function(i) {
-      if (i === 0 || i === parts.length - 1) lightSpokenLetters(ALL_SLOTS);
-      else lightSpokenLetters([i - 1]);
-    },
+  speakSequence(parts.map(function(p) { return p.text; }), {
+    rates: parts.map(function(p) { return p.letter ? 0.7 : 0.85; }),
+    onPart: function(i) { lightSpokenLetters(parts[i].lit); },
     onEnd: function() { lightSpokenLetters([]); }
   });
 }
@@ -143,6 +153,7 @@ function speakWordThenSpell(word, opening) {
 // (first nudge + each wrong tap) so the hint never drones on audibly.
 function flashSpellingHint(speak) {
   if (mode === 'quiz') {
+    quizRoundHinted = true;
     flashHintEl(spellChoices.querySelector('[data-word="' + WORDS[quizTargetIndex] + '"]'));
     if (speak) speakWordThenSpell(WORDS[quizTargetIndex]);
   } else if (mode === 'read') {
@@ -315,15 +326,21 @@ function renderChoices(indices, target) {
   });
 }
 
-// Every Quiz round opens by asking for the word out loud, like Match's "Which one
-// is the same as this?" — the word and picture cards alone don't tell her to touch
-// a picture. "Which one is ___?" (not "Find the ___") because some words aren't
-// things you can put "the" in front of: red, run, sad, mom.
+// The line at the top of the screen. She can't read it yet: what tells her to touch
+// a picture is the spoken question, on the rungs that still ask it.
 const QUIZ_PROMPT = 'Find the picture!';
-function quizOpening(word) { return 'Which one is ' + word.toLowerCase() + '?'; }
 const QUIZ_STATE_KEY = SPELLING_SESSION_KEY + ':quiz';
 const SPELL_STATE_KEY = SPELLING_SESSION_KEY + ':spell';
 const READ_STATE_KEY = SPELLING_SESSION_KEY + ':read';
+
+// The rung is read here and only here, so it can only change between rounds.
+function announceQuizRound(target) {
+  quizRoundMissed = false;
+  quizRoundHinted = false;
+  spellHint.textContent = QUIZ_PROMPT;
+  speakWordThenSpell(target, quizRung(quizLadder.getRung()));
+  hint.reset();
+}
 
 function startQuizRound() {
   if (session.isSessionEnded() || mode !== 'quiz') return;
@@ -337,9 +354,7 @@ function startQuizRound() {
     const target = WORDS[quizTargetIndex];
     renderWord(target);
     renderChoices(saved.choiceIndices, target);
-    spellHint.textContent = QUIZ_PROMPT;
-    speakWordThenSpell(target, quizOpening(target));
-    hint.reset();
+    announceQuizRound(target);
     return;
   }
 
@@ -353,9 +368,7 @@ function startQuizRound() {
   const target = WORDS[quizTargetIndex];
   renderWord(target);
   renderChoices(choiceIndices, target);
-  spellHint.textContent = QUIZ_PROMPT;
-  speakWordThenSpell(target, quizOpening(target));
-  hint.reset();
+  announceQuizRound(target);
 }
 
 function onChoice(word, btn, target) {
@@ -364,6 +377,10 @@ function onChoice(word, btn, target) {
     quizLocked = true;
     hint.stop();
     saveRoundState(QUIZ_STATE_KEY, null);
+    // Solved with no wrong tap and no hint is evidence she can manage with less
+    // said. A wrong tap sets her back. A round she only solved once the hint
+    // flashed proves neither, so it passes through (see shared/progression.js).
+    quizLadder.recordRound(quizRoundMissed ? 'missed' : quizRoundHinted ? 'assisted' : 'clean');
     btn.classList.add('correct');
     // Celebrate the instant she taps: cut off whatever is still being said or
     // spelled first. Leaving it to speakText isn't enough — a hint replay opens
@@ -385,6 +402,7 @@ function onChoice(word, btn, target) {
     window.setTimeout(function() { btn.classList.remove('wrong'); }, 500);
     thumbsDown.show();
     audio.playBuzzer();
+    quizRoundMissed = true;
     session.mutateStats(function(stats) {
       stats.quizWrong += 1;
       pushUniqueStruggle(stats.quizStruggled, target);

@@ -6,7 +6,9 @@
 // marks a wrong line straight away, and at the top nothing but the chime when
 // the time comes right. Every rung is one thing less to lean on. The alphabet
 // uses it the other way round, to hand out lowercase letters a few at a time:
-// each rung pairs one more group of capitals with their small twins ("Cc").
+// each rung pairs one more group of capitals with their small twins ("Cc"). The
+// spelling Quiz takes away what it says aloud: first the question, then the word,
+// until all she hears is the letters.
 //
 //   recordRound('clean')    - solved on the first try, unaided
 //   recordRound('missed')   - took at least one wrong answer

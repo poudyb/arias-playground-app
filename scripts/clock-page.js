@@ -309,22 +309,6 @@ function renderTimePill(pill, key) {
   pill.appendChild(face);
 }
 
-function createIntroBody(intro) {
-  const body = document.createElement('div');
-  const introDiv = document.createElement('div');
-  introDiv.textContent = intro;
-  body.appendChild(introDiv);
-  return body;
-}
-
-function appendBodyNote(body, text) {
-  const note = document.createElement('div');
-  note.style.marginTop = '0.45rem';
-  note.textContent = text;
-  body.appendChild(note);
-  return note;
-}
-
 function buildModeBody(intro, struggled, struggledLabel) {
   const body = createIntroBody(intro);
   if (struggled.length > 0) {

@@ -51,3 +51,21 @@ function createPillWrap(items, renderPill) {
   });
   return wrap;
 }
+
+// A section body of one intro line, which appendBodyNote can add further lines
+// under (a note about the rung she is on, a label for the tricky ones).
+function createIntroBody(intro) {
+  const body = document.createElement('div');
+  const introDiv = document.createElement('div');
+  introDiv.textContent = intro;
+  body.appendChild(introDiv);
+  return body;
+}
+
+function appendBodyNote(body, text) {
+  const note = document.createElement('div');
+  note.style.marginTop = '0.45rem';
+  note.textContent = text;
+  body.appendChild(note);
+  return note;
+}
