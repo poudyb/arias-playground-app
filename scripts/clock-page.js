@@ -661,11 +661,28 @@ function enterMatch() {
     }
   }
 
+  function shakeDigit(svg) {
+    svg.classList.remove('digit-shake');
+    void svg.getBoundingClientRect();
+    svg.classList.add('digit-shake');
+  }
+
   function toggleSeg(pos, segName) {
     if (session.isSessionEnded()) return;
     const set = manualState[pos];
     const wasLit = set.has(segName);
-    if (!boardDone && isMistakenTap(wasLit, currentTargets()[pos].has(segName))) {
+    const mistaken = isMistakenTap(wasLit, currentTargets()[pos].has(segName));
+    if (mistaken && rung.marks === 'steady') {
+      // On a board whose marks are on, a tap that goes the wrong way — most
+      // often taking away a green line along with the red ones — gets a small
+      // shake of that digit and the soft "uh-oh", the way a wrong letter does
+      // in Spell It. It's a step she's still working on, not an answer, so no
+      // big X. Only where the marks are on: anywhere else the sound would hand
+      // her the marks the rung has taken away.
+      audio.playSoftTone();
+      shakeDigit(manualFace._slots[pos]);
+    }
+    if (!boardDone && mistaken) {
       boardMistakes++;
       marksNudge.registerMiss();
     } else {
@@ -712,10 +729,12 @@ function enterMatch() {
     });
   });
 
-  // Take the pop off once it has played, or it would play again the next time
-  // that segment turned green without being tapped — a fresh board filling in.
+  // Take the pop and the shake off once they've played, or the pop would play
+  // again the next time that segment turned green without being tapped — a
+  // fresh board filling in.
   manualFace.addEventListener('animationend', function(ev) {
     if (ev.animationName === 'seg-placed-pop') ev.target.classList.remove('seg-placed');
+    if (ev.animationName === 'digit-shake') ev.target.classList.remove('digit-shake');
   });
 
   seedBoard();

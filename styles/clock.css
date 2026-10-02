@@ -301,6 +301,19 @@ body {
     transform-box: fill-box;
     transform-origin: center;
   }
+  /* A tap that went the wrong way on a board whose marks are on: the digit
+     gives a small shake, with the soft "uh-oh" (see toggleSeg). Smaller than
+     Spell It's slot shake, since a digit is narrower than a letter slot. */
+.clock-face--manual .clock-digit-svg.digit-shake {
+    animation: digit-shake 0.4s ease-out;
+  }
+@keyframes digit-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
 @keyframes seg-placed-pop {
     0% { transform: scale(1); }
     45% { transform: scale(1.18); }
@@ -480,7 +493,8 @@ body {
 .clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-wrong { animation: none; }
   .clock-face--manual.marks-steady .clock-digit-svg .seg.seg-missing,
   .clock-face--manual.marks-nudge .clock-digit-svg .seg.seg-missing.seg-nudging,
-  .clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-right.seg-placed { animation: none; }
+  .clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-right.seg-placed,
+  .clock-face--manual .clock-digit-svg.digit-shake { animation: none; }
   .clock-face--manual.marks-nudge .clock-digit-svg .seg { transition: none; }
 
   
