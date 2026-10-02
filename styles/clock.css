@@ -255,55 +255,95 @@ body {
   }
 .clock-face--manual {
     --led-match-color: hsl(var(--led-hue, 50), 95%, 60%);
+    --seg-right-color: #00e676;
+    --seg-missing-color: #ffd600;
   }
 @supports (color: oklch(0.82 0.19 50)) {
     .clock-face--manual {
       --led-match-color: oklch(0.82 0.19 var(--led-hue, 50));
     }
   }
-/* A line in the right place wears the exact colour the clock above is wearing
-     at that moment. That is a mark like any other, so it belongs to the rung
-     too: on a nudging or silent board it stays the plain unjudged colour, or
-     the board would go on quietly sorting her lines into right and wrong all
-     the time and the red would have nothing left to tell her.
+/* A line in the right place goes green: keep this one. It used to wear the
+     colour the clock above was wearing, which only says "right" to someone who
+     already knows the rule — to her it was just one more colour on a board of
+     several, and with nothing marking it as a line to keep she took those away
+     along with the red. Green against red is the pair she already knows.
 
-     The exception is a finished board. Once the whole time is right the copy
-     is, segment for segment, the same picture as the original, and that
-     likeness is the reward — the higher the rung, the more it is the ONLY
-     thing that says so, since the colour arrives all at once instead of
-     leading her there one line at a time. */
-.clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-right,
-  .clock-face--manual.matching .clock-digit-svg .seg.on.seg-right {
+     That is a mark like any other, so it belongs to the rung too: on a nudging
+     or silent board it stays the plain unjudged colour, or the board would go
+     on quietly sorting her lines into right and wrong all the time and the red
+     would have nothing left to tell her. */
+.clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-right {
+    fill: var(--seg-right-color);
+    filter:
+      drop-shadow(0 0 3px var(--seg-right-color))
+      drop-shadow(0 0 8px var(--seg-right-color));
+  }
+  /* A finished board turns the clock's own colour, on every rung. Once the
+     whole time is right the copy is, segment for segment, the same picture as
+     the original, and that likeness is the reward — the green lines she kept
+     becoming the clock is the moment it comes good, along with the chime and
+     the confetti. The higher the rung, the more it is the ONLY thing that says
+     so, since the colour arrives all at once instead of leading her there one
+     line at a time. Comes after the green above so it wins. */
+.clock-face--manual.matching .clock-digit-svg .seg.on.seg-right {
     fill: var(--led-match-color);
     filter:
       drop-shadow(0 0 3px var(--led-match-color))
       drop-shadow(0 0 8px var(--led-match-color));
+  }
+  /* A line she put in the right place by tapping it pops once as it goes
+     green, so the tap itself is answered and not just the colour. */
+.clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-right.seg-placed {
+    animation: seg-placed-pop 0.35s ease-out;
+  }
+.clock-face--manual .clock-digit-svg .seg {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+@keyframes seg-placed-pop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.18); }
+    100% { transform: scale(1); }
   }
   /* Both marks below are drawn only on the rungs that have earned them. On a
      `marks-steady` board they are simply on; on a `marks-nudge` board they are
      hidden until the board flashes them at a child who has got stuck, and the
      slower transition lets them swell up and fade out rather than snap. A
      board with neither class says nothing at all, which is the top rung. */
-  /* A line she took away that the time still needs: an empty outline of itself,
-     dashed, with nothing filled in. This mark has to answer two questions at
-     once — is something meant to be here, and is it filled in or not — and a
-     dimmed version of the lit color answers neither. The wrong-segment marker
-     below was exactly that once, a 0.32-alpha wash of the lit color, and it
-     simply vanished; 9b313d3 replaced it with the red. Built the same way here
-     it went the same way: against a plain dark segment a 0.22-alpha wash of
-     the lit color measured 1.03:1 — indistinguishable — at all eight points
-     sampled round the color cycle.
-     So this is a different KIND of mark rather than a fainter one. Hollow, so
-     it can never read as lit however bright it gets, and edged in a fixed pale
-     line rather than the cycling hue, so it can't sink into the background
-     when that cycle rolls through a dark color. */
+  /* A line she took away that the time still needs: a hollow outline of
+     itself, so it can never read as lit however bright it gets (956b5bf has
+     why a dimmed fill vanished instead).
+
+     It used to be drawn in plain white, and that was its own trap. Take every
+     line away — the red ones, then the right ones too — and the white outlines
+     spelled out the whole time, neatly, in the shape of a finished clock. She
+     did exactly that and thought she was done.
+
+     So it's yellow, a colour of its own between the red that says "take this
+     away" and the green that says "keep it", and it never sits still: the
+     dashes crawl round the outline like a line waiting to be drawn in, and the
+     whole outline breathes in and out on the red's beat. Nothing else on the
+     board moves that way, so a board with any of these on it never looks
+     finished, however tidy the shape they make. */
 .clock-face--manual.marks-steady .clock-digit-svg .seg.seg-missing,
   .clock-face--manual.marks-nudge .clock-digit-svg .seg.seg-missing.seg-nudging {
-    fill: rgba(255, 255, 255, 0.05);
-    stroke: rgba(255, 255, 255, 0.92);
+    fill: rgba(255, 214, 0, 0.12);
+    stroke: var(--seg-missing-color);
     stroke-width: 3;
     stroke-dasharray: 6 4;
     stroke-linejoin: round;
+    filter: drop-shadow(0 0 3px rgba(255, 214, 0, 0.75));
+    animation:
+      seg-missing-crawl 1s linear infinite,
+      seg-missing-breathe 1s ease-in-out infinite;
+  }
+@keyframes seg-missing-crawl {
+    to { stroke-dashoffset: -20; }
+  }
+@keyframes seg-missing-breathe {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
   }
 .clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-wrong,
   .clock-face--manual.marks-nudge .clock-digit-svg .seg.on.seg-wrong.seg-nudging {
@@ -438,6 +478,9 @@ body {
 .clock-option.pop { animation: none; }
 .clock-digit-svg .seg { transition: none; }
 .clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-wrong { animation: none; }
+  .clock-face--manual.marks-steady .clock-digit-svg .seg.seg-missing,
+  .clock-face--manual.marks-nudge .clock-digit-svg .seg.seg-missing.seg-nudging,
+  .clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-right.seg-placed { animation: none; }
   .clock-face--manual.marks-nudge .clock-digit-svg .seg { transition: none; }
 
   

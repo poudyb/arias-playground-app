@@ -212,12 +212,14 @@ function ledHueFor(h, m, s, msFraction) {
   return (elapsed * 360 / 600) % 360;
 }
 
-// How far into the wrong-segment pulse everything currently is. Must match the
-// seg-wrong-pulse duration in clock.css.
-const WRONG_PULSE_MS = 1000;
+// How far into the shared one-second beat everything currently is. Both
+// moving marks on the Match board run to it — the red pulse and the yellow
+// crawl and breathe — so it must match the seg-wrong-pulse, seg-missing-crawl
+// and seg-missing-breathe durations in clock.css.
+const MARK_BEAT_MS = 1000;
 
-function wrongPulseOffset() {
-  return '-' + ((performance.now() % WRONG_PULSE_MS) / 1000).toFixed(3) + 's';
+function markBeatOffset() {
+  return '-' + ((performance.now() % MARK_BEAT_MS) / 1000).toFixed(3) + 's';
 }
 
 // The running clock's colon fades in and out once a second. Match mode reads
@@ -570,8 +572,8 @@ function enterMatch() {
     };
   }
 
-  // Grade every lit segment against the clock above, one line at a time: a line
-  // that belongs takes on that clock's live color right away, so she can see
+  // Grade every lit segment against the clock above, one line at a time: on a
+  // board whose marks are on, a line that belongs goes green so she can see
   // each stroke land instead of waiting for the whole digit to be right. A line
   // that doesn't belong turns pulsing red — it has to shout as loudly as the
   // correct ones do, or a stray stroke leaves the clock looking right while
@@ -581,8 +583,9 @@ function enterMatch() {
   // dark face colouring them in would just trace the answer. On a board that
   // started filled in there's nothing left to trace — she was shown every line
   // to begin with — and a dark segment means she took one away, so a needed one
-  // she's cleared by mistake gets a faint ghost of itself back. Without it the
-  // board looks entirely right, with no red anywhere, and still never chimes.
+  // she's cleared by mistake comes back as a crawling yellow outline: put me
+  // back. Without it the board looks entirely right, with no red anywhere, and
+  // still never chimes.
   function paintSegments(targets) {
     CLOCK_SLOTS.forEach(function(pos) {
       const target = targets[pos];
@@ -592,19 +595,20 @@ function enterMatch() {
         const lit = manualState[pos].has(name);
         const wrong = lit && !target.has(name);
         const missing = rung.filled && !lit && target.has(name);
+        // A CSS animation starts counting when it's applied, so segments
+        // marked at different moments would each pulse or crawl to their own
+        // beat — several bits of the clock moving out of step, which is tiring
+        // to look at. Starting each one part-way into the cycle, by exactly how
+        // far the shared beat already is, lines them all up.
+        if ((wrong && !segs[i].classList.contains('seg-wrong')) ||
+            (missing && !segs[i].classList.contains('seg-missing'))) {
+          segs[i].style.animationDelay = markBeatOffset();
+        }
         segs[i].classList.toggle('seg-right', lit && target.has(name));
         segs[i].classList.toggle('seg-missing', missing);
         // Whether either mark actually shows is the CSS's business (see the
         // marks-* classes); this only says the nudge is mid-flash.
         segs[i].classList.toggle('seg-nudging', nudgeShowing && (wrong || missing));
-        if (wrong && !segs[i].classList.contains('seg-wrong')) {
-          // A CSS animation starts counting when it's applied, so segments
-          // marked wrong at different moments would each pulse to their own
-          // beat — several bits of the clock blinking out of step, which is
-          // tiring to look at. Starting each one part-way into the cycle, by
-          // exactly how far the shared clock already is, lines them all up.
-          segs[i].style.animationDelay = wrongPulseOffset();
-        }
         segs[i].classList.toggle('seg-wrong', wrong);
       }
     });
@@ -628,6 +632,20 @@ function enterMatch() {
         boardDone = true;
         boardDoneAt = Date.now();
         marksNudge.stop();
+        // The same celebration the other modes give a right answer. It's also
+        // what tells a board that only looks finished from one that is: a face
+        // she has cleared too far can make a tidy shape, but it never brings
+        // the confetti.
+        spawnConfetti({
+          colors: CONFETTI_HEX,
+          count: 48,
+          originTop: '45vh',
+          minDistance: 35,
+          distanceJitter: 50,
+          minDuration: 0.9,
+          durationJitter: 0.7
+        });
+        showCelebrationEmojis();
         // A board solved without a single tap going the wrong way, and without
         // the marks ever having to flash, is the evidence she's ready for one
         // rung less. A board she wrestled with drops her back. A board she
@@ -658,6 +676,17 @@ function enterMatch() {
     else set.add(segName);
     setDigitState(manualFace._slots[pos], set);
     evaluateMatch();
+    // A line she's just put in the right place pops as it goes green. Only
+    // the CSS for a board whose marks are on lets it show. The delay that kept
+    // its yellow crawl on the shared beat has to go first, or the pop would
+    // start already over.
+    const seg = manualFace._slots[pos].querySelector('.seg[data-seg="' + segName + '"]');
+    if (seg && !wasLit && seg.classList.contains('seg-right')) {
+      seg.style.animationDelay = '';
+      seg.classList.remove('seg-placed');
+      void seg.getBoundingClientRect();
+      seg.classList.add('seg-placed');
+    }
   }
 
   CLOCK_SLOTS.forEach(function(pos) {
@@ -681,6 +710,12 @@ function enterMatch() {
       });
       svg.appendChild(hit);
     });
+  });
+
+  // Take the pop off once it has played, or it would play again the next time
+  // that segment turned green without being tapped — a fresh board filling in.
+  manualFace.addEventListener('animationend', function(ev) {
+    if (ev.animationName === 'seg-placed-pop') ev.target.classList.remove('seg-placed');
   });
 
   seedBoard();
