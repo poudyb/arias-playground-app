@@ -15,18 +15,12 @@ python3 -m http.server 8080
 
 Open [http://localhost:8080](http://localhost:8080) and use `index.html` as the home screen.
 
-## Open design question
-
-`Clock Next` has no gentle idle hint because waiting is the game and revealing
-the future time would solve it. Revisit that only with a hint design that keeps
-the prediction intact.
-
 ## Tests
 
 The pure logic (stats normalization, clock wording / digit segments, the
 spelling word helpers, session index validation, and the ladder progressions
 that step a game's difficulty up and down — both the single on/off step and
-the multi-rung ladder Clock Match climbs) is unit-tested with
+the multi-rung ladders Clock Match, Quiz and Next climb) is unit-tested with
 **Node's built-in test runner** — no dependencies to install.
 
 ```bash

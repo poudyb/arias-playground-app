@@ -180,3 +180,98 @@ test('every rung is drawable and has something to tell a parent', () => {
   // Two rungs sharing a note would leave a parent unable to tell them apart.
   assert.strictEqual(notes.size, clock.MATCH_RUNGS.length, 'every rung reads differently');
 });
+
+// ---- Quiz and Next rounds ------------------------------------------------
+
+// A seeded generator, so a failing round can be replayed.
+function seeded(seed) {
+  let x = seed >>> 0 || 1;
+  return function() {
+    x ^= x << 13; x >>>= 0;
+    x ^= x >>> 17;
+    x ^= x << 5; x >>>= 0;
+    return x / 4294967296;
+  };
+}
+
+function eachRound(rungs, make, check) {
+  rungs.forEach((rung, i) => {
+    for (let seed = 1; seed <= 400; seed++) check(make(i, seeded(seed * 7919 + i)), rung, i);
+  });
+}
+
+function assertThreeDistinctWithOneAnswer(opts, where) {
+  assert.strictEqual(opts.length, 3, where + ': three choices');
+  assert.strictEqual(opts.filter((o) => o.correct).length, 1, where + ': exactly one right answer');
+  const keys = new Set(opts.map((o) => o.h + ':' + o.m));
+  assert.strictEqual(keys.size, 3, where + ': no two choices the same');
+}
+
+test('nextMinuteOf rolls minutes into hours and 12 round to 1', () => {
+  assert.deepStrictEqual(clock.nextMinuteOf(3, 14), { h: 3, m: 15 });
+  assert.deepStrictEqual(clock.nextMinuteOf(3, 59), { h: 4, m: 0 });
+  assert.deepStrictEqual(clock.nextMinuteOf(12, 59), { h: 1, m: 0 });
+});
+
+test('every Quiz round has one answer, the one it says, and decoys that fit the rung', () => {
+  eachRound(clock.QUIZ_RUNGS, clock.quizRound, (round, rung, i) => {
+    const where = 'quiz rung ' + i + ' ' + JSON.stringify(round);
+    assertThreeDistinctWithOneAnswer(round.opts, where);
+    const answer = round.opts.find((o) => o.correct);
+    assert.deepStrictEqual({ h: answer.h, m: answer.m }, round.target, where);
+    assert.strictEqual(round.show, rung.show, where);
+    round.opts.forEach((o) => {
+      assert.ok(o.h >= 1 && o.h <= 12 && o.m >= 0 && o.m <= 59, where + ': a real time');
+    });
+    const decoys = round.opts.filter((o) => !o.correct);
+    decoys.forEach((d) => {
+      if (rung.times === 'oclock') {
+        assert.strictEqual(d.m, 0, where + ': on the hour');
+        assert.ok(!String(d.h).split('').some((c) => String(round.target.h).includes(c)),
+          where + ': o\'clock hours share no digit');
+      } else if (rung.times === 'minute') {
+        assert.strictEqual(d.h, round.target.h, where + ': same hour');
+        assert.ok(!clock.minutesShareDigit(d.m, round.target.m), where + ': minutes share no digit');
+      } else {
+        assert.notStrictEqual(d.h, round.target.h, where + ': different hour');
+      }
+    });
+  });
+});
+
+test('every Next round answers with the minute after the clock it shows', () => {
+  eachRound(clock.NEXT_RUNGS, clock.nextRound, (round, rung, i) => {
+    const where = 'next rung ' + i + ' ' + JSON.stringify(round);
+    assertThreeDistinctWithOneAnswer(round.opts, where);
+    const answer = round.opts.find((o) => o.correct);
+    assert.deepStrictEqual({ h: answer.h, m: answer.m }, clock.nextMinuteOf(round.shown.h, round.shown.m), where);
+    const { m } = round.shown;
+    if (rung.carry === 'none') assert.notStrictEqual(m % 10, 9, where + ': nothing to carry');
+    if (rung.carry === 'tens') assert.ok(m % 10 === 9 && m !== 59, where + ': rolls into the tens');
+    if (rung.carry === 'hour') assert.strictEqual(m, 59, where + ': rolls into the hour');
+    const decoys = round.opts.filter((o) => !o.correct);
+    if (rung.carry === 'none' && rung.near) {
+      assert.ok(decoys.some((d) => d.m === m), where + ': the same time is a choice');
+      assert.ok(decoys.some((d) => d.m === m - 1), where + ': the minute before is a choice');
+    }
+    if (rung.carry === 'none' && !rung.near) {
+      decoys.forEach((d) => assert.ok(Math.abs(d.m % 10 - m % 10) > 1, where + ': not next door'));
+    }
+  });
+});
+
+test('the Quiz and Next ladders start easiest and each have a note for every rung', () => {
+  assert.strictEqual(clock.QUIZ_RUNGS[0].show, true, 'Quiz starts with the time on show');
+  assert.strictEqual(clock.QUIZ_RUNGS[0].times, 'oclock', 'Quiz starts on the hour');
+  assert.strictEqual(clock.NEXT_RUNGS[0].carry, 'none', 'Next starts with nothing to carry');
+  [clock.QUIZ_RUNGS, clock.NEXT_RUNGS].forEach((rungs) => {
+    const notes = new Set(rungs.map((r) => r.note));
+    assert.strictEqual(notes.size, rungs.length, 'every rung reads differently to a parent');
+  });
+  assert.deepStrictEqual(clock.quizRung(99), clock.QUIZ_RUNGS[clock.QUIZ_RUNGS.length - 1]);
+  assert.deepStrictEqual(clock.nextRung('two'), clock.NEXT_RUNGS[0]);
+});
+
+test('Next can say its 3:60 decoy aloud', () => {
+  assert.strictEqual(clock.timeToWords(3, 60), 'three sixty');
+});

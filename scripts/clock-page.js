@@ -65,6 +65,23 @@ const matchLadder = createLadderProgression({
   demoteAfter: 2
 });
 
+// Quiz and Next each climb a ladder of their own (QUIZ_RUNGS and NEXT_RUNGS in
+// shared/clock-logic.js) on the same terms as Match: three clean rounds up,
+// two with a wrong tap down, and a round she only got after the hint flashed
+// passes through. Read only when a round starts, never shown to her.
+const quizLadder = createLadderProgression({
+  storageKey: 'ariaClockQuizRung',
+  rungs: QUIZ_RUNGS.length,
+  promoteAfter: 3,
+  demoteAfter: 2
+});
+const nextLadder = createLadderProgression({
+  storageKey: 'ariaClockNextRung',
+  rungs: NEXT_RUNGS.length,
+  promoteAfter: 3,
+  demoteAfter: 2
+});
+
 // How long a finished board holds its celebration before the next one fills
 // in. Without it a match landing a moment before the minute turns would be
 // wiped mid-chime.
@@ -236,41 +253,13 @@ function setsEqual(a, b) {
   return equal;
 }
 
-function shuffleInPlace(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const tmp = arr[i];
-    arr[i] = arr[j];
-    arr[j] = tmp;
-  }
-  return arr;
-}
-
-function randomHour() { return Math.floor(Math.random() * 12) + 1; }
-function randomMinute() { return Math.floor(Math.random() * 60); }
-
-function minutesShareDigit(a, b) {
-  const da = formatTwo(a);
-  const db = formatTwo(b);
-  return da[0] === db[0] || da[0] === db[1] || da[1] === db[0] || da[1] === db[1];
-}
+function sameClockTime(a, b) { return a.h === b.h && a.m === b.m; }
 
 function keyForTime(h, m) { return h + ':' + (m < 10 ? '0' + m : m); }
 
 function parseTimeKey(key) {
   const parts = key.split(':');
   return { h: parseInt(parts[0], 10), m: parseInt(parts[1], 10) };
-}
-
-function nextMinuteOf(h, m) {
-  let nm = m + 1;
-  let nh = h;
-  if (nm >= 60) {
-    nm = 0;
-    nh = nh + 1;
-    if (nh > 12) nh = 1;
-  }
-  return { h: nh, m: nm };
 }
 
 const appMain = document.getElementById('app-main');
@@ -311,8 +300,9 @@ function renderTimePill(pill, key) {
   pill.appendChild(face);
 }
 
-function buildModeBody(intro, struggled, struggledLabel) {
+function buildModeBody(intro, struggled, struggledLabel, note) {
   const body = createIntroBody(intro);
+  if (note) appendBodyNote(body, note);
   if (struggled.length > 0) {
     appendBodyNote(body, struggledLabel).style.fontWeight = '600';
     body.appendChild(createPillWrap(struggled, renderTimePill));
@@ -335,6 +325,7 @@ function renderSummary(board, stats) {
     appendScoreSection(board, { icon: '🧩', title: 'Match', body: body });
   }
 
+  // Each mode's rung, in words, is the only place it is ever spelled out.
   if (stats.usedQuiz) {
     const intro = stats.quizCorrect === 0 && stats.quizWrong === 0
       ? 'You opened Quiz - listen and pick the time next time!'
@@ -343,18 +334,19 @@ function renderSummary(board, stats) {
     appendScoreSection(board, {
       icon: '❓',
       title: 'Quiz',
-      body: buildModeBody(intro, stats.quizStruggled, label)
+      body: buildModeBody(intro, stats.quizStruggled, label, quizRung(quizLadder.getRung()).note)
     });
   }
 
   if (stats.usedNext) {
     const intro = stats.nextCorrect === 0 && stats.nextWrong === 0
-      ? 'You opened Which one is next? - try guessing next time!'
-      : 'Next minute: ' + stats.nextCorrect + ' correct' + (stats.nextWrong ? ', ' + stats.nextWrong + ' off' : '') + '.';
+      ? 'You opened Next - pick the time that comes next!'
+      : 'Next: ' + stats.nextCorrect + ' correct' + (stats.nextWrong ? ', ' + stats.nextWrong + ' oops taps' : '') + '.';
     appendScoreSection(board, {
       icon: '⏭️',
-      title: 'Which one is next?',
-      body: buildModeBody(intro, stats.nextStruggled, 'These needed another look:')
+      title: 'What comes next?',
+      body: buildModeBody(intro, stats.nextStruggled, 'These needed another look:',
+        nextRung(nextLadder.getRung()).note)
     });
   }
 
@@ -394,12 +386,19 @@ const session = createTimedSession({
   renderSummary
 });
 
-// Hints only for Quiz (pick the matching time). Not for Next: that's a
-// predict-then-wait game where flashing the correct future time would spoil
-// the puzzle and idle is the normal state.
+// The hint nudge for Quiz and Next: after two wrong picks or a long pause, the
+// right clock glows. Next used to go without, because it was a wait for the
+// real minute to turn; now every round is answered on the spot, so it gets
+// the same help Quiz does.
+let roundHinted = false;
 const hint = createHintNudge({
-  onFlash: function() { flashHintEl(appMain.querySelector('.clock-option[data-correct="1"]')); },
-  isActive: function() { return currentMode === 'quiz' && !session.isSessionEnded(); }
+  onFlash: function() {
+    roundHinted = true;
+    flashHintEl(appMain.querySelector('.clock-option[data-correct="1"]'));
+  },
+  isActive: function() {
+    return (currentMode === 'quiz' || currentMode === 'next') && !session.isSessionEnded();
+  }
 });
 
 function setMode(name) {
@@ -434,7 +433,9 @@ function setMode(name) {
   else if (name === 'next') activeMode = enterNext();
 }
 
-function enableSpeakOnTap(face) {
+// `getTime` names the time to say, for a clock that isn't showing the real
+// one; without it the face says what time it is now.
+function enableSpeakOnTap(face, getTime) {
   face.classList.add('clock-face--speakable');
   face.setAttribute('role', 'button');
   face.setAttribute('tabindex', '0');
@@ -442,8 +443,12 @@ function enableSpeakOnTap(face) {
 
   function speakNow() {
     if (session.isSessionEnded()) return;
-    const now = new Date();
-    speakText(timeToWords(get12Hour(now), now.getMinutes()), { rate: 0.88 });
+    let t = getTime ? getTime() : null;
+    if (!t) {
+      const now = new Date();
+      t = { h: get12Hour(now), m: now.getMinutes() };
+    }
+    speakText(timeToWords(t.h, t.m), { rate: 0.88 });
     face.classList.remove('is-speaking');
     void face.offsetWidth;
     face.classList.add('is-speaking');
@@ -614,7 +619,9 @@ function enterMatch() {
     });
   }
 
-  function evaluateMatch() {
+  // `byTap` says her tap is what completed the board, rather than the clock
+  // ticking round to a time her board already happened to show.
+  function evaluateMatch(byTap) {
     const targets = currentTargets();
     paintSegments(targets);
     const matches =
@@ -635,17 +642,20 @@ function enterMatch() {
         // The same celebration the other modes give a right answer. It's also
         // what tells a board that only looks finished from one that is: a face
         // she has cleared too far can make a tidy shape, but it never brings
-        // the confetti.
-        spawnConfetti({
-          colors: CONFETTI_HEX,
-          count: 48,
-          originTop: '45vh',
-          minDistance: 35,
-          distanceJitter: 50,
-          minDuration: 0.9,
-          durationJitter: 0.7
-        });
-        showCelebrationEmojis();
+        // the confetti. Only for a board her tap finished — confetti for the
+        // minute turning would be celebrating something she didn't do.
+        if (byTap) {
+          spawnConfetti({
+            colors: CONFETTI_HEX,
+            count: 48,
+            originTop: '45vh',
+            minDistance: 35,
+            distanceJitter: 50,
+            minDuration: 0.9,
+            durationJitter: 0.7
+          });
+          showCelebrationEmojis();
+        }
         // A board solved without a single tap going the wrong way, and without
         // the marks ever having to flash, is the evidence she's ready for one
         // rung less. A board she wrestled with drops her back. A board she
@@ -692,7 +702,7 @@ function enterMatch() {
     if (wasLit) set.delete(segName);
     else set.add(segName);
     setDigitState(manualFace._slots[pos], set);
-    evaluateMatch();
+    evaluateMatch(true);
     // A line she's just put in the right place pops as it goes green. Only
     // the CSS for a board whose marks are on lets it show. The delay that kept
     // its yellow crawl on the shared beat has to go first, or the pop would
@@ -779,14 +789,71 @@ function enterMatch() {
   };
 }
 
+// The buttons Quiz and Next both deal: one clock per choice, marked so the
+// hint nudge can find the right one.
+function renderClockOptions(optRow, opts, onTap) {
+  optRow.innerHTML = '';
+  opts.forEach(function(opt) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'clock-option';
+    btn.setAttribute('aria-label', timeToWords(opt.h, opt.m));
+    btn.dataset.correct = opt.correct ? '1' : '0';
+    const face = buildClockFace({ showSeconds: false, sizeClass: 'clock-face--option' });
+    renderClockTime(face, opt.h, opt.m, null, {});
+    btn.appendChild(face);
+    btn.addEventListener('click', function() { onTap(btn, opt); });
+    optRow.appendChild(btn);
+  });
+}
+
+function isSavedClockTime(t) {
+  return !!t && typeof t.h === 'number' && typeof t.m === 'number';
+}
+
+function isSavedOptionList(opts) {
+  return Array.isArray(opts) && opts.length === 3 && opts.every(isSavedClockTime) &&
+    opts.filter(function(o) { return o.correct; }).length === 1;
+}
+
+function celebrateRightClock(btn) {
+  // A right pick straight after a wrong one mustn't celebrate under the X.
+  thumbsDown.hide();
+  btn.classList.remove('pop');
+  void btn.offsetWidth;
+  btn.classList.add('pop');
+  spawnConfetti({
+    colors: CONFETTI_HEX,
+    count: 48,
+    originTop: '45vh',
+    minDistance: 35,
+    distanceJitter: 50,
+    minDuration: 0.9,
+    durationJitter: 0.7
+  });
+  showCelebrationEmojis();
+  audio.playChime();
+}
+
+// How a solved round counts on its ladder: a wrong tap sets her back, a round
+// she only got once the hint flashed proves nothing either way, and anything
+// else is a clean one (see shared/progression.js).
+function roundOutcome(missed) {
+  return missed ? 'missed' : roundHinted ? 'assisted' : 'clean';
+}
+
 function enterQuiz() {
   const wrap = document.createElement('div');
   wrap.className = 'quiz-wrap';
 
   const prompt = document.createElement('p');
   prompt.className = 'clock-prompt';
-  prompt.textContent = 'Which time did you hear?';
   wrap.appendChild(prompt);
+
+  // On the bottom rung the time she's listening for is drawn here as well.
+  const shownSlot = document.createElement('div');
+  shownSlot.className = 'quiz-shown';
+  wrap.appendChild(shownSlot);
 
   const optRow = document.createElement('div');
   optRow.className = 'option-row';
@@ -801,89 +868,54 @@ function enterQuiz() {
 
   appMain.appendChild(wrap);
 
-  let target = null;
-  let roundLocked = false;
-  let delayedNextTimer = null;
-
-  function speakRound() {
-    if (session.isSessionEnded() || !target) return;
-    speakText(timeToWords(target.h, target.m), { rate: 0.88 });
-  }
-
   const QUIZ_STATE_KEY = CLOCK_SESSION_KEY + ':quiz';
 
-  function renderOpts(opts) {
-    optRow.innerHTML = '';
-    opts.forEach(function(opt) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'clock-option';
-      btn.setAttribute('aria-label', timeToWords(opt.h, opt.m));
-      btn.dataset.h = String(opt.h);
-      btn.dataset.m = String(opt.m);
-      btn.dataset.correct = opt.correct ? '1' : '0';
-      const face = buildClockFace({ showSeconds: false, sizeClass: 'clock-face--option' });
-      renderClockTime(face, opt.h, opt.m, null, {});
-      btn.appendChild(face);
-      btn.addEventListener('click', function() { onOptionTap(btn, opt); });
-      optRow.appendChild(btn);
-    });
+  let round = null;
+  let roundLocked = false;
+  let roundMissed = false;
+  let delayedNextTimer = null;
+  let respeakTimer = null;
+
+  function speakRound() {
+    if (session.isSessionEnded() || !round) return;
+    speakText(timeToWords(round.target.h, round.target.m), { rate: 0.88 });
   }
 
+  function renderRound() {
+    prompt.textContent = round.show ? 'Find this time!' : 'Which time did you hear?';
+    shownSlot.innerHTML = '';
+    if (round.show) {
+      // Drawn the way the choices are, colour and all, so the one to find is
+      // the same picture rather than merely the same time.
+      const face = buildClockFace({ showSeconds: false, sizeClass: 'clock-face--off' });
+      renderClockTime(face, round.target.h, round.target.m, null, {});
+      enableSpeakOnTap(face, function() { return round.target; });
+      shownSlot.appendChild(face);
+    }
+    renderClockOptions(optRow, round.opts, onOptionTap);
+  }
+
+  // The rung is read here and only here, so a round never changes under her.
   function newRound() {
     clearTimeout(delayedNextTimer);
     delayedNextTimer = null;
+    clearTimeout(respeakTimer);
     roundLocked = false;
+    roundMissed = false;
+    roundHinted = false;
     thumbsDown.hide();
 
     const saved = loadRoundState(QUIZ_STATE_KEY);
-    if (saved && saved.target && Array.isArray(saved.opts) && saved.opts.length === 3 &&
-        saved.opts.every(function(o) { return o && typeof o.h === 'number' && typeof o.m === 'number'; })) {
-      target = saved.target;
-      renderOpts(saved.opts);
-      cancelSpeech();
-      window.setTimeout(speakRound, 280);
-      hint.reset();
-      return;
-    }
-
-    const prev = target;
-    let h, m;
-    let tries = 0;
-    do {
-      h = randomHour();
-      m = randomMinute();
-      tries++;
-    } while (prev && prev.h === h && prev.m === m && tries < 50);
-    target = { h: h, m: m };
-
-    function pickWrong(exclude) {
-      let wh, wm;
-      let wtries = 0;
+    if (saved && isSavedClockTime(saved.target) && isSavedOptionList(saved.opts)) {
+      round = { target: saved.target, show: saved.show === true, opts: saved.opts };
+    } else {
+      const prev = round;
       do {
-        wh = randomHour();
-        wm = randomMinute();
-        wtries++;
-        if (wtries > 200) break;
-      } while (
-        wh === h ||
-        minutesShareDigit(wm, m) ||
-        exclude.some(function(e) { return e.h === wh && e.m === wm; })
-      );
-      return { h: wh, m: wm };
+        round = quizRound(quizLadder.getRung());
+      } while (prev && sameClockTime(prev.target, round.target));
+      saveRoundState(QUIZ_STATE_KEY, round);
     }
-
-    const wrong1 = pickWrong([]);
-    const wrong2 = pickWrong([wrong1]);
-
-    const opts = shuffleInPlace([
-      { h: h, m: m, correct: true },
-      { h: wrong1.h, m: wrong1.m, correct: false },
-      { h: wrong2.h, m: wrong2.m, correct: false }
-    ]);
-
-    saveRoundState(QUIZ_STATE_KEY, { target: target, opts: opts });
-    renderOpts(opts);
+    renderRound();
     cancelSpeech();
     window.setTimeout(speakRound, 280);
     hint.reset();
@@ -894,22 +926,12 @@ function enterQuiz() {
     if (opt.correct) {
       roundLocked = true;
       hint.stop();
+      clearTimeout(respeakTimer);
       saveRoundState(QUIZ_STATE_KEY, null);
       session.mutateStats(function(stats) { stats.quizCorrect++; });
-      btn.classList.remove('pop');
-      void btn.offsetWidth;
-      btn.classList.add('pop');
-      spawnConfetti({
-        colors: CONFETTI_HEX,
-        count: 48,
-        originTop: '45vh',
-        minDistance: 35,
-        distanceJitter: 50,
-        minDuration: 0.9,
-        durationJitter: 0.7
-      });
-      showCelebrationEmojis();
-      audio.playChime();
+      quizLadder.recordRound(roundOutcome(roundMissed));
+      cancelSpeech();
+      celebrateRightClock(btn);
       delayedNextTimer = window.setTimeout(function() {
         delayedNextTimer = null;
         if (!session.isSessionEnded()) newRound();
@@ -917,13 +939,18 @@ function enterQuiz() {
       return;
     }
 
+    roundMissed = true;
     session.mutateStats(function(stats) {
       stats.quizWrong++;
-      pushUniqueStruggle(stats.quizStruggled, keyForTime(target.h, target.m));
+      pushUniqueStruggle(stats.quizStruggled, keyForTime(round.target.h, round.target.m));
     });
     thumbsDown.show();
     audio.playBuzzer();
     hint.registerMiss();
+    // Say it again once the buzzer's done: a wrong pick most often means she
+    // didn't catch the time, and tapping 🔊 isn't something she'll think of.
+    clearTimeout(respeakTimer);
+    respeakTimer = window.setTimeout(speakRound, 700);
   }
 
   replay.addEventListener('click', function() {
@@ -937,23 +964,26 @@ function enterQuiz() {
     teardown: function() {
       cancelSpeech();
       clearTimeout(delayedNextTimer);
+      clearTimeout(respeakTimer);
       delayedNextTimer = null;
     }
   };
 }
 
+// Next: a clock and three choices for the minute after it. Every tap is
+// answered on the spot, and the right one makes the clock tick over to it.
 function enterNext() {
   const wrap = document.createElement('div');
   wrap.className = 'next-wrap';
 
   const prompt = document.createElement('p');
   prompt.className = 'clock-prompt';
-  prompt.textContent = 'Which time comes next?';
+  prompt.textContent = 'What time comes next?';
   wrap.appendChild(prompt);
 
-  const realFace = buildClockFace({ showSeconds: true, sizeClass: 'clock-face--real' });
-  enableSpeakOnTap(realFace);
-  wrap.appendChild(realFace);
+  const shownFace = buildClockFace({ showSeconds: false, sizeClass: 'clock-face--real clock-face--big' });
+  enableSpeakOnTap(shownFace, function() { return round && round.shown; });
+  wrap.appendChild(shownFace);
 
   const optRow = document.createElement('div');
   optRow.className = 'option-row';
@@ -961,107 +991,90 @@ function enterNext() {
 
   appMain.appendChild(wrap);
 
-  let roundOptions = [];
-  let selection = null;
-  let lastMinute = null;
+  const NEXT_STATE_KEY = CLOCK_SESSION_KEY + ':next';
 
-  function buildRound() {
-    const now = new Date();
-    const curH = get12Hour(now);
-    const curM = now.getMinutes();
-    const correct = nextMinuteOf(curH, curM);
+  let round = null;
+  let roundLocked = false;
+  let roundMissed = false;
+  let delayedNextTimer = null;
 
-    let altH = randomHour();
-    while (altH === correct.h) altH = randomHour();
-    let altM = randomMinute();
-    while (altM === correct.m) altM = randomMinute();
+  function showTime(t) {
+    renderClockTime(shownFace, t.h, t.m, 0, { colorCycling: true });
+  }
 
-    roundOptions = shuffleInPlace([
-      { h: correct.h, m: correct.m, correct: true },
-      { h: altH, m: correct.m, correct: false },
-      { h: correct.h, m: altM, correct: false }
-    ]);
-    selection = null;
+  function speakRound() {
+    if (session.isSessionEnded() || !round) return;
+    speakText(timeToWords(round.shown.h, round.shown.m) + '. What comes next?', { rate: 0.88 });
+  }
 
-    optRow.innerHTML = '';
-    roundOptions.forEach(function(opt, idx) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'clock-option';
-      btn.setAttribute('aria-label', timeToWords(opt.h, opt.m));
-      btn.dataset.h = String(opt.h);
-      btn.dataset.m = String(opt.m);
-      btn.dataset.correct = opt.correct ? '1' : '0';
-      const face = buildClockFace({ showSeconds: false, sizeClass: 'clock-face--option' });
-      renderClockTime(face, opt.h, opt.m, null, {});
-      btn.appendChild(face);
-      btn.addEventListener('click', function() {
-        if (session.isSessionEnded()) return;
-        selection = idx;
-        const btns = optRow.querySelectorAll('.clock-option');
-        for (let i = 0; i < btns.length; i++) btns[i].classList.remove('selected');
-        btn.classList.add('selected');
-      });
-      optRow.appendChild(btn);
+  // The rung is read here and only here, so a round never changes under her.
+  function newRound() {
+    clearTimeout(delayedNextTimer);
+    delayedNextTimer = null;
+    roundLocked = false;
+    roundMissed = false;
+    roundHinted = false;
+    thumbsDown.hide();
+    shownFace.classList.remove('tick-over');
+
+    const saved = loadRoundState(NEXT_STATE_KEY);
+    if (saved && isSavedClockTime(saved.shown) && isSavedOptionList(saved.opts)) {
+      round = { shown: saved.shown, opts: saved.opts };
+    } else {
+      const prev = round;
+      do {
+        round = nextRound(nextLadder.getRung());
+      } while (prev && sameClockTime(prev.shown, round.shown));
+      saveRoundState(NEXT_STATE_KEY, round);
+    }
+    showTime(round.shown);
+    renderClockOptions(optRow, round.opts, onOptionTap);
+    cancelSpeech();
+    window.setTimeout(speakRound, 280);
+    hint.reset();
+  }
+
+  function onOptionTap(btn, opt) {
+    if (session.isSessionEnded() || roundLocked) return;
+    if (opt.correct) {
+      roundLocked = true;
+      hint.stop();
+      saveRoundState(NEXT_STATE_KEY, null);
+      session.mutateStats(function(stats) { stats.nextCorrect++; });
+      nextLadder.recordRound(roundOutcome(roundMissed));
+      cancelSpeech();
+      // The clock moves on to the time she picked: the minute she predicted,
+      // arriving because she got it.
+      showTime(opt);
+      shownFace.classList.remove('tick-over');
+      void shownFace.offsetWidth;
+      shownFace.classList.add('tick-over');
+      celebrateRightClock(btn);
+      delayedNextTimer = window.setTimeout(function() {
+        delayedNextTimer = null;
+        if (!session.isSessionEnded()) newRound();
+      }, 2200);
+      return;
+    }
+
+    roundMissed = true;
+    session.mutateStats(function(stats) {
+      stats.nextWrong++;
+      pushUniqueStruggle(stats.nextStruggled, keyForTime(round.shown.h, round.shown.m));
     });
+    thumbsDown.show();
+    audio.playBuzzer();
+    hint.registerMiss();
   }
 
-  function revealAndRoll() {
-    const now = new Date();
-    const curH = get12Hour(now);
-    const curM = now.getMinutes();
-    if (selection != null) {
-      const sel = roundOptions[selection];
-      if (sel.h === curH && sel.m === curM) {
-        session.mutateStats(function(stats) { stats.nextCorrect++; });
-        const btn = optRow.querySelectorAll('.clock-option')[selection];
-        if (btn) {
-          btn.classList.remove('pop');
-          void btn.offsetWidth;
-          btn.classList.add('pop');
-        }
-        spawnConfetti({
-          colors: CONFETTI_HEX,
-          count: 48,
-          originTop: '45vh',
-          minDistance: 35,
-          distanceJitter: 50,
-          minDuration: 0.9,
-          durationJitter: 0.7
-        });
-        showCelebrationEmojis();
-        audio.playChime();
-      } else {
-        session.mutateStats(function(stats) {
-          stats.nextWrong++;
-          pushUniqueStruggle(stats.nextStruggled, keyForTime(curH, curM));
-        });
-        thumbsDown.show();
-        audio.playBuzzer();
-      }
-    }
-    buildRound();
-  }
-
-  buildRound();
-
-  startTickLoop(function(now) {
-    renderClockTime(realFace, get12Hour(now), now.getMinutes(), now.getSeconds(), realClockOpts(now));
-    const minute = now.getMinutes();
-    if (lastMinute != null && minute !== lastMinute) {
-      revealAndRoll();
-    }
-    lastMinute = minute;
-  });
+  newRound();
 
   return {
     teardown: function() {
-      stopTickLoop();
       cancelSpeech();
-      thumbsDown.hide();
-    },
-    revealAndRoll: revealAndRoll,
-    setSelection: function(idx) { selection = idx; }
+      clearTimeout(delayedNextTimer);
+      delayedNextTimer = null;
+    }
   };
 }
 
