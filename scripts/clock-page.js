@@ -493,9 +493,19 @@ function enterWatch() {
   };
 }
 
+// What Match asks of her, on screen and out loud. She was treating the board
+// as a game of its own (clear the lines) without ever looking at the clock
+// above, so a new board now starts by pointing at it.
+const MATCH_PROMPT = 'Make your clock look like this one!';
+
 function enterMatch() {
   const wrap = document.createElement('div');
   wrap.className = 'match-wrap';
+
+  const prompt = document.createElement('p');
+  prompt.className = 'clock-prompt';
+  prompt.textContent = MATCH_PROMPT;
+  wrap.appendChild(prompt);
 
   const realFace = buildClockFace({ showSeconds: true, sizeClass: 'clock-face--real clock-face--big' });
   const manualFace = buildClockFace({ showSeconds: true, sizeClass: 'clock-face--manual clock-face--big' });
@@ -768,6 +778,22 @@ function enterMatch() {
     }
   }
 
+  // A new board starts by pointing at the clock to copy: it swells twice
+  // while the prompt is said. Said out loud when she first opens Match, and on
+  // every new board while the boards still come filled in, which is where she
+  // took the board for the whole game. Once she builds each time from a dark
+  // face she knows what it's for, so later boards only get the pulse, not the
+  // same sentence every minute.
+  function introduceBoard(isFirst) {
+    if (session.isSessionEnded()) return;
+    restartAnimation(realFace, 'look-here');
+    if (isFirst || rung.filled) speakText(MATCH_PROMPT, { rate: 0.88 });
+  }
+
+  realFace.addEventListener('animationend', function(ev) {
+    if (ev.animationName === 'clock-look-here') realFace.classList.remove('look-here');
+  });
+
   CLOCK_SLOTS.forEach(function(pos) {
     const svg = manualFace._slots[pos];
     // Only the segments this digit was actually built with are tappable — the
@@ -800,6 +826,7 @@ function enterMatch() {
   });
 
   seedBoard();
+  introduceBoard(true);
 
   startTickLoop(function(now) {
     renderClockTime(realFace, get12Hour(now), now.getMinutes(), now.getSeconds(), realClockOpts(now));
@@ -825,7 +852,10 @@ function enterMatch() {
     const minute = now.getMinutes();
     if (lastMinute != null && minute !== lastMinute && boardDone) refillPending = true;
     lastMinute = minute;
-    if (refillPending && now.getTime() - boardDoneAt >= MATCH_REFILL_DELAY_MS) seedBoard();
+    if (refillPending && now.getTime() - boardDoneAt >= MATCH_REFILL_DELAY_MS) {
+      seedBoard();
+      introduceBoard(false);
+    }
 
     evaluateMatch();
   });
