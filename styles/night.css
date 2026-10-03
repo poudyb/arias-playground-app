@@ -5,6 +5,13 @@
    sheet LAST, after its own, so these rules win. The Clock page doesn't link
    it: it is dark already, day and night.
 
+   Pages link it as night.css?v=2. The first version keyed every rule to an
+   attribute a script set; GitHub Pages lets the iPad keep each file for ten
+   minutes, so a fresh page could pick up that old cached sheet with no script
+   left to switch it on, and stay light whatever the device said. The new
+   address can't be served from that old copy. Bump it if this sheet changes
+   in a way old pages and new ones can't share.
+
    The look is borrowed from that page: deep navy behind everything, slightly
    lighter navy cards, soft off-white text (never pure white). Each game keeps
    its own accent - the coloured ledges, the active mode button, the borders -
