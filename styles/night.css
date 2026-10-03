@@ -1,226 +1,233 @@
 /* Night mode: the whole app dimmed for a dark room.
-   shared/night.js puts data-theme="night" on <html> between 7pm and 7am, and
-   every page links this sheet LAST, after its own, so these rules win. The
-   Clock page doesn't link it: it is dark already, day and night.
+   Everything here sits inside @media (prefers-color-scheme: dark), so it
+   follows the device: with its appearance on Automatic, the iPad goes dark at
+   sunset and so does the app. No script decides it. Every page links this
+   sheet LAST, after its own, so these rules win. The Clock page doesn't link
+   it: it is dark already, day and night.
 
-   The look is borrowed from that page: deep navy
-   behind everything, slightly lighter navy cards, soft off-white text (never
-   pure white). Each game keeps its own accent - the coloured ledges, the active
-   mode button, the borders - so the pages still feel different from each other.
+   The look is borrowed from that page: deep navy behind everything, slightly
+   lighter navy cards, soft off-white text (never pure white). Each game keeps
+   its own accent - the coloured ledges, the active mode button, the borders -
+   so the pages still feel different from each other.
 
    What it deliberately does NOT change:
    - the things being learned: the colour swatches, shapes, emoji, confetti and
      the red X keep their real colours;
-   - borders that carry meaning (right/wrong, the active slot). Rules here are
-     one step more specific than the page's, so a border-color set here would
-     beat .choice.correct; only plain white rims are recoloured.
+   - borders that carry meaning (right/wrong, the active slot). The :root prefix
+     makes each rule here at least as specific as the page's, and this sheet
+     comes last, so a border-color set here would beat .choice.correct; only
+     plain white rims are recoloured.
 
    The ARASAAC pictures are black line drawings on a transparent background,
    which would vanish on navy. Anything that holds one sits on --night-paper, a
    dim grey card: dark enough not to glare, light enough to read the lines. */
 
-html[data-theme="night"] {
-  color-scheme: dark;
-  --night-bg: linear-gradient(180deg, #0d1b2a 0%, #16243a 55%, #1b263b 100%);
-  --night-card: linear-gradient(160deg, #22334d 0%, #1b2a40 100%);
-  --night-card-solid: #22334d;
-  --night-rim: #2f4361;
-  --night-ink: #e3e8f0;
-  --night-muted: #8fa1b8;
-  --night-paper: #b9c0cc;
-}
+@media (prefers-color-scheme: dark) {
 
-/* ---- Page background and the chrome every game shares ---------------------- */
+  :root {
+    color-scheme: dark;
+    --night-bg: linear-gradient(180deg, #0d1b2a 0%, #16243a 55%, #1b263b 100%);
+    --night-card: linear-gradient(160deg, #22334d 0%, #1b2a40 100%);
+    --night-card-solid: #22334d;
+    --night-rim: #2f4361;
+    --night-ink: #e3e8f0;
+    --night-muted: #8fa1b8;
+    --night-paper: #b9c0cc;
+  }
 
-html[data-theme="night"] body {
-  background: var(--night-bg);
-}
+  /* ---- Page background and the chrome every game shares ---------------------- */
 
-html[data-theme="night"] .home-btn {
-  background: var(--night-card-solid);
-  color: var(--night-ink);
-}
+  :root body {
+    background: var(--night-bg);
+  }
 
-html[data-theme="night"] .mode-btn:not(.active),
-html[data-theme="night"] .cat-btn:not(.active) {
-  background: var(--night-card-solid);
-  border-color: var(--night-rim);
-  color: var(--night-muted);
-}
+  :root .home-btn {
+    background: var(--night-card-solid);
+    color: var(--night-ink);
+  }
 
-html[data-theme="night"] #hint,
-html[data-theme="night"] .spell-hint,
-html[data-theme="night"] .freeplay-hint,
-html[data-theme="night"] .quiz-top__sub {
-  color: var(--night-muted);
-}
+  :root .mode-btn:not(.active),
+  :root .cat-btn:not(.active) {
+    background: var(--night-card-solid);
+    border-color: var(--night-rim);
+    color: var(--night-muted);
+  }
 
-html[data-theme="night"] .quiz-top__title,
-html[data-theme="night"] .animal-tile__name,
-html[data-theme="night"] .shape-tile__name,
-html[data-theme="night"] .color-tile__name,
-html[data-theme="night"] .choice--word {
-  color: var(--night-ink);
-}
+  :root #hint,
+  :root .spell-hint,
+  :root .freeplay-hint,
+  :root .quiz-top__sub {
+    color: var(--night-muted);
+  }
 
-/* ---- Letters and numbers ------------------------------------------------------
-   Their colours come from a palette picked for a white page; the deep ones
-   (indigo, purple) sink into navy. Lift them all a little so every one reads. */
+  :root .quiz-top__title,
+  :root .animal-tile__name,
+  :root .shape-tile__name,
+  :root .color-tile__name,
+  :root .choice--word {
+    color: var(--night-ink);
+  }
 
-html[data-theme="night"] #letter,
-html[data-theme="night"] .chase-char {
-  filter: brightness(1.35);
-}
+  /* ---- Letters and numbers ------------------------------------------------------
+     Their colours come from a palette picked for a white page; the deep ones
+     (indigo, purple) sink into navy. Lift them all a little so every one reads. */
 
-html[data-theme="night"] .grid-btn {
-  background: var(--night-card-solid);
-  color: var(--night-ink);
-}
+  :root #letter,
+  :root .chase-char {
+    filter: brightness(1.35);
+  }
 
-/* ---- Tiles and cards ------------------------------------------------------- */
+  :root .grid-btn {
+    background: var(--night-card-solid);
+    color: var(--night-ink);
+  }
 
-html[data-theme="night"] .animal-tile,
-html[data-theme="night"] .shape-tile,
-html[data-theme="night"] .color-tile,
-html[data-theme="night"] .match-choice,
-html[data-theme="night"] .match-ref-card {
-  background: var(--night-card);
-  border-color: var(--night-rim);
-}
+  /* ---- Tiles and cards ------------------------------------------------------- */
 
-html[data-theme="night"] .color-tile__swatch,
-html[data-theme="night"] .chase-color {
-  border-color: var(--night-rim);
-}
+  :root .animal-tile,
+  :root .shape-tile,
+  :root .color-tile,
+  :root .match-choice,
+  :root .match-ref-card {
+    background: var(--night-card);
+    border-color: var(--night-rim);
+  }
 
-html[data-theme="night"] .quiz-replay-btn {
-  background: var(--night-card);
-}
+  :root .color-tile__swatch,
+  :root .chase-color {
+    border-color: var(--night-rim);
+  }
 
-html[data-theme="night"] .memory-card__back {
-  border-color: var(--night-rim);
-  filter: brightness(0.7);
-}
+  :root .quiz-replay-btn {
+    background: var(--night-card);
+  }
 
-html[data-theme="night"] .memory-card__front {
-  background: var(--night-paper);
-  border-color: var(--night-rim);
-}
+  :root .memory-card__back {
+    border-color: var(--night-rim);
+    filter: brightness(0.7);
+  }
 
-/* ---- Spelling ---------------------------------------------------------------- */
+  :root .memory-card__front {
+    background: var(--night-paper);
+    border-color: var(--night-rim);
+  }
 
-html[data-theme="night"] .choice {
-  background: var(--night-paper);
-}
+  /* ---- Spelling ---------------------------------------------------------------- */
 
-html[data-theme="night"] .choice--word {
-  background: var(--night-card);
-}
+  :root .choice {
+    background: var(--night-paper);
+  }
 
-html[data-theme="night"] .spell-picture img {
-  background: var(--night-paper);
-  border-radius: 18px;
-}
+  :root .choice--word {
+    background: var(--night-card);
+  }
 
-html[data-theme="night"] .slot,
-html[data-theme="night"] .slot.filled,
-html[data-theme="night"] .slot.shown.speaking {
-  background: var(--night-card-solid);
-}
+  :root .spell-picture img {
+    background: var(--night-paper);
+    border-radius: 18px;
+  }
 
-html[data-theme="night"] .slot.shown:not(.speaking) {
-  background: #1b2a40;
-  border-color: var(--night-rim);
-  color: var(--night-muted);
-}
+  :root .slot,
+  :root .slot.filled,
+  :root .slot.shown.speaking {
+    background: var(--night-card-solid);
+  }
 
-html[data-theme="night"] .key,
-html[data-theme="night"] .keyboard[data-mode="spell"] .key:not(.disabled):not(.next-key) {
-  background: var(--night-card-solid);
-  color: var(--night-ink);
-}
+  :root .slot.shown:not(.speaking) {
+    background: #1b2a40;
+    border-color: var(--night-rim);
+    color: var(--night-muted);
+  }
 
-/* The lit keys glow in their slot colour, the way the clock digits do. */
-html[data-theme="night"] .keyboard { --key-bg: #3d2230; --key-ink: #ffcdd2; }
-html[data-theme="night"] .keyboard[data-pos="0"] { --key-bg: #1f3a2a; --key-ink: #c8e6c9; }
-html[data-theme="night"] .keyboard[data-pos="2"] { --key-bg: #1c3150; --key-ink: #bbdefb; }
+  :root .key,
+  :root .keyboard[data-mode="spell"] .key:not(.disabled):not(.next-key) {
+    background: var(--night-card-solid);
+    color: var(--night-ink);
+  }
 
-/* ---- Home screen --------------------------------------------------------------
-   The tiles go dark like the Clock tile already is; each keeps its coloured
-   ledge underneath, and its label takes a pale version of that colour. */
+  /* The lit keys glow in their slot colour, the way the clock digits do. */
+  :root .keyboard { --key-bg: #3d2230; --key-ink: #ffcdd2; }
+  :root .keyboard[data-pos="0"] { --key-bg: #1f3a2a; --key-ink: #c8e6c9; }
+  :root .keyboard[data-pos="2"] { --key-bg: #1c3150; --key-ink: #bbdefb; }
 
-html[data-theme="night"] .game-tile {
-  background: var(--night-card);
-  border-color: var(--night-rim);
-}
+  /* ---- Home screen --------------------------------------------------------------
+     The tiles go dark like the Clock tile already is; each keeps its coloured
+     ledge underneath, and its label takes a pale version of that colour. */
 
-html[data-theme="night"] .game-tile--clock {
-  background: linear-gradient(145deg, #0d1b2a 0%, #1b263b 45%, #243447 100%);
-}
+  :root .game-tile {
+    background: var(--night-card);
+    border-color: var(--night-rim);
+  }
 
-html[data-theme="night"] .game-tile__label { color: #ffcc80; text-shadow: none; }
-html[data-theme="night"] .game-tile__hint { color: var(--night-muted); }
-html[data-theme="night"] .game-tile--numbers .game-tile__label { color: #90caf9; }
-html[data-theme="night"] .game-tile--animals .game-tile__label { color: #a5d6a7; }
-html[data-theme="night"] .game-tile--shapes .game-tile__label { color: #ce93d8; }
-html[data-theme="night"] .game-tile--same .game-tile__label { color: #80deea; }
-html[data-theme="night"] .game-tile--clock .game-tile__label { color: #ffd180; }
+  :root .game-tile--clock {
+    background: linear-gradient(145deg, #0d1b2a 0%, #1b263b 45%, #243447 100%);
+  }
 
-html[data-theme="night"] .game-tile__art__dot {
-  border-color: var(--night-rim);
-}
+  :root .game-tile__label { color: #ffcc80; text-shadow: none; }
+  :root .game-tile__hint { color: var(--night-muted); }
+  :root .game-tile--numbers .game-tile__label { color: #90caf9; }
+  :root .game-tile--animals .game-tile__label { color: #a5d6a7; }
+  :root .game-tile--shapes .game-tile__label { color: #ce93d8; }
+  :root .game-tile--same .game-tile__label { color: #80deea; }
+  :root .game-tile--clock .game-tile__label { color: #ffd180; }
 
-html[data-theme="night"] .portal-title {
-  color: var(--night-ink);
-}
+  :root .game-tile__art__dot {
+    border-color: var(--night-rim);
+  }
 
-html[data-theme="night"] .portal-sub,
-html[data-theme="night"] .parent-panel__label,
-html[data-theme="night"] .parent-panel__custom-suffix {
-  color: var(--night-muted);
-}
+  :root .portal-title {
+    color: var(--night-ink);
+  }
 
-html[data-theme="night"] .parent-panel {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--night-rim);
-}
+  :root .portal-sub,
+  :root .parent-panel__label,
+  :root .parent-panel__custom-suffix {
+    color: var(--night-muted);
+  }
 
-html[data-theme="night"] .parent-panel select,
-html[data-theme="night"] .parent-panel__custom input {
-  background: var(--night-card-solid);
-  border-color: var(--night-rim);
-  color: var(--night-ink);
-}
+  :root .parent-panel {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--night-rim);
+  }
 
-/* ---- Time's up scoreboard ---------------------------------------------------- */
+  :root .parent-panel select,
+  :root .parent-panel__custom input {
+    background: var(--night-card-solid);
+    border-color: var(--night-rim);
+    color: var(--night-ink);
+  }
 
-html[data-theme="night"] .session-end-card {
-  background: linear-gradient(160deg, #1b263b 0%, #243447 60%, #2c3d5c 100%);
-  border-color: var(--night-rim);
-}
+  /* ---- Time's up scoreboard ---------------------------------------------------- */
 
-html[data-theme="night"] .session-end-card h2 {
-  color: var(--night-ink);
-  text-shadow: none;
-}
+  :root .session-end-card {
+    background: linear-gradient(160deg, #1b263b 0%, #243447 60%, #2c3d5c 100%);
+    border-color: var(--night-rim);
+  }
 
-html[data-theme="night"] .session-end-card .session-end-sub,
-html[data-theme="night"] .score-section__body,
-html[data-theme="night"] .score-section--muted .score-section__body {
-  color: var(--night-muted);
-}
+  :root .session-end-card h2 {
+    color: var(--night-ink);
+    text-shadow: none;
+  }
 
-html[data-theme="night"] .score-section {
-  background: var(--night-card);
-  border-color: var(--night-rim);
-}
+  :root .session-end-card .session-end-sub,
+  :root .score-section__body,
+  :root .score-section--muted .score-section__body {
+    color: var(--night-muted);
+  }
 
-html[data-theme="night"] .score-section__title,
-html[data-theme="night"] .score-celebrate {
-  color: var(--night-ink);
-}
+  :root .score-section {
+    background: var(--night-card);
+    border-color: var(--night-rim);
+  }
 
-html[data-theme="night"] .score-pill {
-  background: #1b2a40;
-  color: var(--night-ink);
+  :root .score-section__title,
+  :root .score-celebrate {
+    color: var(--night-ink);
+  }
+
+  :root .score-pill {
+    background: #1b2a40;
+    color: var(--night-ink);
+  }
+
 }
