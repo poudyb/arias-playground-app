@@ -292,6 +292,56 @@ body {
       drop-shadow(0 0 3px var(--led-match-color))
       drop-shadow(0 0 8px var(--led-match-color));
   }
+  /* A digit with every line right: the same green with a bright rim and a
+     stronger glow, so a finished digit is the thing on the board most worth
+     having. Taking a line from it puts the rim out again. Not on a finished
+     board, where the clock's own colour takes over. */
+.clock-face--manual.marks-steady:not(.matching) .clock-digit-svg.digit-done .seg.on.seg-right {
+    stroke: #d6ffe6;
+    stroke-width: 1;
+    filter:
+      drop-shadow(0 0 4px var(--seg-right-color))
+      drop-shadow(0 0 10px var(--seg-right-color));
+  }
+  /* The star that pops up over a digit her tap has just finished (see
+     celebrateDigit). Placed by the script at the top centre of the digit. */
+.digit-star {
+    position: fixed;
+    z-index: 55;
+    font-size: clamp(28px, 7vw, 48px);
+    line-height: 1;
+    pointer-events: none;
+    transform: translate(-50%, -60%);
+    animation: digit-star-rise 1s ease-out forwards;
+  }
+@keyframes digit-star-rise {
+    0%   { transform: translate(-50%, -20%) scale(0.3); opacity: 0; }
+    25%  { transform: translate(-50%, -70%) scale(1.15); opacity: 1; }
+    70%  { transform: translate(-50%, -90%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -120%) scale(0.9); opacity: 0; }
+  }
+  /* Every tap on the board lights the matching digit on the clock above, so
+     she can see which one she's copying (see echoDigitAbove). A soft light
+     behind the digit as well as a brightening, so it shows even on a leading
+     hour digit with nothing lit. */
+.clock-face--real .clock-digit-svg {
+    border-radius: 10px;
+  }
+.clock-face--real .clock-digit-svg.digit-echo {
+    animation: digit-echo 0.7s ease-out;
+  }
+@keyframes digit-echo {
+    0%, 100% { transform: scale(1); filter: brightness(1); background: rgba(255, 255, 255, 0); }
+    35% { transform: scale(1.12); filter: brightness(1.7); background: rgba(255, 255, 255, 0.16); }
+  }
+@keyframes digit-echo-still {
+    0%, 100% { filter: brightness(1); background: rgba(255, 255, 255, 0); }
+    35% { filter: brightness(1.7); background: rgba(255, 255, 255, 0.16); }
+  }
+@keyframes digit-star-fade {
+    0%, 100% { opacity: 0; }
+    20%, 70% { opacity: 1; }
+  }
   /* A line she put in the right place by tapping it pops once as it goes
      green, so the tap itself is answered and not just the colour. */
 .clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-right.seg-placed {
@@ -334,11 +384,15 @@ body {
      did exactly that and thought she was done.
 
      So it's yellow, a colour of its own between the red that says "take this
-     away" and the green that says "keep it", and it never sits still: the
-     dashes crawl round the outline like a line waiting to be drawn in, and the
-     whole outline breathes in and out on the red's beat. Nothing else on the
-     board moves that way, so a board with any of these on it never looks
-     finished, however tidy the shape they make. */
+     away" and the green that says "keep it", and it breathes in and out on the
+     red's beat, so a board with any of these on it never sits still the way a
+     finished one does, however tidy the shape they make.
+
+     It used to do more: glow, and have its dashes crawl round the outline.
+     That made the outlines the liveliest thing on the board, livelier than the
+     green lines she should be keeping, and she went on clearing lines to make
+     more of them. Now it's a quiet, unlit outline, and the green lines and the
+     finished digits (.digit-done) are what shine. */
 .clock-face--manual.marks-steady .clock-digit-svg .seg.seg-missing,
   .clock-face--manual.marks-nudge .clock-digit-svg .seg.seg-missing.seg-nudging {
     fill: rgba(255, 214, 0, 0.12);
@@ -346,13 +400,7 @@ body {
     stroke-width: 3;
     stroke-dasharray: 6 4;
     stroke-linejoin: round;
-    filter: drop-shadow(0 0 3px rgba(255, 214, 0, 0.75));
-    animation:
-      seg-missing-crawl 1s linear infinite,
-      seg-missing-breathe 1s ease-in-out infinite;
-  }
-@keyframes seg-missing-crawl {
-    to { stroke-dashoffset: -20; }
+    animation: seg-missing-breathe 1s ease-in-out infinite;
   }
 @keyframes seg-missing-breathe {
     0%, 100% { opacity: 1; }
@@ -497,6 +545,8 @@ body {
   .clock-face--manual.marks-nudge .clock-digit-svg .seg.seg-missing.seg-nudging,
   .clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-right.seg-placed,
   .clock-face--manual .clock-digit-svg.digit-shake { animation: none; }
+  .clock-face--real .clock-digit-svg.digit-echo { animation-name: digit-echo-still; }
+  .digit-star { animation-name: digit-star-fade; }
   .clock-face--manual.marks-nudge .clock-digit-svg .seg { transition: none; }
 
   

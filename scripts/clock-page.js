@@ -95,6 +95,11 @@ const MATCH_NUDGE_EVERY_MS = 4000;
 // while longer than the quiz nudge does before stepping in.
 const MATCH_NUDGE_IDLE_MS = 12000;
 
+// How long the star over a digit she has just finished stays up. Matches the
+// digit-star-rise animation in clock.css; the star is removed on a timer
+// rather than on animationend, which never fires under reduced motion.
+const DIGIT_STAR_MS = 1000;
+
 // `segNames` limits which segments this digit is built with. The leading hour
 // only needs the right-hand third of the normal digit grid, including its tap
 // targets in Match mode, so crop away the unused space as well as the segments.
@@ -231,8 +236,8 @@ function ledHueFor(h, m, s, msFraction) {
 
 // How far into the shared one-second beat everything currently is. Both
 // moving marks on the Match board run to it — the red pulse and the yellow
-// crawl and breathe — so it must match the seg-wrong-pulse, seg-missing-crawl
-// and seg-missing-breathe durations in clock.css.
+// breathing — so it must match the seg-wrong-pulse and seg-missing-breathe
+// durations in clock.css.
 const MARK_BEAT_MS = 1000;
 
 function markBeatOffset() {
@@ -522,6 +527,10 @@ function enterMatch() {
   let boardNudged = false;
   let nudgeShowing = false;
   let nudgeHideTimer = null;
+  // Digits that have had their star on this board. Once each: otherwise
+  // breaking a finished digit and mending it would earn the star again, and
+  // that becomes a game of its own.
+  const starredDigits = new Set();
 
   // On the nudging rungs the marks stay hidden until this fires, then swell up
   // and fade back out. paintSegments does the actual class work on its next
@@ -562,6 +571,7 @@ function enterMatch() {
     nudgeShowing = false;
     clearTimeout(nudgeHideTimer);
     nudgeHideTimer = null;
+    starredDigits.clear();
     manualFace.classList.remove('matching');
     marksNudge.reset();
   }
@@ -588,7 +598,7 @@ function enterMatch() {
   // dark face colouring them in would just trace the answer. On a board that
   // started filled in there's nothing left to trace — she was shown every line
   // to begin with — and a dark segment means she took one away, so a needed one
-  // she's cleared by mistake comes back as a crawling yellow outline: put me
+  // she's cleared by mistake comes back as a breathing yellow outline: put me
   // back. Without it the board looks entirely right, with no red anywhere, and
   // still never chimes.
   function paintSegments(targets) {
@@ -601,7 +611,7 @@ function enterMatch() {
         const wrong = lit && !target.has(name);
         const missing = rung.filled && !lit && target.has(name);
         // A CSS animation starts counting when it's applied, so segments
-        // marked at different moments would each pulse or crawl to their own
+        // marked at different moments would each pulse or breathe to their own
         // beat — several bits of the clock moving out of step, which is tiring
         // to look at. Starting each one part-way into the cycle, by exactly how
         // far the shared beat already is, lines them all up.
@@ -616,6 +626,10 @@ function enterMatch() {
         segs[i].classList.toggle('seg-nudging', nudgeShowing && (wrong || missing));
         segs[i].classList.toggle('seg-wrong', wrong);
       }
+      // A digit with every line right glows a little brighter than a lone
+      // green line, so a finished digit is something worth keeping. Only the
+      // CSS for a board whose marks are on lets it show.
+      manualFace._slots[pos].classList.toggle('digit-done', setsEqual(manualState[pos], target));
     });
   }
 
@@ -671,17 +685,50 @@ function enterMatch() {
     }
   }
 
+  function restartAnimation(el, className) {
+    el.classList.remove(className);
+    void el.getBoundingClientRect();
+    el.classList.add(className);
+  }
+
   function shakeDigit(svg) {
-    svg.classList.remove('digit-shake');
-    void svg.getBoundingClientRect();
-    svg.classList.add('digit-shake');
+    restartAnimation(svg, 'digit-shake');
+  }
+
+  // She was clearing the whole board without ever looking up: nothing tied the
+  // board to the clock above it, so taking lines away looked like the game.
+  // Every tap now lights the digit above that the one she touched is copying.
+  // On every rung and for every tap, right or wrong, so it never gives away
+  // whether the tap was right; it only says where to look.
+  function echoDigitAbove(pos) {
+    restartAnimation(realFace._slots[pos], 'digit-echo');
+  }
+
+  // A digit her tap has just made right: a star over it and the chime, so a
+  // finished digit is a prize in its own right and not just one step towards
+  // the board. Only where the marks are on, since it says the digit is right.
+  function celebrateDigit(pos) {
+    if (starredDigits.has(pos)) return;
+    starredDigits.add(pos);
+    audio.playChime();
+    const box = manualFace._slots[pos].getBoundingClientRect();
+    const star = document.createElement('div');
+    star.className = 'digit-star';
+    star.textContent = '⭐';
+    star.setAttribute('aria-hidden', 'true');
+    star.style.left = (box.left + box.width / 2) + 'px';
+    star.style.top = box.top + 'px';
+    wrap.appendChild(star);
+    window.setTimeout(function() { star.remove(); }, DIGIT_STAR_MS);
   }
 
   function toggleSeg(pos, segName) {
     if (session.isSessionEnded()) return;
     const set = manualState[pos];
     const wasLit = set.has(segName);
-    const mistaken = isMistakenTap(wasLit, currentTargets()[pos].has(segName));
+    const target = currentTargets()[pos];
+    const mistaken = isMistakenTap(wasLit, target.has(segName));
+    const digitWasRight = setsEqual(set, target);
     if (mistaken && rung.marks === 'steady') {
       // On a board whose marks are on, a tap that goes the wrong way — most
       // often taking away a green line along with the red ones — gets a small
@@ -702,10 +749,15 @@ function enterMatch() {
     if (wasLit) set.delete(segName);
     else set.add(segName);
     setDigitState(manualFace._slots[pos], set);
+    echoDigitAbove(pos);
     evaluateMatch(true);
+    // A tap that finishes the whole board gets the confetti instead.
+    if (rung.marks === 'steady' && !isMatching && !digitWasRight && setsEqual(set, target)) {
+      celebrateDigit(pos);
+    }
     // A line she's just put in the right place pops as it goes green. Only
     // the CSS for a board whose marks are on lets it show. The delay that kept
-    // its yellow crawl on the shared beat has to go first, or the pop would
+    // its yellow breathing on the shared beat has to go first, or the pop would
     // start already over.
     const seg = manualFace._slots[pos].querySelector('.seg[data-seg="' + segName + '"]');
     if (seg && !wasLit && seg.classList.contains('seg-right')) {
