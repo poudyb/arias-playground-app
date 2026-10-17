@@ -371,6 +371,10 @@ function createMemoryCard(card, index) {
   art.className = 'memory-card__art';
   renderMemoryArt(art, card);
   front.appendChild(art);
+  const name = document.createElement('span');
+  name.className = 'picture-card__name';
+  name.textContent = card.name;
+  front.appendChild(name);
 
   inner.appendChild(back);
   inner.appendChild(front);

@@ -159,6 +159,10 @@ body {
 /* Raised, pressable tiles: the same purple-rimmed white with a solid ledge under
    it as the Home button, so they read as buttons where the word above does not. */
 .choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   border: 4px solid #7c4dff;
   border-radius: 22px;
   background: linear-gradient(165deg, #fff 0%, #f3edff 100%);

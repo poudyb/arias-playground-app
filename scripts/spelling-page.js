@@ -321,6 +321,10 @@ function renderChoices(indices, target) {
     img.src = IMG_FOR[word];
     img.alt = '';
     btn.appendChild(img);
+    const name = document.createElement('span');
+    name.className = 'picture-card__name';
+    name.textContent = word.toLowerCase();
+    btn.appendChild(name);
     btn.addEventListener('click', function() { onChoice(word, btn, target); });
     spellChoices.appendChild(btn);
   });

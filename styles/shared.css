@@ -9,6 +9,16 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+.picture-card__name {
+  flex: 0 0 auto;
+  font-family: var(--font-letters);
+  font-size: clamp(12px, 2vw, 18px);
+  font-weight: 400;
+  line-height: 1.4;
+  color: #000;
+  text-align: center;
+}
+
 .celebration-emoji {
   position: fixed;
   z-index: 55;
