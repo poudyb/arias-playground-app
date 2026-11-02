@@ -284,6 +284,36 @@ body {
     border: 5px solid rgba(255, 255, 255, 0.55);
     box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.18);
   }
+/* A card she has never turned over shimmers: a soft band of light sweeps
+     across the back from top-left to bottom-right, and the board's cards take
+     their turn one diagonal after another (--shimmer-delay, set per card), so
+     the sheen rolls across the board as one wave and then rests. Once a card
+     has been seen it goes still for good, so what still shimmers is exactly
+     what's left to find. */
+.memory-card__back::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0) 40%,
+      rgba(255, 255, 255, 0.5) 50%,
+      rgba(255, 255, 255, 0) 60%);
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    pointer-events: none;
+  }
+.memory-card.is-fresh .memory-card__back::before {
+    animation: memory-shimmer 3.6s ease-in-out infinite;
+    animation-delay: var(--shimmer-delay, 0s);
+  }
+@keyframes memory-shimmer {
+    0% { transform: translate(-50%, -50%); opacity: 1; }
+    35% { transform: translate(50%, 50%); opacity: 1; }
+    36%, 100% { transform: translate(50%, 50%); opacity: 0; }
+  }
 .memory-card__front {
     transform: rotateY(180deg);
     flex-direction: column;
@@ -338,8 +368,14 @@ body {
       transition: none;
     }
     .memory-card__art.pop,
-    .memory-card.shake {
+    .memory-card.shake,
+    .memory-card.is-fresh .memory-card__back::before {
       animation: none;
+    }
+    /* Without the sweep, a card not yet seen keeps a still sheen instead. */
+    .memory-card.is-fresh .memory-card__back::before {
+      opacity: 1;
+      transform: translate(0, 0);
     }
     .memory-card.is-matched {
       transform: none;

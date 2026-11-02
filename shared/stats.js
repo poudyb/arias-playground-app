@@ -69,7 +69,8 @@ function createSameAsStats() {
     usedMemory: false,
     memoryMatches: 0,
     memoryLevelsCleared: 0,
-    memoryUnforced: 0
+    memoryUnforced: 0,
+    memoryBoardsFailed: 0
   };
 }
 

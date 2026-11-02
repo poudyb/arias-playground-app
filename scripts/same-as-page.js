@@ -43,14 +43,16 @@ function renderSummary(board, stats) {
   if (stats.usedMemory) {
     const pairs = stats.memoryMatches;
     const cleared = stats.memoryLevelsCleared;
-    appendScoreSection(board, {
-      icon: '🧠',
-      title: 'Memory',
-      body: pairs === 0
-        ? 'Flip two cards and find the pictures that match!'
-        : 'You matched ' + pairs + ' pair' + (pairs === 1 ? '' : 's') +
-          (cleared ? ' and finished ' + cleared + ' board' + (cleared === 1 ? '' : 's') + '!' : '!')
-    });
+    const body = createIntroBody(pairs === 0
+      ? 'Flip two cards and find the pictures that match!'
+      : 'You matched ' + pairs + ' pair' + (pairs === 1 ? '' : 's') +
+        (cleared ? ' and finished ' + cleared + ' board' + (cleared === 1 ? '' : 's') + '!' : '!'));
+    // For the grown-up: how the board size moves, which she is never told.
+    appendBodyNote(body, 'Now on boards of ' + (MEMORY_LEVELS[memoryLevelIdx].pairs * 2) + ' cards. ' +
+      'A board with no wasted picks moves her up a size. Picking a card she had already seen, ' +
+      'in a way that couldn\'t match, is let go once a board; the second time ends it' +
+      (stats.memoryBoardsFailed ? ' (' + stats.memoryBoardsFailed + ' ended that way today)' : '') + '.');
+    appendScoreSection(board, { icon: '🧠', title: 'Memory', body: body });
   }
 
   const modes = [];
@@ -290,16 +292,17 @@ function stopMatchGame() {
 }
 
 // ---------------------------------------------------------------------------
-// Memory mode: a concentration game over the same animal + shape pool. Clearing
-// a board grows the deck (chase-style levels); the buzzer and any demotion are
-// reserved for repeated *unforced* errors (re-picking a card already known not
-// to match) so honest first-look misses never feel like mistakes.
+// Memory mode: a concentration game over the Spelling picture pool. Only a
+// board played without a slip grows the deck; a slip is a pick she had the
+// information to avoid (see shared/memory-logic.js). One slip per board gets
+// the buzzer and a shake; a second ends the board. Honest first looks at new
+// cards never count against her and only get the soft tone.
+//
+// Cards she has never turned over shimmer, a slow sheen across the back, so
+// the board itself shows where there is still something to find.
 // ---------------------------------------------------------------------------
 
 const MEMORY_LEVEL_KEY = SAME_AS_SESSION_KEY + ':memory';
-// True errors within one board needed to drop a level. Like chase, the level
-// only changes when the board is finished - never an immediate mid-board demote.
-const MEMORY_DEMOTE_THRESHOLD = 10;
 
 // pairs on the board + the grid shape. Level 1 is a single pair, so the very
 // first board is impossible to get wrong - it just teaches "find the two that
@@ -336,7 +339,8 @@ let memoryCards = [];
 let memoryFirstIdx = -1;
 let memoryWordTimer = null;
 let memoryLocked = false;
-let memoryUnforced = 0;
+let memorySlips = 0;
+let memoryFailStreak = 0;
 let memoryMatchedPairs = 0;
 let memoryTimer = null;
 let memoryIntroTimer = null;
@@ -368,10 +372,12 @@ function renderMemoryArt(el, card) {
   el.appendChild(img);
 }
 
-function createMemoryCard(card, index) {
+function createMemoryCard(card, index, cols) {
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.className = 'memory-card';
+  btn.className = 'memory-card is-fresh';
+  // The shimmer crosses the board as one diagonal wave, top-left first.
+  btn.style.setProperty('--shimmer-delay', (((index % cols) + Math.floor(index / cols)) * 0.14) + 's');
   btn.setAttribute('aria-label', 'Memory card, face down');
 
   const inner = document.createElement('span');
@@ -423,12 +429,13 @@ function clearMemoryTimers() {
 // it off, and is never dropped for being the same word: "cat … cat" is the
 // match, and she should hear both halves of it. The first card of a turn
 // replaces whatever was being said (the intro, a cheer) — her tap wins.
-function flipMemoryUp(card, isSecond) {
+function flipMemoryUp(card, isSecond, silent) {
   card.faceUp = true;
+  card.el.classList.remove('is-fresh');
   card.el.classList.add('is-flipped');
   card.el.setAttribute('aria-label', card.name + ', face up');
   // Say what was revealed so the child sees it and hears it named.
-  if (session.isSessionEnded()) return null;
+  if (session.isSessionEnded() || silent) return null;
   return speakText(card.name, { rate: 0.9, queue: isSecond });
 }
 
@@ -448,7 +455,7 @@ function buildMemoryBoard() {
   clearMemoryTimers();
   memoryFirstIdx = -1;
   memoryLocked = false;
-  memoryUnforced = 0;
+  memorySlips = 0;
   memoryMatchedPairs = 0;
 
   const level = MEMORY_LEVELS[memoryLevelIdx];
@@ -470,7 +477,7 @@ function buildMemoryBoard() {
 
   memoryGridEl.innerHTML = '';
   memoryCards = deck.map(function(card, i) {
-    const node = createMemoryCard(card, i);
+    const node = createMemoryCard(card, i, level.cols);
     memoryGridEl.appendChild(node.el);
     return node;
   });
@@ -527,10 +534,15 @@ function onMemoryCardTap(index) {
   const first = memoryCards[memoryFirstIdx];
   memoryFirstIdx = -1;
 
-  if (first.key === card.key) {
+  // Judged on what she knew before this turn, then both count as seen.
+  const outcome = classifyMemoryTurn(first, card);
+  first.seen = true;
+  card.seen = true;
+
+  if (outcome === 'match') {
     resolveMemoryMatch(first, card, spoken);
   } else {
-    resolveMemoryMismatch(first, card);
+    resolveMemoryMismatch(first, card, outcome === 'slip');
   }
 }
 
@@ -594,34 +606,29 @@ function resolveMemoryMatch(a, b, spoken) {
   });
 }
 
-function resolveMemoryMismatch(a, b) {
+function resolveMemoryMismatch(a, b, slip) {
   memoryLocked = true;
 
-  // A true error is picking, as your second card, one you had ALREADY revealed
-  // earlier this board - you knew its face and that it wasn't the match, but
-  // chose it anyway. A first look at a card you hadn't seen is honest
-  // exploration: no buzzer, just the gentle "your turn again" tone. Tallied per
-  // board; demotion happens later, at the end of the board (see complete
-  // MemoryLevel) - never an immediate mid-board drop.
-  const unforced = b.seen;
-  a.seen = true;
-  b.seen = true;
-
-  if (unforced) {
-    memoryUnforced += 1;
+  if (slip) {
+    memorySlips += 1;
     session.mutateStats(function(stats) {
       stats.usedMemory = true;
       stats.memoryUnforced += 1;
       pushUniqueStruggle(stats.struggled, b.key);
     });
   }
+  const failed = memoryBoardFailed(memorySlips);
 
-  // Hold both faces up long enough to see and hear them, then react and flip
-  // back. Wrong-on-purpose gets a buzzer plus a small shake (no big red X);
-  // an honest miss just gets the soft tone.
+  // Hold both faces up long enough to see and hear them, then react. An honest
+  // miss gets the soft tone. The first slip gets the buzzer and a small shake
+  // (no big X): a warning. The second ends the board.
   memoryTimer = window.setTimeout(function() {
     memoryTimer = null;
-    if (unforced) {
+    if (failed) {
+      failMemoryBoard(a, b);
+      return;
+    }
+    if (slip) {
       audio.playBuzzer();
       shakeMemoryCard(a);
       shakeMemoryCard(b);
@@ -633,15 +640,45 @@ function resolveMemoryMismatch(a, b) {
       flipMemoryDown(a);
       flipMemoryDown(b);
       memoryLocked = false;
-    }, unforced ? 520 : 280);
+    }, slip ? 520 : 280);
   }, 1500);
 }
 
+// A second slip: this is an answer she gave knowing better, so it gets the big
+// red X and the buzzer like any wrong answer. Then every card turns over to show
+// where they all were, and a new board is dealt — the same size, or one smaller
+// after two failed boards in a row.
+function failMemoryBoard(a, b) {
+  thumbsDown.show();
+  audio.playBuzzer();
+  shakeMemoryCard(a);
+  shakeMemoryCard(b);
+  session.mutateStats(function(stats) {
+    stats.usedMemory = true;
+    stats.memoryBoardsFailed += 1;
+  });
+  const next = nextMemoryLevel(memoryLevelIdx, 'failed', memoryFailStreak, MEMORY_LEVELS.length);
+  memoryLevelIdx = next.level;
+  memoryFailStreak = next.failStreak;
+  saveMemoryLevel();
+
+  memoryTimer = window.setTimeout(function() {
+    memoryTimer = null;
+    memoryCards.forEach(function(card) {
+      if (!card.matched && !card.faceUp) flipMemoryUp(card, false, true);
+    });
+    memoryTimer = window.setTimeout(function() {
+      memoryTimer = null;
+      if (memoryActive && !session.isSessionEnded()) buildMemoryBoard();
+    }, 2200);
+  }, 900);
+}
+
 function completeMemoryLevel() {
-  // The board is always finished; the next one grows unless this board took a
-  // lot of true errors, in which case it eases back a level (chase-style, only
-  // at the end of the board, never below the first one).
-  const demote = memoryUnforced >= MEMORY_DEMOTE_THRESHOLD && memoryLevelIdx > 0;
+  // Only a board with no slip moves her up; one slip keeps her on this size
+  // (see nextMemoryLevel). Either way she finished it, and that's celebrated.
+  const next = nextMemoryLevel(memoryLevelIdx, memorySlips === 0 ? 'clean' : 'slipped',
+    memoryFailStreak, MEMORY_LEVELS.length);
 
   session.mutateStats(function(stats) {
     stats.usedMemory = true;
@@ -665,8 +702,8 @@ function completeMemoryLevel() {
     if (memoryActive && !session.isSessionEnded()) speakText('Hooray! You did it!', { rate: 0.95 });
   }, 240);
 
-  if (demote) memoryLevelIdx -= 1;
-  else if (memoryLevelIdx < MEMORY_LEVELS.length - 1) memoryLevelIdx += 1;
+  memoryLevelIdx = next.level;
+  memoryFailStreak = next.failStreak;
   saveMemoryLevel();
 
   memoryTimer = window.setTimeout(function() {
@@ -676,7 +713,7 @@ function completeMemoryLevel() {
 }
 
 function saveMemoryLevel() {
-  saveRoundState(MEMORY_LEVEL_KEY, { level: memoryLevelIdx, lastKeys: memoryLastKeys });
+  saveRoundState(MEMORY_LEVEL_KEY, { level: memoryLevelIdx, failStreak: memoryFailStreak, lastKeys: memoryLastKeys });
 }
 
 function loadMemoryLevel() {
@@ -684,6 +721,7 @@ function loadMemoryLevel() {
   memoryLastKeys = (saved && Array.isArray(saved.lastKeys))
     ? saved.lastKeys.filter(function(k) { return MEMORY_KEYS[k] === true; })
     : [];
+  memoryFailStreak = saved && typeof saved.failStreak === 'number' ? saved.failStreak : 0;
   if (saved && isValidIndex(saved.level, MEMORY_LEVELS.length)) return saved.level;
   return 0;
 }
