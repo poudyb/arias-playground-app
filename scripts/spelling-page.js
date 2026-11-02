@@ -230,12 +230,20 @@ function updateKeys() {
   });
 }
 
+// Each typed letter is said. The first one replaces whatever was being said
+// (the word she was given, say); the later ones wait their turn behind it, so a
+// quick "c-a-t" is heard as three letters rather than the last one, and the
+// second "g" of "egg" isn't dropped for being the same sound as the first.
+function speakLetter(ch) {
+  speakText(ch.toLowerCase(), { rate: 0.85, queue: typed.length > 1 });
+}
+
 function pressLetter(ch) {
   if (locked) return;
   if (mode === 'freeplay') {
     if (!allowedNext(typed, WORDS)[ch]) return;
     typed += ch;
-    speakText(ch.toLowerCase(), { rate: 0.85 });
+    speakLetter(ch);
     renderSlots();
     if (typed.length === WORD_LEN) completeWord(typed);
     else updateKeys();
@@ -267,7 +275,9 @@ function revealFreeplayWord(word) {
   spellPicture.classList.add('is-visible');
   spellPicture.setAttribute('aria-hidden', 'false');
   spellHint.textContent = '';
-  speakText(word.toLowerCase(), { rate: 0.85 });
+  // Queued, like the letters: if she typed fast the last letter may still be
+  // being said, and the word follows it rather than cutting it off.
+  speakText(word.toLowerCase(), { rate: 0.85, queue: true });
   // No celebration in Free Play: the chime, confetti, and 🎉 always travel
   // together and are reserved for answering a question right (Quiz, Read It,
   // Spell It). Free Play isn't a question — it just shows the word it built
@@ -567,7 +577,7 @@ function spellPressLetter(ch) {
   const target = WORDS[spellTargetIndex];
   if (ch === target[typed.length]) {
     typed += ch;
-    speakText(ch.toLowerCase(), { rate: 0.85 });
+    speakLetter(ch);
     renderSlots();
     if (typed.length === WORD_LEN) completeSpell(target);
     else hint.poke();
@@ -600,7 +610,7 @@ function completeSpell(target) {
   resetTimer = window.setTimeout(function() {
     resetTimer = null;
     audio.playChime();
-    speakText(target.toLowerCase(), { rate: 0.85 });
+    speakText(target.toLowerCase(), { rate: 0.85, queue: true });
     spawnConfetti();
     resetTimer = window.setTimeout(startSpellRound, 2200);
   }, 950);

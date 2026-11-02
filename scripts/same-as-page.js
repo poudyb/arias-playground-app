@@ -87,9 +87,23 @@ const hint = createHintNudge({
   isActive: function() { return !session.isSessionEnded(); }
 });
 
+// The prompt is said a beat after a round is dealt, on a timer. Switching to
+// Memory inside that beat used to let it fire anyway and talk over the first
+// card she turned, so it is tracked, cancelled on the way out, and checks it's
+// still on a match board.
+let promptTimer = null;
+
 function speakPrompt() {
-  if (session.isSessionEnded()) return;
+  if (session.isSessionEnded() || category === 'memory') return;
   speakText(PROMPT_SAY, { rate: 0.88 });
+}
+
+function promptSoon() {
+  clearTimeout(promptTimer);
+  promptTimer = window.setTimeout(function() {
+    promptTimer = null;
+    speakPrompt();
+  }, 280);
 }
 
 function renderArt(el, item) {
@@ -136,6 +150,8 @@ function setCategory(nextCategory) {
     cancelSpeech();
     clearTimeout(delayedNextTimer);
     delayedNextTimer = null;
+    clearTimeout(promptTimer);
+    promptTimer = null;
     hint.stop();
     thumbsDown.hide();
     matchBoardEl.hidden = true;
@@ -192,7 +208,7 @@ function startRound() {
       isValidIndexArray(saved.choiceItemIndices, CHOICES.length, pool.length)) {
     applyRoundState(saved.targetIndex, saved.correctChoiceIdx, saved.choiceItemIndices);
     cancelSpeech();
-    window.setTimeout(function() { if (!session.isSessionEnded()) speakPrompt(); }, 280);
+    promptSoon();
     hint.reset();
     return;
   }
@@ -215,9 +231,7 @@ function startRound() {
   applyRoundState(nextTargetIndex, newCorrectChoiceIdx, choiceItemIndices);
 
   cancelSpeech();
-  window.setTimeout(function() {
-    if (!session.isSessionEnded()) speakPrompt();
-  }, 280);
+  promptSoon();
   hint.reset();
 }
 
@@ -268,6 +282,8 @@ function stopMatchGame() {
   cancelSpeech();
   clearTimeout(delayedNextTimer);
   delayedNextTimer = null;
+  clearTimeout(promptTimer);
+  promptTimer = null;
   thumbsDown.hide();
   hint.stop();
   stopMemory();
@@ -402,13 +418,18 @@ function clearMemoryTimers() {
 
 // Returns the utterance for the name it just said, so a match can wait for the
 // word to finish before it celebrates (null when nothing was spoken).
-function flipMemoryUp(card) {
+//
+// The second card of a turn waits for the first card's name rather than cutting
+// it off, and is never dropped for being the same word: "cat … cat" is the
+// match, and she should hear both halves of it. The first card of a turn
+// replaces whatever was being said (the intro, a cheer) — her tap wins.
+function flipMemoryUp(card, isSecond) {
   card.faceUp = true;
   card.el.classList.add('is-flipped');
   card.el.setAttribute('aria-label', card.name + ', face up');
   // Say what was revealed so the child sees it and hears it named.
   if (session.isSessionEnded()) return null;
-  return speakText(card.name, { rate: 0.9 });
+  return speakText(card.name, { rate: 0.9, queue: isSecond });
 }
 
 function flipMemoryDown(card) {
@@ -496,7 +517,7 @@ function onMemoryCardTap(index) {
     memoryIntroTimer = null;
   }
 
-  const spoken = flipMemoryUp(card);
+  const spoken = flipMemoryUp(card, memoryFirstIdx !== -1);
 
   if (memoryFirstIdx === -1) {
     memoryFirstIdx = index;

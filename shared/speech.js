@@ -97,7 +97,7 @@ function whenVoicesReady(synth, go) {
 // synth that isn't listening yet.
 const SPEECH_GESTURES = ['touchstart', 'pointerdown', 'click'];
 let speechUnlocked = false;
-let pendingSpeech = null;
+let pendingSpeech = [];
 
 function onFirstSpeechGesture() {
   if (speechUnlocked) return;
@@ -106,8 +106,8 @@ function onFirstSpeechGesture() {
     document.removeEventListener(name, onFirstSpeechGesture, true);
   });
   const run = pendingSpeech;
-  pendingSpeech = null;
-  if (run) run();
+  pendingSpeech = [];
+  run.forEach(function(go) { go(); });
 }
 
 SPEECH_GESTURES.forEach(function(name) {
@@ -115,13 +115,15 @@ SPEECH_GESTURES.forEach(function(name) {
 });
 
 // Only the newest request is worth holding: by the time the child touches the
-// screen, an older prompt has been superseded by whatever is on screen now.
-function whenSpeechUnlocked(go) {
+// screen, an older prompt has been superseded by whatever is on screen now. A
+// queued request is the exception — it was asked to follow the one before it.
+function whenSpeechUnlocked(go, queue) {
   if (speechUnlocked) {
     go();
     return;
   }
-  pendingSpeech = go;
+  if (!queue) pendingSpeech = [];
+  pendingSpeech.push(go);
 }
 
 // How long to give an utterance to actually start before assuming the synth
@@ -129,48 +131,86 @@ function whenSpeechUnlocked(go) {
 // costs every prompt that follows.
 const SPEECH_START_TIMEOUT_MS = 2000;
 
+// Who wins when two things want to be said at once.
+//
+// By default the newest request replaces whatever is being said: a new tap,
+// a new round, a new prompt — the screen has moved on and so should the voice.
+// The one exception is a request for the very words already being said, which
+// is dropped rather than restarted, so a re-prompt or a hint replay that lands
+// mid-sentence doesn't stutter it back to the beginning.
+//
+// That exception is wrong for a step in something she is building, where the
+// same words a second time are a second, separate thing: the second card of a
+// Memory pair (both say "cat" — that IS the match), the second "g" of "egg",
+// the second number of a sum. Those pass `queue: true`: they wait for what is
+// being said to finish and then are said too, never dropped and never cutting
+// the step before them off. The first step of anything still replaces, so her
+// tap always beats a prompt the game was in the middle of.
+//
+// A replacing request also cancels queued words that haven't started yet.
+let speechGeneration = 0;
+
 function speakText(text, options = {}) {
-  const { rate = 0.9 } = options;
+  const { rate = 0.9, queue = false } = options;
   const synth = window.speechSynthesis;
   if (!synth) return null;
   // Don't talk to an empty room: timers (chase re-prompts, idle hint nudges)
   // keep firing while the tab/app is backgrounded, and speaking there is just
   // disruptive noise and wasted cycles.
   if (document.hidden) return null;
-  if (activeUtterance && activeUtterance.text === text) return null;
-  if (activeUtterance) synth.cancel();
+  const ahead = queue && activeUtterance && !activeUtterance.__settled ? activeUtterance : null;
+  if (!queue) {
+    if (activeUtterance && activeUtterance.text === text) return null;
+    if (activeUtterance) synth.cancel();
+    speechGeneration += 1;
+  }
+  const generation = speechGeneration;
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = rate;
+  utterance.__onSettle = [];
 
   let dropWatch = null;
+  let started = false;
   function release() {
+    if (utterance.__settled) return;
+    utterance.__settled = true;
     if (dropWatch) { clearTimeout(dropWatch); dropWatch = null; }
     if (activeUtterance === utterance) activeUtterance = null;
+    utterance.__onSettle.forEach(function(fn) { fn(); });
   }
   utterance.addEventListener('end', release);
   utterance.addEventListener('error', release);
   utterance.addEventListener('start', function() {
+    started = true;
     if (dropWatch) { clearTimeout(dropWatch); dropWatch = null; }
   });
 
-  function go() {
-    if (synth.paused) synth.resume();
+  // A queued utterance can't be expected to start until the one ahead of it
+  // has finished, so its watch only starts counting from then.
+  function armDropWatch() {
+    if (started || utterance.__settled) return;
     dropWatch = setTimeout(release, SPEECH_START_TIMEOUT_MS);
+  }
+
+  function go() {
+    if (generation !== speechGeneration) return;
+    if (synth.paused) synth.resume();
     synth.speak(utterance);
+    if (ahead && !ahead.__settled && ahead.__onSettle) ahead.__onSettle.push(armDropWatch);
+    else armDropWatch();
   }
 
   activeUtterance = utterance;
   whenSpeechUnlocked(function() {
-    if (activeUtterance !== utterance) return;
-    whenVoicesReady(synth, function() {
-      if (activeUtterance === utterance) go();
-    });
-  });
+    if (generation !== speechGeneration) return;
+    whenVoicesReady(synth, function() { go(); });
+  }, queue);
   return utterance;
 }
 
 function cancelSpeech() {
+  speechGeneration += 1;
   if (!activeUtterance) return;
   if (window.speechSynthesis) window.speechSynthesis.cancel();
   activeUtterance = null;
