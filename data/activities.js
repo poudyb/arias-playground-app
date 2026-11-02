@@ -117,5 +117,21 @@ const ACTIVITIES = [
     sessionKey: 'ariaSpellingSession',
     statsKey: 'ariaSpellingStats',
     defaultStats: function() { return createSpellingStats(); }
+  },
+  {
+    id: 'calculator',
+    href: 'calculator.html',
+    title: 'Calculator',
+    hint: 'Plus and minus!',
+    tileClass: 'game-tile--calc',
+    artClasses: 'game-tile__art game-tile__art--calc',
+    artHtml:
+      '<span class="game-tile__art__calc-screen">' +
+      '<span class="game-tile__art__calc-a">3</span>+' +
+      '<span class="game-tile__art__calc-b">2</span>' +
+      '</span>',
+    sessionKey: 'ariaCalcSession',
+    statsKey: 'ariaCalcStats',
+    defaultStats: function() { return createCalcStats(); }
   }
 ];

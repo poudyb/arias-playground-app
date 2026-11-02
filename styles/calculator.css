@@ -1,0 +1,518 @@
+/* Calculator: a chunky pretend calculator beside a board of dots.
+   Sizes all hang off two numbers set per orientation — the calculator's width
+   and one dot's width — so it fits an iPad either way up and a phone. */
+
+body.calc-page {
+  --calc-w: min(40vw, 56vh, 400px);
+  --dot: min(3.3vw, 5.4vh, 46px);
+  --dot-a: #ff8f3a;
+  --dot-a-deep: #e65100;
+  --dot-b: #3a8dff;
+  --dot-b-deep: #1565c0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-ui);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  background: linear-gradient(180deg, #e3f2fd 0%, #f3e5f5 60%, #fce4ec 100%);
+  color: #263238;
+  padding: 58px 12px 12px;
+}
+
+@media (orientation: portrait) {
+  body.calc-page {
+    --calc-w: min(88vw, 46vh, 400px);
+    --dot: min(6.2vw, 3.6vh, 46px);
+  }
+}
+
+/* ---- Chrome shared with the other games ----------------------------------- */
+
+.home-btn {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 150;
+  font-family: var(--font-letters);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 3px solid #455a64;
+  background: #fff;
+  color: #37474f;
+  text-decoration: none;
+  box-shadow: 0 3px 0 #263238;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #263238;
+}
+
+#mode-buttons {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 100;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 62vw;
+}
+.mode-btn {
+  background: #eceff1;
+  border: 1px solid #cfd8dc;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 14px;
+  font-family: var(--font-ui);
+  color: #607d8b;
+  cursor: pointer;
+}
+.mode-btn.active {
+  background: #455a64;
+  border-color: #263238;
+  color: #fff;
+  pointer-events: none;
+}
+
+#play-timer {
+  display: none;
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 140;
+  font-family: var(--font-letters);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(55, 71, 79, 0.92);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+}
+
+/* ---- Layout ----------------------------------------------------------------- */
+
+#app-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: min(100%, 1100px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calc-stage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 3vw, 40px);
+}
+@media (orientation: portrait) {
+  .calc-stage { flex-direction: column; gap: clamp(10px, 2vh, 24px); }
+}
+
+.calc-side {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: calc(var(--dot) * 17);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: clamp(8px, 1.6vh, 16px);
+}
+@media (orientation: portrait) {
+  .calc-side { flex: 0 1 auto; width: 100%; }
+}
+
+/* ---- The calculator ----------------------------------------------------------- */
+
+.calc {
+  --pad: calc(var(--calc-w) * 0.055);
+  --gap: calc(var(--calc-w) * 0.035);
+  --key-h: calc((var(--calc-w) - 2 * var(--pad) - 3 * var(--gap)) / 4 * 0.84);
+  flex: 0 0 auto;
+  width: var(--calc-w);
+  padding: var(--pad);
+  border-radius: calc(var(--calc-w) * 0.08);
+  background: linear-gradient(170deg, #546e7a 0%, #37474f 70%);
+  box-shadow:
+    0 calc(var(--calc-w) * 0.025) 0 #263238,
+    0 18px 40px rgba(38, 50, 56, 0.3);
+}
+
+.calc-screen {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(var(--calc-w) * 0.025);
+  height: calc(var(--calc-w) * 0.24);
+  margin-bottom: calc(var(--pad) * 1.1);
+  padding: 0 calc(var(--calc-w) * 0.05);
+  border-radius: calc(var(--calc-w) * 0.035);
+  background: linear-gradient(180deg, #c5dcb5 0%, #d8ebc9 100%);
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.28);
+  font-family: var(--font-letters);
+  font-weight: 700;
+  font-size: calc(var(--calc-w) * 0.15);
+  line-height: 1;
+  color: #263238;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+.calc-screen.is-speaking { animation: calc-screen-pulse 0.6s ease-out; }
+@keyframes calc-screen-pulse {
+  0%, 100% { box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.28); }
+  40% { box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.28), 0 0 0 4px rgba(255, 213, 79, 0.8); }
+}
+
+/* The digits wear their dots' colours, so "3" and the three orange dots are
+   plainly the same thing. */
+.calc-cell--a { color: var(--dot-a-deep); }
+.calc-cell--b { color: var(--dot-b-deep); }
+.calc-cell--op,
+.calc-cell--eq { color: #455a64; }
+.calc-cell--r { letter-spacing: var(--digit-tighten); }
+.calc-cell:empty { display: none; }
+
+/* A blinking bar on a clean screen, so it looks switched on. */
+.calc-cursor {
+  display: none;
+  width: calc(var(--calc-w) * 0.018);
+  height: 0.8em;
+  border-radius: 2px;
+  background: rgba(38, 50, 56, 0.55);
+}
+.calc-screen[data-phase="start"] .calc-cursor {
+  display: block;
+  animation: calc-cursor-blink 1.1s steps(1) infinite;
+}
+@keyframes calc-cursor-blink {
+  50% { opacity: 0; }
+}
+
+.calc-keys {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--gap);
+}
+
+.calc-key {
+  --ledge: #b9ae94;
+  height: var(--key-h);
+  border: none;
+  border-radius: calc(var(--calc-w) * 0.045);
+  font-family: var(--font-letters);
+  font-weight: 700;
+  font-size: calc(var(--calc-w) * 0.11);
+  line-height: 1;
+  cursor: pointer;
+  background: #fffaf0;
+  color: #263238;
+  box-shadow: 0 calc(var(--calc-w) * 0.014) 0 var(--ledge);
+  transition: transform 0.06s ease, box-shadow 0.06s ease, background-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.calc-key--zero { grid-column: span 3; }
+.calc-key--op { background: #ffcc80; color: #5d3200; --ledge: #e0902a; font-size: calc(var(--calc-w) * 0.13); }
+.calc-key--eq { background: #66bb6a; color: #fff; --ledge: #2e7d32; font-size: calc(var(--calc-w) * 0.13); }
+.calc-key--clear { background: #ef5350; color: #fff; --ledge: #b71c1c; }
+
+.calc-key:not(:disabled):active,
+.calc-key.is-pressed:not(:disabled) {
+  transform: translateY(calc(var(--calc-w) * 0.01));
+  box-shadow: 0 calc(var(--calc-w) * 0.004) 0 var(--ledge);
+}
+
+/* Off: flat, grey and sunk down to the body, the opposite of a key that's
+   ready to press. Every kind of key looks the same when it's off, so grey
+   always means the same thing. */
+.calc-key:disabled {
+  background: #5f707a;
+  color: #8b9ba3;
+  box-shadow: none;
+  transform: translateY(calc(var(--calc-w) * 0.014));
+  cursor: default;
+}
+
+/* The next step of the sum breathes. */
+.calc-key.is-next {
+  animation: calc-key-next 1.5s ease-in-out infinite;
+}
+@keyframes calc-key-next {
+  0%, 100% { box-shadow: 0 calc(var(--calc-w) * 0.014) 0 var(--ledge), 0 0 0 0 rgba(255, 255, 255, 0); }
+  50% { box-shadow: 0 calc(var(--calc-w) * 0.014) 0 var(--ledge), 0 0 0 calc(var(--calc-w) * 0.014) rgba(255, 255, 255, 0.75); }
+}
+
+/* Make It's hint: the key she could press next swells and glows yellow. */
+.calc-key.hint-flash {
+  animation: calc-key-hint 1.1s ease-out;
+}
+@keyframes calc-key-hint {
+  0%, 100% { transform: scale(1); box-shadow: 0 calc(var(--calc-w) * 0.014) 0 var(--ledge), 0 0 0 0 rgba(255, 193, 7, 0); }
+  40% { transform: scale(1.12); box-shadow: 0 calc(var(--calc-w) * 0.014) 0 var(--ledge), 0 0 18px 6px rgba(255, 193, 7, 0.95); }
+}
+
+/* ---- The dots ----------------------------------------------------------------- */
+
+.dots-board {
+  --dot-gap: calc(var(--dot) * 0.22);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--dot) * 0.5);
+  min-height: calc(var(--dot) * 4.6);
+  padding: calc(var(--dot) * 0.45);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 4px 18px rgba(38, 50, 56, 0.12);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dots-work {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--dot) * 0.35);
+  min-height: calc(var(--dot) * 2 + var(--dot-gap) + var(--dot) * 0.5);
+}
+.dots-board.is-resolved:not(.has-rings) .dots-work { display: none; }
+/* With rings, the row keeps its place so the board doesn't jump, but its
+   emptied plates go. */
+.dots-board.is-resolved.has-rings .dots-work { visibility: hidden; }
+
+.dots-sign {
+  font-family: var(--font-letters);
+  font-weight: 700;
+  font-size: calc(var(--dot) * 1.4);
+  line-height: 1;
+  color: #546e7a;
+  min-width: calc(var(--dot) * 0.8);
+  text-align: center;
+}
+.dots-sign:empty { visibility: hidden; }
+
+.tray {
+  display: none;
+  grid-template-columns: repeat(var(--cols, 5), var(--dot));
+  grid-auto-rows: var(--dot);
+  gap: var(--dot-gap);
+  padding: calc(var(--dot) * 0.25);
+  border-radius: calc(var(--dot) * 0.5);
+}
+.tray.is-set { display: grid; }
+.tray--a.is-set { background: rgba(255, 143, 58, 0.12); }
+.tray--b.is-set { background: rgba(58, 141, 255, 0.12); }
+
+/* The answer: only there once she presses =, unless it's Make It's rings. */
+.tray--result { background: rgba(102, 187, 106, 0.12); }
+.dots-board.is-resolved .tray--result,
+.dots-board.has-rings .tray--result { display: grid; }
+/* Past ten, a little gap: two full rows of five, then the rest. */
+.tray--result .slot:nth-child(n+11):nth-child(-n+15) { margin-top: calc(var(--dot) * 0.3); }
+
+.slot {
+  position: relative;
+  width: var(--dot);
+  height: var(--dot);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.slot--ring {
+  box-shadow: inset 0 0 0 calc(var(--dot) * 0.08) rgba(69, 90, 100, 0.3);
+  font-family: var(--font-letters);
+  font-weight: 700;
+  font-size: calc(var(--dot) * 0.55);
+  color: #455a64;
+}
+.slot--ring.is-counted { box-shadow: inset 0 0 0 calc(var(--dot) * 0.1) #ffb300; }
+
+/* Make It's verdict, drawn by the dots themselves. */
+.tray--result.is-full .slot--ring { box-shadow: 0 0 0 calc(var(--dot) * 0.08) #43a047, 0 0 12px rgba(67, 160, 71, 0.7); }
+.tray--result.is-short .slot--ring:empty { box-shadow: inset 0 0 0 calc(var(--dot) * 0.08) #e53935; }
+.tray--result.is-over .slot:not(.slot--ring) .dot { box-shadow: 0 0 0 calc(var(--dot) * 0.08) #e53935; }
+
+.dot {
+  width: var(--dot);
+  height: var(--dot);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-letters);
+  font-weight: 700;
+  font-size: calc(var(--dot) * 0.55);
+  line-height: 1;
+  color: #fff;
+  animation: dot-pop 0.36s ease-out backwards;
+}
+.dot--a { background: radial-gradient(circle at 35% 30%, #ffc28a 0%, var(--dot-a) 55%, #f57c00 100%); }
+.dot--b { background: radial-gradient(circle at 35% 30%, #9cc6ff 0%, var(--dot-b) 55%, #1e6fe0 100%); }
+.dot--settled { animation: none; }
+.dot.is-counted { transform: scale(1.12); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+
+@keyframes dot-pop {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* The ones minus is about to take away: faded, with a blue ring the colour of
+   the number taking them. */
+.dot--leaving {
+  opacity: 0.45;
+  box-shadow: 0 0 0 calc(var(--dot) * 0.09) var(--dot-b);
+  animation: dot-mark 0.4s ease-out backwards;
+}
+@keyframes dot-mark {
+  0% { opacity: 1; box-shadow: 0 0 0 0 var(--dot-b); }
+  100% { opacity: 0.45; box-shadow: 0 0 0 calc(var(--dot) * 0.09) var(--dot-b); }
+}
+.dot--gone { animation: dot-leave 0.45s ease-in forwards; }
+@keyframes dot-leave {
+  0% { opacity: 0.45; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(calc(var(--dot) * -1.6)) scale(0.4); }
+}
+
+/* ---- Make It's number ------------------------------------------------------------- */
+
+.make-goal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 2vw, 18px);
+  font-family: var(--font-letters);
+  font-weight: 700;
+  color: #37474f;
+}
+.make-goal__word { font-size: clamp(1.6rem, 4.5vmin, 2.6rem); }
+.make-goal__num {
+  min-width: 1.4em;
+  padding: 0.05em 0.3em;
+  border-radius: 0.3em;
+  background: #fff;
+  box-shadow: 0 4px 0 #b0bec5;
+  font-size: clamp(2.6rem, 9vmin, 4.6rem);
+  line-height: 1.1;
+  text-align: center;
+  letter-spacing: var(--digit-tighten);
+  color: #2e7d32;
+}
+.make-goal.is-new .make-goal__num { animation: goal-new 0.5s ease-out; }
+.make-goal.is-made .make-goal__num { animation: goal-made 0.7s ease-out; }
+@keyframes goal-new {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes goal-made {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.25) rotate(-4deg); background: #c8e6c9; }
+}
+
+.calc-replay-btn {
+  font-size: clamp(1.4rem, 4vmin, 2rem);
+  line-height: 1;
+  padding: 0.35em 0.45em;
+  border-radius: 999px;
+  border: 2px solid #cfd8dc;
+  background: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot, .dot--leaving, .dot--gone { animation: none; }
+  .calc-key.is-next { animation: none; box-shadow: 0 calc(var(--calc-w) * 0.014) 0 var(--ledge), 0 0 0 calc(var(--calc-w) * 0.012) rgba(255, 255, 255, 0.75); }
+  .calc-screen[data-phase="start"] .calc-cursor { animation: none; }
+  .make-goal.is-new .make-goal__num,
+  .make-goal.is-made .make-goal__num { animation: none; }
+}
+
+/* ---- Time's up scoreboard ------------------------------------------------------ */
+
+.session-end-card {
+  max-width: 24rem;
+  width: 100%;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  background: linear-gradient(160deg, #fff9e6 0%, #e3f2fd 50%, #fce4ec 100%);
+  border-radius: 24px;
+  padding: clamp(1.35rem, 4vw, 1.85rem);
+  font-family: var(--font-letters);
+  box-shadow: 0 4px 0 #455a64, 0 16px 48px rgba(0, 0, 0, 0.22);
+  border: 4px solid #fff;
+  position: relative;
+}
+.session-end-card::before {
+  content: "🧮";
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  font-size: 1.75rem;
+  opacity: 0.9;
+  pointer-events: none;
+}
+.session-end-card h2 {
+  font-size: clamp(1.5rem, 5.5vw, 1.85rem);
+  color: #37474f;
+  margin-bottom: 0.25rem;
+  text-align: center;
+}
+.score-section {
+  border-radius: 16px;
+  padding: 0.75rem 0.85rem;
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.08);
+}
+.score-section--free { background: linear-gradient(135deg, #ffe0b2 0%, #ffcc80 100%); }
+.score-section--quiz { background: linear-gradient(135deg, #bbdefb 0%, #90caf9 100%); }
+.score-section__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+.score-pill-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+.score-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  background: #fff;
+  color: #37474f;
+  border: 2px solid rgba(55, 71, 79, 0.2);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06);
+  white-space: nowrap;
+}
+
+@media (hover: hover) {
+  .mode-btn:hover { background: #dde3e6; }
+}

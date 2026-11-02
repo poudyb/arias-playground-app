@@ -1,6 +1,6 @@
 # arias-playground-app
 
-**Aria's Playroom** — a simple static web app with letter/number, animal sounds, and shapes & colors activities for young learners.
+**Aria's Playroom** — a simple static web app with letter/number, animal sounds, shapes & colors, clock, spelling and calculator activities for young learners.
 
 ## Run locally
 
@@ -18,7 +18,8 @@ Open [http://localhost:8080](http://localhost:8080) and use `index.html` as the 
 ## Tests
 
 The pure logic (stats normalization, clock wording / digit segments, the
-spelling word helpers, session index validation, and the ladder progressions
+spelling word helpers, the calculator's key rules and Make It ladder, session
+index validation, and the ladder progressions
 that step a game's difficulty up and down — both the single on/off step and
 the multi-rung ladders Clock Match, Quiz and Next climb) is unit-tested with
 **Node's built-in test runner** — no dependencies to install.

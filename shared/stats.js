@@ -119,6 +119,24 @@ function normalizeSpellingStats(parsed) {
   return normalizeStatsBySchema(parsed, createSpellingStats());
 }
 
+// `playSums` is every sum she finished in Free Play; `playSeen` keeps the first
+// dozen different ones ("3 + 4 = 7") so the summary can show what she tried.
+function createCalcStats() {
+  return {
+    playSums: 0,
+    playSeen: [],
+    makeCorrect: 0,
+    makeWrong: 0,
+    makeStruggled: [],
+    usedPlay: false,
+    usedMake: false
+  };
+}
+
+function normalizeCalcStats(parsed) {
+  return normalizeStatsBySchema(parsed, createCalcStats());
+}
+
 // Exported for Node's test runner; ignored in the browser (no `module`).
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -131,6 +149,8 @@ if (typeof module !== 'undefined' && module.exports) {
     createClockStats,
     normalizeClockStats,
     createSpellingStats,
-    normalizeSpellingStats
+    normalizeSpellingStats,
+    createCalcStats,
+    normalizeCalcStats
   };
 }

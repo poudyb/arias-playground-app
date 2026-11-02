@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Calculator — Aria's Playroom</title>
+<link rel="stylesheet" href="styles/fonts.css">
+<link rel="stylesheet" href="styles/shared.css">
+<link rel="stylesheet" href="styles/calculator.css">
+<link rel="stylesheet" href="styles/night.css">
+</head>
+<body class="calc-page">
+
+<div id="play-timer" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<div id="session-end-overlay" aria-modal="true" role="dialog" aria-labelledby="session-end-title" aria-hidden="true">
+  <div class="session-end-card">
+    <h2 id="session-end-title">Time's up!</h2>
+    <p class="session-end-sub">Here's how your adding went!</p>
+    <div class="session-end-stats" id="session-end-stats"></div>
+    <a href="index.html" class="session-end-home" id="session-end-home">Back to home</a>
+  </div>
+</div>
+
+<a href="index.html" class="home-btn" id="link-home" aria-label="Back to games">← Home</a>
+
+<div id="mode-buttons">
+  <button type="button" class="mode-btn active" data-mode="play">Free Play</button>
+  <button type="button" class="mode-btn" data-mode="make">Make It</button>
+</div>
+
+<main id="app-main"></main>
+
+<script src="shared/touch-guard.js"></script>
+<script src="shared/feedback.js"></script>
+<script src="shared/stats.js"></script>
+<script src="shared/speech.js"></script>
+<script src="shared/summary.js"></script>
+<script src="shared/portal-storage.js"></script>
+<script src="shared/session.js"></script>
+<script src="shared/progression.js"></script>
+<script src="shared/hints.js"></script>
+<script src="shared/page-boot.js"></script>
+<script src="shared/calc-logic.js"></script>
+<script src="scripts/calculator-page.js"></script>
+</body>
+</html>
