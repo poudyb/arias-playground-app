@@ -4,26 +4,28 @@
 // tells it turns into something she can't read: a minus pressed first makes a
 // negative number, 3 - 5 makes another one, 5 then 3 makes fifty-three, a plus
 // after the answer chains on, and pressing = again repeats the last sum. This
-// one only ever does one thing — a single digit, plus or minus, a single digit,
-// equals — and every key that would step outside that is switched off (and
-// drawn greyed out) rather than left to do something surprising.
+// one only ever does one thing — a number, plus or minus, a number — and the
+// answer comes up by itself. Every key that would step outside that is switched
+// off (and drawn greyed out) rather than left to do something surprising.
 //
-//   start  - nothing typed           digits on
-//   first  - "3"                     + and - on
-//   op     - "3 +"                   digits on (for minus, only those <= 3)
-//   second - "3 + 4"                 = on
-//   done   - "3 + 4 = 7"             digits on, starting a fresh sum
+//   start  - nothing typed           numbers on
+//   first  - "3"                     + and - on, and the numbers (a different
+//                                    one replaces the 3: there's no C to undo)
+//   op     - "3 +"                   numbers on (for minus, only those under 3)
+//   done   - "3 + 4 = 7"             numbers on, starting a fresh sum
 //
-// C clears from anywhere once something is typed. = is on in exactly one
-// place, so there is no "press it again" for it to repeat, and the answer can
-// never be carried into another sum.
+// There is no 0, no C and no = at all. Zero is a concept for later; C was the
+// key she pressed most and it only ever took her backwards; and = was the step
+// she didn't know she had to take — the sum answers itself as soon as it's
+// whole. With no = there is nothing to repeat, and the answer can never be
+// carried into another sum. Minus never goes to zero either: 5 - 5 is off.
 
-const CALC_DIGIT_KEYS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+const CALC_DIGIT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 const CALC_OP_KEYS = ['+', '-'];
-const CALC_KEYS = CALC_DIGIT_KEYS.concat(CALC_OP_KEYS, ['=', 'C']);
+const CALC_KEYS = CALC_DIGIT_KEYS.concat(CALC_OP_KEYS);
 
 // Free Play: everything a single-digit sum can use.
-const FREE_RULES = { ops: ['+', '-'], zero: true };
+const FREE_RULES = { ops: ['+', '-'] };
 
 const CALC_NUMBER_WORDS = [
   'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
@@ -37,7 +39,6 @@ function emptyCalc() {
 
 function calcPhase(s) {
   if (s.result != null) return 'done';
-  if (s.b != null) return 'second';
   if (s.op != null) return 'op';
   if (s.a != null) return 'first';
   return 'start';
@@ -45,7 +46,7 @@ function calcPhase(s) {
 
 function digitOfKey(key) {
   const i = CALC_DIGIT_KEYS.indexOf(key);
-  return i === -1 ? null : i;
+  return i === -1 ? null : i + 1;
 }
 
 function calcResult(a, op, b) {
@@ -56,34 +57,26 @@ function opAllowed(op, rules) {
   return !rules.ops || rules.ops.indexOf(op) !== -1;
 }
 
-function digitAllowed(d, rules) {
-  return d !== 0 || rules.zero !== false;
-}
-
 function isKeyEnabled(s, key, rules) {
   rules = rules || FREE_RULES;
   const phase = calcPhase(s);
-  if (key === 'C') return phase !== 'start';
-  if (key === '=') return phase === 'second';
-  if (key === '+' || key === '-') return phase === 'first' && opAllowed(key, rules);
+  if (key === '+') return phase === 'first' && opAllowed('+', rules);
+  // Minus needs something to take away that still leaves at least one.
+  if (key === '-') return phase === 'first' && opAllowed('-', rules) && s.a >= 2;
   const d = digitOfKey(key);
-  if (d == null || !digitAllowed(d, rules)) return false;
-  if (phase === 'start' || phase === 'done') return true;
-  // Taking away more than she has is the one sum that would go below zero.
-  if (phase === 'op') return s.op === '+' || d <= s.a;
-  return false;
+  if (d == null) return false;
+  if (phase === 'op') return s.op === '+' || d < s.a;
+  return true;
 }
 
 // The state after pressing `key`. A key that isn't enabled hands back the very
-// same object, so the page can tell nothing happened.
+// same object, so the page can tell nothing happened. The second number
+// finishes the sum: its answer is worked out there and then.
 function calcPress(s, key, rules) {
   if (!isKeyEnabled(s, key, rules)) return s;
-  if (key === 'C') return emptyCalc();
-  if (key === '=') return { a: s.a, op: s.op, b: s.b, result: calcResult(s.a, s.op, s.b) };
   if (key === '+' || key === '-') return { a: s.a, op: key, b: null, result: null };
   const d = digitOfKey(key);
-  const phase = calcPhase(s);
-  if (phase === 'op') return { a: s.a, op: s.op, b: d, result: null };
+  if (calcPhase(s) === 'op') return { a: s.a, op: s.op, b: d, result: calcResult(s.a, s.op, d) };
   return { a: d, op: null, b: null, result: null };
 }
 
@@ -91,7 +84,7 @@ function calcPress(s, key, rules) {
 function equationText(s) {
   const parts = [];
   if (s.a != null) parts.push(String(s.a));
-  if (s.op) parts.push(s.op === '-' ? '−' : '+');
+  if (s.op) parts.push(s.op === '-' ? '\u2212' : '+');
   if (s.b != null) parts.push(String(s.b));
   if (s.result != null) parts.push('=', String(s.result));
   return parts.join(' ');
@@ -110,12 +103,8 @@ function equationWords(s) {
 // ---- Make It ---------------------------------------------------------------
 //
 // A number to make, and the calculator to make it with: "Make 7!" — 3 + 4, or
-// 9 - 2, or any other way she finds. Pressing = is her answer, so a wrong one
-// gets the big red X like any other quiz.
-//
-// The 0 key is off in Make It. With it, 7 + 0 makes every target in two
-// presses of the same digit, and a child who finds that has found a way to
-// win without adding anything.
+// 9 - 2, or any other way she finds. The finished sum is her answer, so a wrong
+// one gets the big red X like any other quiz.
 //
 // It climbs a ladder the way the clock's Quiz does — three clean rounds up,
 // two with a miss down, a hinted round passes through — and the rung is never
@@ -161,20 +150,19 @@ function makeRung(level) {
 }
 
 function makeRules(rung) {
-  return { ops: rung.ops.slice(), zero: false };
+  return { ops: rung.ops.slice() };
 }
 
 // Every sum the keys allow that comes out at `target`, smallest first number
 // first, plus before minus.
 function solutionsFor(target, rules) {
   const out = [];
-  for (let a = 0; a <= 9; a++) {
+  for (let a = 1; a <= 9; a++) {
     CALC_OP_KEYS.forEach(function(op) {
-      for (let b = 0; b <= 9; b++) {
-        const s = { a: a, op: op, b: b, result: null };
-        if (!digitAllowed(a, rules) || !digitAllowed(b, rules) || !opAllowed(op, rules)) continue;
-        if (op === '-' && b > a) continue;
-        if (calcResult(a, op, b) === target) out.push(s);
+      if (!opAllowed(op, rules)) return;
+      for (let b = 1; b <= 9; b++) {
+        if (op === '-' && b >= a) continue;
+        if (calcResult(a, op, b) === target) out.push({ a: a, op: op, b: b });
       }
     });
   }
@@ -186,24 +174,27 @@ function middleOf(list) {
 }
 
 // The one key to glow when she's stuck: the next press along a sum that makes
-// the target, picking up from whatever she has typed. If what she has typed
-// can't get there any more, it's C. Null when there's nothing to point at.
+// the target, picking up from whatever she has typed. A first number that can't
+// get there is swapped for one that can (pressing another number replaces it).
+// Null when there's nothing that helps: a sum that's finished, or one whose
+// operator has already taken it somewhere the target can't be reached from —
+// she finishes it, sees it's wrong, and gets a clean start.
 //
 // From a clean screen it starts from the middle of the list rather than the
 // end, so the hint for 7 is 3 + 4 and not 1 + 6.
 function hintKeyFor(s, target, rules) {
   const phase = calcPhase(s);
   const sols = solutionsFor(target, rules);
-  if (phase === 'start') return sols.length ? String(middleOf(sols).a) : null;
+  if (sols.length === 0) return null;
+  if (phase === 'start') return String(middleOf(sols).a);
   if (phase === 'first') {
     const m = sols.filter(function(x) { return x.a === s.a; });
-    return m.length ? middleOf(m).op : 'C';
+    return m.length ? middleOf(m).op : String(middleOf(sols).a);
   }
   if (phase === 'op') {
     const m = sols.filter(function(x) { return x.a === s.a && x.op === s.op; });
-    return m.length ? String(m[0].b) : 'C';
+    return m.length ? String(m[0].b) : null;
   }
-  if (phase === 'second') return calcResult(s.a, s.op, s.b) === target ? '=' : 'C';
   return null;
 }
 
@@ -230,6 +221,7 @@ if (typeof module !== 'undefined' && module.exports) {
     emptyCalc,
     calcPhase,
     calcResult,
+    digitOfKey,
     isKeyEnabled,
     calcPress,
     equationText,

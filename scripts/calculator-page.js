@@ -1,16 +1,19 @@
 // Calculator — two modes, both on the same pretend calculator:
-//   Free Play — a calculator that only does what she means: one digit, plus or
-//               minus, one digit, equals. Every key that would step outside
-//               that (a minus first, a second digit, a minus that goes below
-//               zero, another operator after the sum, equals again) is greyed
-//               out and does nothing; see shared/calc-logic.js.
+//   Free Play — a calculator that only does what she means: a number, plus or
+//               minus, a number, and the answer comes up by itself. Every key
+//               that would step outside that (a minus first, a minus that goes
+//               to zero or below, another operator after the sum) is greyed out
+//               and does nothing; see shared/calc-logic.js. There is no 0, no C
+//               and no = key.
 //   Make It   — a number to make ("Make 7!") and the calculator to make it
-//               with. Pressing = is her answer. Climbs a ladder (MAKE_RUNGS).
+//               with. The finished sum is her answer. Climbs a ladder
+//               (MAKE_RUNGS).
 //
 // Beside the calculator, every number she types is drawn as dots: orange for
-// the first, blue for the second. On = the blue dots slide over to join the
-// orange ones (plus), or the ones being taken away float off (minus), and what
-// is left is the answer. Tapping the dots counts them out loud.
+// the first, blue for the second. A beat after the second number the answer
+// appears: the blue dots slide over to join the orange ones (plus), or the ones
+// being taken away float off (minus), and what is left is the answer. Tapping
+// the dots counts them out loud.
 
 const CALC_SESSION_KEY = 'ariaCalcSession';
 const CALC_STATS_KEY = 'ariaCalcStats';
@@ -25,6 +28,10 @@ const CONFETTI_HEX = ['#ff8f3a', '#3a8dff', '#ffd54f', '#66bb6a', '#ba68c8', '#4
 const LEAVE_MS = 450;
 const GATHER_MS = 520;
 const GATHER_STAGGER_MS = 22;
+// How long "3 + 4" stays up, dots and all, before "= 7" arrives by itself. Long
+// enough to see the sum she made and hear its last number; short enough that
+// she doesn't wonder what to do next. There's no = for her to look for.
+const ANSWER_BEAT_MS = 1000;
 
 // Where Make It sits on its ladder: three clean rounds climb a rung, two with
 // a miss drop one, a round she only got after the hint passes through. Read
@@ -46,15 +53,17 @@ setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
 let currentMode = null;
 let activeMode = null;
 
-// Laid out like the calculator she already has: 7-8-9 along the top, with the
-// keys she presses in order down the right-hand side — C, minus, plus, equals.
+// Laid out like the calculator she already has: 7-8-9 along the top, minus and
+// a tall plus down the right. Every key is the same colour: whether it's lit or
+// grey is the only thing colour says here. (A green = and a red C, on top of
+// lit-or-grey, were too many meanings at once, and red read to her as
+// "interesting", so C was the key she pressed most.)
 const KEY_LAYOUT = [
-  ['7'], ['8'], ['9'], ['C', 'C', 'calc-key--clear'],
-  ['4'], ['5'], ['6'], ['-', '−', 'calc-key--op'],
-  ['1'], ['2'], ['3'], ['+', '+', 'calc-key--op'],
-  ['0', '0', 'calc-key--digit calc-key--zero'], ['=', '=', 'calc-key--eq']
+  ['7'], ['8'], ['9'], ['-', '−', 'calc-key--op calc-key--minus'],
+  ['4'], ['5'], ['6'], ['+', '+', 'calc-key--op calc-key--plus'],
+  ['1'], ['2'], ['3']
 ];
-const KEY_NAMES = { '+': 'plus', '-': 'minus', '=': 'equals', 'C': 'clear' };
+const KEY_NAMES = { '+': 'plus', '-': 'minus' };
 
 function opSign(op) {
   return op === '-' ? '−' : '+';
@@ -70,11 +79,22 @@ function toArray(list) {
   return Array.prototype.slice.call(list);
 }
 
-// Each key says itself as it's pressed, so the sum is heard as it's built.
-function speakKey(key) {
-  if (key === 'C') { cancelSpeech(); return; }
+// Whether the dots are being counted aloud, which any key press interrupts.
+let countingAloud = false;
+
+// Each key says itself as it's pressed, so the sum is heard as it's built. The
+// first number of a sum replaces whatever was being said; the operator and the
+// second number wait their turn behind it, so a quick "3 + 3" is heard whole
+// ("three plus three") rather than as its last word, and the second "three"
+// isn't dropped for being the same word as the first.
+function speakKey(key, next) {
+  if (countingAloud) {
+    countingAloud = false;
+    cancelSpeech();
+  }
   const word = KEY_NAMES[key] || CALC_NUMBER_WORDS[Number(key)];
-  if (word) speakText(word, { rate: 0.9 });
+  const startsSum = next && calcPhase(next) === 'first';
+  if (word) speakText(word, { rate: 0.9, queue: !startsSum });
 }
 
 // ---- The calculator --------------------------------------------------------
@@ -84,7 +104,8 @@ function buildCalculator(options) {
   el.className = 'calc';
 
   // The screen shows the whole sum, not just the last number the way a real
-  // one does: "3 + 4 = 7" stays up, so she can read back what she did.
+  // one does: "3 + 4 = 7" stays up, so she can read back what she did. The
+  // "= 7" waits for the page to reveal it (see ANSWER_BEAT_MS).
   const screen = document.createElement('div');
   screen.className = 'calc-screen';
   screen.setAttribute('role', 'button');
@@ -131,28 +152,27 @@ function buildCalculator(options) {
 
   let state = emptyCalc();
   let locked = false;
+  let answerShown = false;
 
   // A key that can't do anything right now is a real disabled button, drawn
   // flat and grey, so a tap on it is never a tap that silently does nothing.
-  // The next step along the sum (the operators after a first digit, equals
-  // after a second) breathes gently, to show the way through.
+  // The next step along the sum (the operators after a first number) breathes
+  // gently, to show the way through.
   function render() {
     const phase = calcPhase(state);
+    const showAnswer = state.result != null && answerShown;
     cells.a.textContent = state.a == null ? '' : String(state.a);
     cells.op.textContent = state.op ? opSign(state.op) : '';
     cells.b.textContent = state.b == null ? '' : String(state.b);
-    cells.eq.textContent = state.result == null ? '' : '=';
-    cells.r.textContent = state.result == null ? '' : String(state.result);
+    cells.eq.textContent = showAnswer ? '=' : '';
+    cells.r.textContent = showAnswer ? String(state.result) : '';
     screen.dataset.phase = phase;
     const rules = options.getRules();
     CALC_KEYS.forEach(function(key) {
       const on = !locked && isKeyEnabled(state, key, rules);
       const btn = keyEls[key];
       btn.disabled = !on;
-      const isNext = on && (
-        (phase === 'first' && (key === '+' || key === '-')) ||
-        (phase === 'second' && key === '='));
-      btn.classList.toggle('is-next', isNext);
+      btn.classList.toggle('is-next', on && phase === 'first' && (key === '+' || key === '-'));
     });
   }
 
@@ -162,6 +182,7 @@ function buildCalculator(options) {
     const next = calcPress(state, key, options.getRules());
     if (next === prev) return false;
     state = next;
+    answerShown = false;
     render();
     options.onPress(key, prev, next);
     return true;
@@ -196,7 +217,8 @@ function buildCalculator(options) {
     press: press,
     getState: function() { return state; },
     isLocked: function() { return locked; },
-    reset: function() { state = emptyCalc(); render(); },
+    reset: function() { state = emptyCalc(); answerShown = false; render(); },
+    showAnswer: function() { answerShown = true; render(); restartAnimation(cells.r, 'is-new'); },
     setLocked: function(value) { locked = value; render(); },
     render: render
   };
@@ -263,7 +285,6 @@ function buildDotsBoard(options) {
     tray.innerHTML = '';
     for (let i = 0; i < n; i++) tray.appendChild(makeDot(kind, i));
     setCols(tray, n);
-    // Set even for 0: an empty plate is what zero looks like.
     tray.classList.add('is-set');
   }
 
@@ -302,18 +323,16 @@ function buildDotsBoard(options) {
     clear();
   }
 
-  // Follow the calculator one key at a time. Equals is left to resolve(),
-  // which the page calls so it can act once the dots have landed.
+  // Follow the calculator one key at a time. The answer is left to resolve(),
+  // which the page calls a beat later so it can act once the dots have landed.
   function onPress(key, prev, next) {
     clearCounting();
-    if (key === 'C') { clear(); return; }
-    if (key === '=') return;
     if (key === '+' || key === '-') {
       sign.textContent = opSign(key);
       return;
     }
     const before = calcPhase(prev);
-    if (before === 'start' || before === 'done') {
+    if (before !== 'op') {
       clear();
       fillTray(trayA, next.a, 'a');
       return;
@@ -447,9 +466,11 @@ function countAloud(board) {
   const items = board.countable();
   if (items.length === 0) return;
   board.clearCounting();
+  countingAloud = true;
   speakSequence(items.map(function(_, i) { return CALC_NUMBER_WORDS[i + 1]; }), {
     rates: items.map(function() { return 1; }),
-    onPart: function(i) { board.markCounted(items[i], i + 1); }
+    onPart: function(i) { board.markCounted(items[i], i + 1); },
+    onEnd: function() { countingAloud = false; }
   });
 }
 
@@ -470,20 +491,28 @@ function enterPlay() {
   const board = buildDotsBoard({ onCount: function() { countAloud(board); } });
   ui.side.appendChild(board.el);
 
+  let answerTimer = null;
+
   const calc = buildCalculator({
     getRules: function() { return FREE_RULES; },
     onPress: function(key, prev, next) {
+      // A new number while the answer is still on its way starts afresh.
+      clearTimeout(answerTimer);
+      answerTimer = null;
       board.onPress(key, prev, next);
-      if (key !== '=') {
-        speakKey(key);
-        return;
-      }
-      speakText(equationWords(next), { rate: 0.9 });
-      board.resolve(function() { audio.playChime(); });
+      speakKey(key, next);
+      if (next.result == null) return;
       session.mutateStats(function(stats) {
         stats.playSums += 1;
         if (stats.playSeen.length < PLAY_SEEN_CAP) pushUniqueStruggle(stats.playSeen, equationText(next));
       });
+      answerTimer = window.setTimeout(function() {
+        answerTimer = null;
+        if (session.isSessionEnded()) return;
+        calc.showAnswer();
+        speakText('equals ' + CALC_NUMBER_WORDS[next.result], { rate: 0.9, queue: true });
+        board.resolve(function() { audio.playChime(); });
+      }, ANSWER_BEAT_MS);
     }
   });
   ui.stage.appendChild(calc.el);
@@ -491,6 +520,8 @@ function enterPlay() {
   return {
     calc: calc,
     teardown: function() {
+      clearTimeout(answerTimer);
+      answerTimer = null;
       board.cancel();
       cancelSpeech();
     }
@@ -551,8 +582,9 @@ function enterMake() {
   ui.stage.appendChild(calc.el);
 
   // After two wrong answers or a long pause, the next key along a sum that
-  // works glows — picking up from whatever she has typed, and pointing at C if
-  // that can't get there any more. Never while an answer is being shown.
+  // works glows — picking up from whatever she has typed, and pointing at a
+  // better first number if hers can't get there. Never while an answer is
+  // being shown.
   const hint = createHintNudge({
     isActive: function() { return currentMode === 'make' && !session.isSessionEnded(); },
     onFlash: function() {
@@ -564,9 +596,11 @@ function enterMake() {
     }
   });
 
-  function sayTarget() {
+  // `afterSum`: after a wrong answer the number to make waits for her sum to
+  // finish being read out, rather than cutting it off halfway.
+  function sayTarget(afterSum) {
     if (session.isSessionEnded() || !round) return;
-    speakText('Make ' + CALC_NUMBER_WORDS[round.target] + '!', { rate: 0.88 });
+    speakText('Make ' + CALC_NUMBER_WORDS[round.target] + '!', { rate: 0.88, queue: afterSum === true });
   }
 
   function isSavedRound(saved, level) {
@@ -605,19 +639,24 @@ function enterMake() {
 
   function onPress(key, prev, next) {
     board.onPress(key, prev, next);
-    if (key !== '=') {
-      speakKey(key);
+    speakKey(key, next);
+    if (next.result == null) {
       hint.poke();
       return;
     }
-    // Her answer. Nothing more can be pressed until it has been answered.
+    // The sum is whole, and that's her answer. Nothing more can be pressed
+    // until it has been answered; it comes up a beat later, by itself.
     calc.setLocked(true);
-    speakText(equationWords(next), { rate: 0.9 });
-    board.resolve(function() {
+    later(function() {
       if (session.isSessionEnded()) return;
-      if (next.result === round.target) onRight();
-      else onWrong();
-    });
+      calc.showAnswer();
+      speakText('equals ' + CALC_NUMBER_WORDS[next.result], { rate: 0.9, queue: true });
+      board.resolve(function() {
+        if (session.isSessionEnded()) return;
+        if (next.result === round.target) onRight();
+        else onWrong();
+      });
+    }, ANSWER_BEAT_MS);
   }
 
   function onRight() {
@@ -660,7 +699,7 @@ function enterMake() {
       board.clear();
       calc.reset();
       calc.setLocked(false);
-      sayTarget();
+      sayTarget(true);
       hint.poke();
     }, 1800);
   }
@@ -765,17 +804,14 @@ document.querySelectorAll('.mode-btn').forEach(function(btn) {
 
 // A keyboard works too, for a grown-up at a laptop. Only keys that are on do
 // anything, exactly as with taps.
-const KEYBOARD_KEYS = {
-  '+': '+', '-': '-', '=': '=', Enter: '=',
-  c: 'C', C: 'C', Escape: 'C', Backspace: 'C', Delete: 'C'
-};
+const KEYBOARD_KEYS = { '+': '+', '-': '-' };
 
 document.addEventListener('keydown', function(ev) {
   if (!activeMode || !activeMode.calc || ev.metaKey || ev.ctrlKey || ev.altKey) return;
   // Enter or space on a focused button already clicks it.
   if ((ev.key === 'Enter' || ev.key === ' ') && ev.target && ev.target.closest &&
       ev.target.closest('button, [role="button"]')) return;
-  const key = /^[0-9]$/.test(ev.key) ? ev.key : KEYBOARD_KEYS[ev.key];
+  const key = /^[1-9]$/.test(ev.key) ? ev.key : KEYBOARD_KEYS[ev.key];
   if (!key) return;
   ev.preventDefault();
   if (activeMode.calc.press(key)) restartAnimation(activeMode.calc.keyEls[key], 'is-pressed');

@@ -2,9 +2,12 @@
    Sizes all hang off two numbers set per orientation — the calculator's width
    and one dot's width — so it fits an iPad either way up and a phone. */
 
+/* Landscape (the iPad as she holds it): the calculator gets most of the
+   screen, and the dots stand in a narrow column beside it — first number on
+   top, the sign, the second number underneath, the way a sum is written down. */
 body.calc-page {
-  --calc-w: min(40vw, 56vh, 400px);
-  --dot: min(3.3vw, 5.4vh, 46px);
+  --calc-w: min(52vw, 70vh, 560px);
+  --dot: min(4.2vw, 5.2vh, 48px);
   --dot-a: #ff8f3a;
   --dot-a-deep: #e65100;
   --dot-b: #3a8dff;
@@ -27,7 +30,7 @@ body.calc-page {
 
 @media (orientation: portrait) {
   body.calc-page {
-    --calc-w: min(88vw, 46vh, 400px);
+    --calc-w: min(88vw, 50vh, 460px);
     --dot: min(6.2vw, 3.6vh, 46px);
   }
 }
@@ -125,9 +128,9 @@ body.calc-page {
 }
 
 .calc-side {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: calc(var(--dot) * 17);
+  flex: 0 1 auto;
+  min-width: calc(var(--dot) * 8);
+  max-width: calc(var(--dot) * 12);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -135,7 +138,7 @@ body.calc-page {
   gap: clamp(8px, 1.6vh, 16px);
 }
 @media (orientation: portrait) {
-  .calc-side { flex: 0 1 auto; width: 100%; }
+  .calc-side { width: 100%; min-width: 0; max-width: calc(var(--dot) * 17); }
 }
 
 /* ---- The calculator ----------------------------------------------------------- */
@@ -143,7 +146,7 @@ body.calc-page {
 .calc {
   --pad: calc(var(--calc-w) * 0.055);
   --gap: calc(var(--calc-w) * 0.035);
-  --key-h: calc((var(--calc-w) - 2 * var(--pad) - 3 * var(--gap)) / 4 * 0.84);
+  --key-h: calc((var(--calc-w) - 2 * var(--pad) - 3 * var(--gap)) / 4 * 0.92);
   flex: 0 0 auto;
   width: var(--calc-w);
   padding: var(--pad);
@@ -187,6 +190,13 @@ body.calc-page {
 .calc-cell--op,
 .calc-cell--eq { color: #455a64; }
 .calc-cell--r { letter-spacing: var(--digit-tighten); }
+/* The answer arrives by itself, so it arrives with a little bounce. */
+.calc-cell--r.is-new { display: inline-block; animation: calc-answer-pop 0.45s ease-out; }
+@keyframes calc-answer-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  70% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); }
+}
 .calc-cell:empty { display: none; }
 
 /* A blinking bar on a clean screen, so it looks switched on. */
@@ -208,12 +218,13 @@ body.calc-page {
 .calc-keys {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: var(--key-h);
   gap: var(--gap);
 }
 
 .calc-key {
   --ledge: #b9ae94;
-  height: var(--key-h);
+  height: 100%;
   border: none;
   border-radius: calc(var(--calc-w) * 0.045);
   font-family: var(--font-letters);
@@ -227,10 +238,11 @@ body.calc-page {
   transition: transform 0.06s ease, box-shadow 0.06s ease, background-color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.calc-key--zero { grid-column: span 3; }
-.calc-key--op { background: #ffcc80; color: #5d3200; --ledge: #e0902a; font-size: calc(var(--calc-w) * 0.13); }
-.calc-key--eq { background: #66bb6a; color: #fff; --ledge: #2e7d32; font-size: calc(var(--calc-w) * 0.13); }
-.calc-key--clear { background: #ef5350; color: #fff; --ledge: #b71c1c; }
+/* Plus and minus are the same colour as the numbers — lit or grey is the only
+   thing colour means on this keypad — just with a bigger sign. Plus stands
+   tall down the right, like on a real calculator. */
+.calc-key--op { font-size: calc(var(--calc-w) * 0.14); }
+.calc-key--plus { grid-row: span 2; }
 
 .calc-key:not(:disabled):active,
 .calc-key.is-pressed:not(:disabled) {
@@ -239,8 +251,7 @@ body.calc-page {
 }
 
 /* Off: flat, grey and sunk down to the body, the opposite of a key that's
-   ready to press. Every kind of key looks the same when it's off, so grey
-   always means the same thing. */
+   ready to press. */
 .calc-key:disabled {
   background: #5f707a;
   color: #8b9ba3;
@@ -293,6 +304,25 @@ body.calc-page {
   min-height: calc(var(--dot) * 2 + var(--dot-gap) + var(--dot) * 0.5);
 }
 .dots-board.is-resolved:not(.has-rings) .dots-work { display: none; }
+
+/* Landscape: the sum stands in a column, each plate holding its place even
+   before it's filled, so nothing shifts as the numbers arrive. */
+@media (orientation: landscape) {
+  .dots-work {
+    display: grid;
+    grid-template-rows:
+      calc(var(--dot) * 2.5 + var(--dot-gap))
+      calc(var(--dot) * 1.4)
+      calc(var(--dot) * 2.5 + var(--dot-gap));
+    justify-items: center;
+    align-items: center;
+    gap: 0;
+  }
+  .tray--a { grid-row: 1; }
+  .dots-sign { grid-row: 2; }
+  .tray--b { grid-row: 3; }
+  .dots-board { min-height: calc(var(--dot) * 7.6); }
+}
 /* With rings, the row keeps its place so the board doesn't jump, but its
    emptied plates go. */
 .dots-board.is-resolved.has-rings .dots-work { visibility: hidden; }
@@ -443,6 +473,7 @@ body.calc-page {
   .dot, .dot--leaving, .dot--gone { animation: none; }
   .calc-key.is-next { animation: none; box-shadow: 0 calc(var(--calc-w) * 0.014) 0 var(--ledge), 0 0 0 calc(var(--calc-w) * 0.012) rgba(255, 255, 255, 0.75); }
   .calc-screen[data-phase="start"] .calc-cursor { animation: none; }
+  .calc-cell--r.is-new { animation: none; }
   .make-goal.is-new .make-goal__num,
   .make-goal.is-made .make-goal__num { animation: none; }
 }
