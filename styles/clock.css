@@ -242,26 +242,47 @@ body {
 .match-stack .clock-face {
     margin-inline: 0;
   }
-.clock-face--manual.matching {
-    box-shadow:
-      inset 0 0 26px rgba(33, 150, 243, 0.55),
-      0 0 22px rgba(33, 150, 243, 0.65),
-      0 8px 32px rgba(33, 150, 243, 0.45);
-    border-color: rgba(100, 181, 246, 0.7);
-  }
-.clock-face--manual.matching .clock-colon__dot {
-    background: var(--led-match-color);
-    box-shadow: 0 0 6px var(--led-match-color);
-  }
 .clock-face--manual {
-    --led-match-color: hsl(var(--led-hue, 50), 95%, 60%);
+    /* The happy state: a matched clock goes all one bright blue. */
+    --led-match-color: #4fc3f7;
     --seg-right-color: #00e676;
     --seg-missing-color: #ffd600;
   }
-@supports (color: oklch(0.82 0.19 50)) {
-    .clock-face--manual {
-      --led-match-color: oklch(0.82 0.19 var(--led-hue, 50));
+  /* A matched clock glows: the whole face lit blue from inside and out, and
+     breathing slowly, so a finished clock plainly looks like the best thing on
+     the screen for as long as it stays right — not a faint rim she might not
+     notice. The digits and the colon go the same blue (below). */
+.clock-face--manual.matching {
+    border-color: rgba(129, 212, 250, 0.95);
+    animation: clock-matched-glow 1.8s ease-in-out infinite alternate;
+  }
+@keyframes clock-matched-glow {
+    from {
+      box-shadow:
+        inset 0 0 30px rgba(79, 195, 247, 0.55),
+        0 0 26px rgba(79, 195, 247, 0.75),
+        0 0 54px rgba(79, 195, 247, 0.4);
     }
+    to {
+      box-shadow:
+        inset 0 0 40px rgba(79, 195, 247, 0.75),
+        0 0 40px rgba(79, 195, 247, 0.95),
+        0 0 90px rgba(79, 195, 247, 0.6);
+    }
+  }
+@media (prefers-reduced-motion: reduce) {
+    .clock-face--manual.matching {
+      animation: none;
+      box-shadow:
+        inset 0 0 36px rgba(79, 195, 247, 0.7),
+        0 0 36px rgba(79, 195, 247, 0.9),
+        0 0 80px rgba(79, 195, 247, 0.5);
+    }
+  }
+.clock-face--manual.matching .clock-colon__dot {
+    background: var(--led-match-color);
+    box-shadow: 0 0 6px var(--led-match-color), 0 0 14px var(--led-match-color);
+    opacity: 1;
   }
 /* A line in the right place goes green: keep this one. It used to wear the
      colour the clock above was wearing, which only says "right" to someone who
@@ -279,18 +300,18 @@ body {
       drop-shadow(0 0 3px var(--seg-right-color))
       drop-shadow(0 0 8px var(--seg-right-color));
   }
-  /* A finished board turns the clock's own colour, on every rung. Once the
-     whole time is right the copy is, segment for segment, the same picture as
-     the original, and that likeness is the reward — the green lines she kept
-     becoming the clock is the moment it comes good, along with the chime and
-     the confetti. The higher the rung, the more it is the ONLY thing that says
-     so, since the colour arrives all at once instead of leading her there one
-     line at a time. Comes after the green above so it wins. */
+  /* A finished board turns bright blue, every digit, on every rung, with the
+     face glowing the same blue around it (above). It used to turn the colour
+     the clock above happened to be wearing, which was a quiet change easily
+     missed, and on some hues barely different from the green. The higher the
+     rung, the more this is the ONLY thing that says she's right, since it
+     arrives all at once instead of leading her there one line at a time. Comes
+     after the green above so it wins. */
 .clock-face--manual.matching .clock-digit-svg .seg.on.seg-right {
     fill: var(--led-match-color);
     filter:
-      drop-shadow(0 0 3px var(--led-match-color))
-      drop-shadow(0 0 8px var(--led-match-color));
+      drop-shadow(0 0 4px var(--led-match-color))
+      drop-shadow(0 0 12px var(--led-match-color));
   }
   /* A digit with every line right: the same green with a bright rim and a
      stronger glow, so a finished digit is the thing on the board most worth

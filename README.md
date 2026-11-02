@@ -18,8 +18,8 @@ Open [http://localhost:8080](http://localhost:8080) and use `index.html` as the 
 ## Tests
 
 The pure logic (stats normalization, clock wording / digit segments, the
-spelling word helpers, the calculator's key rules and Make It ladder, session
-index validation, and the ladder progressions
+spelling word helpers and Read It ladder, the calculator's key rules and Make
+It ladder, Memory's strategy rules, session index validation, and the ladder progressions
 that step a game's difficulty up and down — both the single on/off step and
 the multi-rung ladders Clock Match, Quiz and Next climb) is unit-tested with
 **Node's built-in test runner** — no dependencies to install.

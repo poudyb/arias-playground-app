@@ -82,9 +82,9 @@ const nextLadder = createLadderProgression({
   demoteAfter: 2
 });
 
-// How long a finished board holds its celebration before the next one fills
-// in. Without it a match landing a moment before the minute turns would be
-// wiped mid-chime.
+// How long a finished board holds its celebration before it becomes the next
+// minute's board. Without it a match landing a moment before the minute turns
+// would lose its glow mid-chime.
 const MATCH_REFILL_DELAY_MS = 1200;
 
 // On the nudging rungs the marks aren't permanent: they swell up for about a
@@ -570,6 +570,7 @@ function enterMatch() {
   // allowed to move, so nothing ever changes under her mid-puzzle — the next
   // board simply arrives different.
   function seedBoard() {
+    boardTime = nowTime();
     rung = matchRung(matchLadder.getRung());
     const board = startingBoardSegments(rung.filled);
     CLOCK_SLOTS.forEach(function(pos) {
@@ -591,6 +592,24 @@ function enterMatch() {
     manualFace.classList.remove('matching');
     marksNudge.reset();
   }
+
+  function nowTime() {
+    const now = new Date();
+    return { h: get12Hour(now), m: now.getMinutes() };
+  }
+
+  function currentTargetsAt(t) {
+    const segs = targetSegmentsForTime(t.h, t.m);
+    return {
+      h1: new Set(segs.h1),
+      h2: new Set(segs.h2),
+      m1: new Set(segs.m1),
+      m2: new Set(segs.m2)
+    };
+  }
+
+  // The time the board in front of her was dealt for.
+  let boardTime = nowTime();
 
   function currentTargets() {
     const now = new Date();
@@ -784,16 +803,46 @@ function enterMatch() {
     }
   }
 
-  // A new board starts by pointing at the clock to copy: it swells twice
-  // while the prompt is said. Said out loud when she first opens Match, and on
-  // every new board while the boards still come filled in, which is where she
-  // took the board for the whole game. Once she builds each time from a dark
-  // face she knows what it's for, so later boards only get the pulse, not the
-  // same sentence every minute.
-  function introduceBoard(isFirst) {
+  // When the minute turns on a board she's finished, the board is kept: it
+  // already shows the last minute, so she only has to change the digit that
+  // moved (the 2 into a 3), not build or clear the whole clock again. It used
+  // to fill back in, which on a filled rung meant a face full of red to clear
+  // away for the sake of one digit, and threw away work she had got right.
+  //
+  // It counts as a new board all the same — scored on its own, so the ladder
+  // can move here, and the marks follow whatever rung that leaves her on. Only
+  // the starting board is the old one's. The digits that changed pulse on the
+  // clock above, to show her where to look.
+  function carryBoard() {
+    const was = currentTargetsAt(boardTime);
+    rung = matchRung(matchLadder.getRung());
+    manualFace.classList.toggle('marks-steady', rung.marks === 'steady');
+    manualFace.classList.toggle('marks-nudge', rung.marks === 'nudge');
+    boardMistakes = 0;
+    boardDone = false;
+    boardDoneAt = 0;
+    refillPending = false;
+    boardNudged = false;
+    nudgeShowing = false;
+    clearTimeout(nudgeHideTimer);
+    nudgeHideTimer = null;
+    starredDigits.clear();
+    marksNudge.reset();
+    boardTime = nowTime();
+    const now = currentTargets();
+    CLOCK_SLOTS.forEach(function(pos) {
+      if (!setsEqual(was[pos], now[pos])) echoDigitAbove(pos);
+    });
+  }
+
+  // Opening Match points at the clock to copy: it swells twice while the
+  // prompt is said, since she was treating the board as a game of its own.
+  // After that the board carries from minute to minute (carryBoard), and only
+  // the digits that changed pulse.
+  function introduceBoard() {
     if (session.isSessionEnded()) return;
     restartAnimation(realFace, 'look-here');
-    if (isFirst || rung.filled) speakText(MATCH_PROMPT, { rate: 0.88 });
+    speakText(MATCH_PROMPT, { rate: 0.88 });
   }
 
   realFace.addEventListener('animationend', function(ev) {
@@ -832,7 +881,7 @@ function enterMatch() {
   });
 
   seedBoard();
-  introduceBoard(true);
+  introduceBoard();
 
   startTickLoop(function(now) {
     renderClockTime(realFace, get12Hour(now), now.getMinutes(), now.getSeconds(), realClockOpts(now));
@@ -851,17 +900,14 @@ function enterMatch() {
     renderDigit(manualFace._slots.s1, Number(ss[0]));
     renderDigit(manualFace._slots.s2, Number(ss[1]));
 
-    // A solved board is done with: when the minute turns it fills back in and
-    // she has a fresh time to clear. A board she's still working on is left
-    // alone — the clock moving on under her is part of the game, and wiping
-    // her half-built face would be a punishment for taking her time.
+    // A solved board becomes the next minute's board when the minute turns,
+    // kept as it is (see carryBoard). A board she's still working on is left
+    // alone too — the clock moving on under her is part of the game, and
+    // wiping her half-built face would be a punishment for taking her time.
     const minute = now.getMinutes();
     if (lastMinute != null && minute !== lastMinute && boardDone) refillPending = true;
     lastMinute = minute;
-    if (refillPending && now.getTime() - boardDoneAt >= MATCH_REFILL_DELAY_MS) {
-      seedBoard();
-      introduceBoard(false);
-    }
+    if (refillPending && now.getTime() - boardDoneAt >= MATCH_REFILL_DELAY_MS) carryBoard();
 
     evaluateMatch();
   });
