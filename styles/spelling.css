@@ -89,7 +89,14 @@ body {
   object-fit: contain;
 }
 .spell-picture.is-visible img {
-  animation: spell-pop 0.25s ease-out;
+  animation: spell-pop 0.38s cubic-bezier(0.25, 0.8, 0.3, 1);
+}
+/* Free Play's picture on its way out, before the letters glide back up. */
+.spell-picture.is-leaving img {
+  animation: spell-picture-leave 0.22s ease-in forwards;
+}
+@keyframes spell-picture-leave {
+  to { transform: scale(0.6); opacity: 0; }
 }
 .spell-picture--speakable {
   cursor: pointer;
@@ -104,6 +111,8 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .spell-picture.is-speaking { animation: none; }
+  .spell-picture.is-visible img,
+  .spell-picture.is-leaving img { animation: none; }
 }
 .spell-slots {
   display: flex;
@@ -304,8 +313,8 @@ body {
   100% { transform: scale(1.3) rotate(10deg); opacity: 0; }
 }
 @keyframes spell-pop {
-  from { transform: scale(0.6); }
-  to   { transform: scale(1); }
+  from { transform: scale(0.6); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
 }
 @keyframes slot-shake {
   0%, 100% { transform: translateX(0); }

@@ -301,10 +301,35 @@ function completeWord(word) {
   }, 950);
 }
 
+// Free Play's picture arrives above the word she just built, and making room
+// for it moved the letters down in one jump. Instead the letters glide to their
+// new place while the picture grows in, and glide back up when it goes: measure
+// where they are, change the layout, then play them back from where they were.
+const GLIDE_MS = 380;
+const PICTURE_LEAVE_MS = 220;
+const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+function glideWhileLayoutChanges(els, changeLayout) {
+  const before = els.map(function(el) { return el.getBoundingClientRect().top; });
+  changeLayout();
+  if (reduceMotion) return;
+  els.forEach(function(el, i) {
+    const dy = before[i] - el.getBoundingClientRect().top;
+    if (!dy || typeof el.animate !== 'function') return;
+    el.animate([
+      { transform: 'translateY(' + dy + 'px)' },
+      { transform: 'translateY(0)' }
+    ], { duration: GLIDE_MS, easing: 'cubic-bezier(0.25, 0.8, 0.3, 1)' });
+  });
+}
+
 function revealFreeplayWord(word) {
   spellImg.src = IMG_FOR[word];
   spellImg.alt = word.toLowerCase();
-  spellPicture.classList.add('is-visible');
+  glideWhileLayoutChanges([spellSlots], function() {
+    spellPicture.classList.remove('is-leaving');
+    spellPicture.classList.add('is-visible');
+  });
   spellPicture.setAttribute('aria-hidden', 'false');
   spellHint.textContent = '';
   // Queued, like the letters: if she typed fast the last letter may still be
@@ -315,14 +340,20 @@ function revealFreeplayWord(word) {
   // Spell It). Free Play isn't a question — it just shows the word it built
   // and says it.
   resetTimer = window.setTimeout(function() {
-    resetTimer = null;
-    typed = '';
-    locked = false;
-    spellPicture.classList.remove('is-visible');
-    spellPicture.setAttribute('aria-hidden', 'true');
-    spellHint.textContent = FREEPLAY_HINT;
-    renderSlots();
-    updateKeys();
+    // The picture fades and shrinks away first, then the letters glide back up.
+    spellPicture.classList.add('is-leaving');
+    resetTimer = window.setTimeout(function() {
+      resetTimer = null;
+      typed = '';
+      locked = false;
+      glideWhileLayoutChanges([spellSlots, spellHint], function() {
+        spellPicture.classList.remove('is-visible', 'is-leaving');
+        spellHint.textContent = FREEPLAY_HINT;
+      });
+      spellPicture.setAttribute('aria-hidden', 'true');
+      renderSlots();
+      updateKeys();
+    }, reduceMotion ? 0 : PICTURE_LEAVE_MS);
   }, 2200);
 }
 
@@ -725,6 +756,7 @@ function setMode(next) {
   thumbsDown.hide();
   hint.stop();
   wrongPause.stop();
+  spellPicture.classList.remove('is-leaving');
   mode = next;
   keyboardEl.dataset.mode = mode;
   // Only Spell It lets you tap the picture to replay the word + spelling.
