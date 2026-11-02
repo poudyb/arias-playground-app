@@ -335,3 +335,46 @@ function createThumbsDownController(options = {}) {
 
   return { hide, show };
 }
+
+// After a wrong pick in a pick-one quiz, the choices rest for as long as the big
+// X is up: dimmed, and not tappable. Without it, three cards could be tapped in
+// under a second — wrong, wrong, right — so guessing was always the quickest
+// way to the confetti, and she learned to guess. Every game with a pick-one
+// question uses this, so the rule is the same everywhere.
+//
+//   start(el, onEnd) - rest `el` (the row or grid of choices); onEnd runs when
+//                      the choices come back, e.g. to say the question again
+//   stop()           - bring them back now, without onEnd (new round, new mode)
+//   isResting()      - for taps that don't go through the dimmed element
+const WRONG_PAUSE_MS = 1600;
+
+function createWrongPause() {
+  let timer = null;
+  let restingEl = null;
+
+  function stop() {
+    if (timer != null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    if (restingEl) {
+      restingEl.classList.remove('choices-resting');
+      restingEl = null;
+    }
+  }
+
+  return {
+    start: function(el, onEnd) {
+      stop();
+      restingEl = el;
+      if (el) el.classList.add('choices-resting');
+      timer = setTimeout(function() {
+        timer = null;
+        stop();
+        if (onEnd) onEnd();
+      }, WRONG_PAUSE_MS);
+    },
+    stop: stop,
+    isResting: function() { return timer != null; }
+  };
+}

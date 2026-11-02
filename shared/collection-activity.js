@@ -244,6 +244,10 @@ function createCollectionActivity(options) {
     }
   }
 
+  // The quiz grid or the chase arena rests after a wrong tap (see
+  // createWrongPause in feedback.js), so tapping everything isn't a strategy.
+  const wrongPause = createWrongPause();
+
   const hint = createHintNudge({
     onFlash: flashHintTarget,
     isActive: function() {
@@ -276,6 +280,7 @@ function createCollectionActivity(options) {
     });
     thumbsDown.hide();
     hint.stop();
+    wrongPause.stop();
     quizLocked = false;
 
     const inChase = mode === 'chase';
@@ -325,7 +330,7 @@ function createCollectionActivity(options) {
       return;
     }
 
-    if (quizLocked) return;
+    if (quizLocked || wrongPause.isResting()) return;
     if (getTargetKey(item) === getTargetKey(quizTarget())) {
       session.mutateStats(function(stats) {
         stats.quizCorrect++;
@@ -350,11 +355,13 @@ function createCollectionActivity(options) {
       thumbsDown.show();
       audio.playBuzzer();
       hint.registerMiss();
+      wrongPause.start(grid);
     }
   }
 
   function startQuizRound() {
     if (session.isSessionEnded() || mode !== 'quiz') return;
+    wrongPause.stop();
     quizLocked = false;
     quizRoundMissed = false;
     quizRoundHinted = false;
@@ -389,6 +396,7 @@ function createCollectionActivity(options) {
   function startChaseRound() {
     if (session.isSessionEnded() || mode !== 'chase') return;
     stopChase();
+    wrongPause.stop();
     chasePaused = false;
     chaseMissedThisRound = false;
     thumbsDown.hide();
@@ -536,7 +544,7 @@ function createCollectionActivity(options) {
   }
 
   function onArenaClick(e) {
-    if (chasePaused || session.isSessionEnded()) return;
+    if (chasePaused || session.isSessionEnded() || wrongPause.isResting()) return;
     const x = e.clientX;
     const y = e.clientY;
     // Full box plus a margin, on purpose — see getChaseContentBounds. Tighter
@@ -575,6 +583,7 @@ function createCollectionActivity(options) {
       thumbsDown.show();
       audio.playBuzzer();
       hint.registerMiss();
+      wrongPause.start(chaseArena);
     }
   }
 
@@ -612,6 +621,7 @@ function createCollectionActivity(options) {
     refreshTiles: buildGrid,
     stop: function() {
       hint.stop();
+      wrongPause.stop();
       stopChase();
     },
     reset: function() {

@@ -80,7 +80,108 @@ function quizSpeech(word, rung) {
   return parts;
 }
 
+// ---- Read It: a ladder into reading -------------------------------------------
+//
+// Read It shows a picture, says its word, and asks her to find the written word
+// among three. A child who can't read yet can only guess at that, and guessing
+// three cards is quick, so she was taught to guess. The ladder gives her a way
+// to actually find it that she can already manage, then takes it away a piece
+// at a time:
+//
+//   letters - the word, then its letters one by one ("mom … m, o, m"), so she
+//             can match letters she knows to the letters on the cards
+//   first   - the word, then just its first letter ("mom … m")
+//   word    - just the word: she listens for its first sound
+//
+// and on the bottom three rungs no two cards start with the same letter, so the
+// first letter is always enough. The top rung puts the word among cards that
+// start the same way ("mom" beside "mud"), so the rest of the word has to be
+// read too. Never look-alikes (one letter different), on any rung.
+//
+// Same terms as every other ladder: three clean rounds up, two with a miss
+// down, a hinted round passes through. Never named to her.
+const READ_RUNGS = [
+  {
+    say: 'letters', sameStart: false,
+    note: 'Each round says the word and spells it, and every card starts with a different letter, so matching the letters finds it.'
+  },
+  {
+    say: 'first', sameStart: false,
+    note: 'Each round says the word and its first letter; every card starts differently.'
+  },
+  {
+    say: 'word', sameStart: false,
+    note: 'Each round just says the word; every card starts differently, so its first sound is enough.'
+  },
+  {
+    say: 'word', sameStart: true,
+    note: 'Each round just says the word, among cards that start with the same letter, so she reads the whole word.'
+  }
+];
+
+// The fullest help, for a hint: the word and all its letters.
+const READ_HELP = { say: 'letters', sameStart: false };
+
+function readRung(level) {
+  const i = typeof level === 'number' && Number.isFinite(level)
+    ? Math.max(0, Math.min(Math.floor(level), READ_RUNGS.length - 1))
+    : 0;
+  return READ_RUNGS[i];
+}
+
+// What the round says, as separate utterances (the pauses between them). The
+// letters are marked so they can be spoken slower.
+function readSpeech(word, rung) {
+  const w = word.toLowerCase();
+  const parts = [{ text: w, letter: false }];
+  if (rung.say === 'letters') {
+    for (let i = 0; i < w.length; i++) parts.push({ text: w[i], letter: true });
+  } else if (rung.say === 'first') {
+    parts.push({ text: w[0], letter: true });
+  }
+  return parts;
+}
+
+// Two wrong words to sit beside `target` on this rung. `random` is injectable
+// for the tests. Falls back gracefully on a tiny word list: the rule it can't
+// keep is dropped, never the "no look-alikes" one unless nothing else is left.
+function readDistractors(target, words, rung, random) {
+  random = random || Math.random;
+  const others = words.filter(function(w) { return w !== target && !isLookAlike(target, w); });
+  function pick(pool, count, taken) {
+    const out = [];
+    const left = pool.filter(function(w) { return taken.indexOf(w) === -1; });
+    while (out.length < count && left.length > 0) {
+      out.push(left.splice(Math.floor(random() * left.length), 1)[0]);
+    }
+    return out;
+  }
+  let chosen = [];
+  if (rung.sameStart) {
+    chosen = pick(others.filter(function(w) { return w[0] === target[0]; }), 2, []);
+  } else {
+    // Each card starts with a letter no other card does.
+    const starts = [target[0]];
+    const pool = others.slice();
+    while (chosen.length < 2 && pool.length > 0) {
+      const w = pool.splice(Math.floor(random() * pool.length), 1)[0];
+      if (starts.indexOf(w[0]) === -1) {
+        chosen.push(w);
+        starts.push(w[0]);
+      }
+    }
+  }
+  if (chosen.length < 2) chosen = chosen.concat(pick(others, 2 - chosen.length, chosen));
+  if (chosen.length < 2) {
+    chosen = chosen.concat(pick(words.filter(function(w) { return w !== target; }), 2 - chosen.length, chosen));
+  }
+  return chosen;
+}
+
 // Exported for Node's test runner; ignored in the browser (no `module`).
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { allowedNext, isLookAlike, QUIZ_RUNGS, QUIZ_HELP, quizRung, quizSpeech };
+  module.exports = {
+    allowedNext, isLookAlike, QUIZ_RUNGS, QUIZ_HELP, quizRung, quizSpeech,
+    READ_RUNGS, READ_HELP, readRung, readSpeech, readDistractors
+  };
 }

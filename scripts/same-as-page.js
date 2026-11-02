@@ -84,6 +84,10 @@ const thumbsDown = createThumbsDownController();
 
 setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
 
+// The row of three rests after a wrong pick (createWrongPause in feedback.js).
+const wrongPause = createWrongPause();
+const choiceRow = CHOICES[0].btn.parentElement;
+
 const hint = createHintNudge({
   onFlash: function() { flashHintEl(CHOICES[correctChoiceIdx].btn); },
   isActive: function() { return !session.isSessionEnded(); }
@@ -154,6 +158,7 @@ function setCategory(nextCategory) {
     delayedNextTimer = null;
     clearTimeout(promptTimer);
     promptTimer = null;
+    wrongPause.stop();
     hint.stop();
     thumbsDown.hide();
     matchBoardEl.hidden = true;
@@ -196,6 +201,7 @@ function startRound() {
 
   clearTimeout(delayedNextTimer);
   delayedNextTimer = null;
+  wrongPause.stop();
   roundLocked = false;
   CHOICES.forEach(function(c) {
     c.btn.classList.remove('match-choice--locked', 'pop');
@@ -238,7 +244,7 @@ function startRound() {
 }
 
 function onChoiceTap(idx) {
-  if (session.isSessionEnded() || roundLocked) return;
+  if (session.isSessionEnded() || roundLocked || wrongPause.isResting()) return;
   const btn = CHOICES[idx].btn;
 
   if (idx === correctChoiceIdx) {
@@ -278,6 +284,7 @@ function onChoiceTap(idx) {
   thumbsDown.show();
   audio.playBuzzer();
   hint.registerMiss();
+  wrongPause.start(choiceRow);
 }
 
 function stopMatchGame() {
@@ -286,6 +293,7 @@ function stopMatchGame() {
   delayedNextTimer = null;
   clearTimeout(promptTimer);
   promptTimer = null;
+  wrongPause.stop();
   thumbsDown.hide();
   hint.stop();
   stopMemory();

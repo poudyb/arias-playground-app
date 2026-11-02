@@ -134,3 +134,12 @@ body.session-ended #session-end-overlay {
   0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 179, 0, 0)); }
   45% { filter: drop-shadow(0 0 13px rgba(255, 179, 0, 0.95)); }
 }
+
+/* The choices resting after a wrong pick (createWrongPause in feedback.js):
+   faded and greyed, and taps go nowhere until they come back. */
+.choices-resting {
+  pointer-events: none;
+  opacity: 0.45;
+  filter: grayscale(0.7);
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}

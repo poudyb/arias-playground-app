@@ -68,3 +68,51 @@ test('quizRung clamps out-of-range and junk levels', () => {
   assert.strictEqual(quizRung(1.9), QUIZ_RUNGS[1]);
   for (const junk of [undefined, null, NaN, 'two', {}]) assert.strictEqual(quizRung(junk), QUIZ_RUNGS[0]);
 });
+
+// ---- Read It ladder ------------------------------------------------------
+
+const wl = require('../shared/word-logic.js');
+const REAL_WORDS = require('../data/spelling.js').SPELLING_WORDS.map((w) => w.word.toUpperCase());
+
+function seeded(seed) {
+  let x = seed >>> 0;
+  return () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; };
+}
+
+test('Read It says less as she climbs: letters, then the first letter, then the word', () => {
+  assert.deepStrictEqual(wl.readSpeech('MOM', wl.readRung(0)).map((p) => p.text), ['mom', 'm', 'o', 'm']);
+  assert.deepStrictEqual(wl.readSpeech('MOM', wl.readRung(1)).map((p) => p.text), ['mom', 'm']);
+  assert.deepStrictEqual(wl.readSpeech('MOM', wl.readRung(2)).map((p) => p.text), ['mom']);
+  assert.deepStrictEqual(wl.readSpeech('MOM', wl.READ_HELP).map((p) => p.text), ['mom', 'm', 'o', 'm']);
+  wl.READ_RUNGS.forEach((r, i) => assert.ok(r.note, 'rung ' + i + ' has a parent note'));
+});
+
+test('below the top rung, every card starts with a different letter', () => {
+  const random = seeded(3);
+  for (let level = 0; level < 3; level++) {
+    for (const target of REAL_WORDS) {
+      const d = wl.readDistractors(target, REAL_WORDS, wl.readRung(level), random);
+      assert.strictEqual(d.length, 2);
+      const starts = [target, ...d].map((w) => w[0]);
+      assert.strictEqual(new Set(starts).size, 3, target + ' with ' + d.join(','));
+      d.forEach((w) => assert.ok(!wl.isLookAlike(target, w) && w !== target));
+    }
+  }
+});
+
+test('on the top rung, cards share the first letter wherever the word list allows', () => {
+  const random = seeded(9);
+  const rung = wl.readRung(3);
+  for (const target of REAL_WORDS) {
+    const d = wl.readDistractors(target, REAL_WORDS, rung, random);
+    assert.strictEqual(d.length, 2);
+    const sameStartAvailable = REAL_WORDS.filter((w) => w !== target && w[0] === target[0] && !wl.isLookAlike(target, w)).length;
+    const sameStart = d.filter((w) => w[0] === target[0]).length;
+    assert.strictEqual(sameStart, Math.min(2, sameStartAvailable), target + ' with ' + d.join(','));
+    d.forEach((w) => assert.ok(!wl.isLookAlike(target, w) && w !== target));
+  }
+});
+
+test('readDistractors still finds two on a tiny list', () => {
+  assert.strictEqual(wl.readDistractors('CAT', ['CAT', 'CAN', 'COT'], wl.readRung(0)).length, 2);
+});

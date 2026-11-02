@@ -380,6 +380,7 @@ function stopClockGame() {
   }
   thumbsDown.hide();
   hint.stop();
+  wrongPause.stop();
 }
 
 const session = createTimedSession({
@@ -396,6 +397,10 @@ const session = createTimedSession({
 // real minute to turn; now every round is answered on the spot, so it gets
 // the same help Quiz does.
 let roundHinted = false;
+// Quiz and Next rest their three clocks after a wrong pick, for as long as the X
+// is up (createWrongPause in shared/feedback.js), so tapping all three in a row
+// isn't the quickest way through.
+const wrongPause = createWrongPause();
 const hint = createHintNudge({
   onFlash: function() {
     roundHinted = true;
@@ -422,6 +427,7 @@ function setMode(name) {
   cancelSpeech();
   thumbsDown.hide();
   hint.stop();
+  wrongPause.stop();
 
   if (session.shouldTrackStats()) {
     session.mutateStats(function(stats) {
@@ -982,6 +988,7 @@ function enterQuiz() {
     clearTimeout(delayedNextTimer);
     delayedNextTimer = null;
     clearTimeout(respeakTimer);
+    wrongPause.stop();
     roundLocked = false;
     roundMissed = false;
     roundHinted = false;
@@ -1004,7 +1011,7 @@ function enterQuiz() {
   }
 
   function onOptionTap(btn, opt) {
-    if (session.isSessionEnded() || roundLocked) return;
+    if (session.isSessionEnded() || roundLocked || wrongPause.isResting()) return;
     if (opt.correct) {
       roundLocked = true;
       hint.stop();
@@ -1029,10 +1036,10 @@ function enterQuiz() {
     thumbsDown.show();
     audio.playBuzzer();
     hint.registerMiss();
-    // Say it again once the buzzer's done: a wrong pick most often means she
-    // didn't catch the time, and tapping 🔊 isn't something she'll think of.
+    // Say it again once the clocks come back: a wrong pick most often means
+    // she didn't catch the time, and tapping 🔊 isn't something she'll think of.
     clearTimeout(respeakTimer);
-    respeakTimer = window.setTimeout(speakRound, 700);
+    wrongPause.start(optRow, speakRound);
   }
 
   replay.addEventListener('click', function() {
@@ -1093,6 +1100,7 @@ function enterNext() {
   function newRound() {
     clearTimeout(delayedNextTimer);
     delayedNextTimer = null;
+    wrongPause.stop();
     roundLocked = false;
     roundMissed = false;
     roundHinted = false;
@@ -1117,7 +1125,7 @@ function enterNext() {
   }
 
   function onOptionTap(btn, opt) {
-    if (session.isSessionEnded() || roundLocked) return;
+    if (session.isSessionEnded() || roundLocked || wrongPause.isResting()) return;
     if (opt.correct) {
       roundLocked = true;
       hint.stop();
@@ -1147,6 +1155,7 @@ function enterNext() {
     thumbsDown.show();
     audio.playBuzzer();
     hint.registerMiss();
+    wrongPause.start(optRow);
   }
 
   newRound();

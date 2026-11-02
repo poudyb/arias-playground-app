@@ -55,6 +55,30 @@ const quizLadder = createLadderProgression({
 let quizRoundMissed = false;
 let quizRoundHinted = false;
 
+// Read It's own ladder (READ_RUNGS in shared/word-logic.js): how much it says,
+// and whether the cards all start with different letters. Same terms as Quiz.
+const readLadder = createLadderProgression({
+  storageKey: 'ariaSpellingReadRung',
+  rungs: READ_RUNGS.length,
+  promoteAfter: 3,
+  demoteAfter: 2
+});
+let readRoundMissed = false;
+let readRoundHinted = false;
+
+// Quiz and Read It rest their cards after a wrong pick, as long as the X is
+// up, then say the round again (createWrongPause in shared/feedback.js).
+const wrongPause = createWrongPause();
+// Wrong picks this round. The second one is also the one that starts the hint
+// nudge, which speaks the full help itself, so the round isn't said again over
+// it then. (HINT_MISSES matches createHintNudge's default missThreshold.)
+const HINT_MISSES = 2;
+let roundMisses = 0;
+
+function sayAgainAfterMiss() {
+  return roundMisses !== HINT_MISSES;
+}
+
 function renderSummary(board, stats) {
   appendScoreSection(board, {
     modClass: 'score-section--free',
@@ -78,13 +102,16 @@ function renderSummary(board, stats) {
     });
   }
   if (stats.usedRead || stats.readCorrect > 0) {
+    const body = createIntroBody(stats.readCorrect > 0
+      ? 'You read ' + stats.readCorrect + ' ' + (stats.readCorrect === 1 ? 'word' : 'words') + '!' +
+        (stats.readWrong ? ' (' + stats.readWrong + ' oops taps)' : '')
+      : 'You opened Read It - pick the word that matches the picture next time!');
+    appendBodyNote(body, readRung(readLadder.getRung()).note);
     appendScoreSection(board, {
       modClass: 'score-section--read',
       icon: '📖',
       title: 'Read It',
-      body: stats.readCorrect > 0
-        ? 'You read ' + stats.readCorrect + ' ' + (stats.readCorrect === 1 ? 'word' : 'words') + '!'
-        : 'You opened Read It - pick the word that matches the picture next time!'
+      body: body
     });
   }
   if (stats.usedSpell || stats.spellCorrect > 0) {
@@ -108,6 +135,7 @@ function stopGame() {
   }
   thumbsDown.hide();
   hint.stop();
+  wrongPause.stop();
 }
 
 const session = createTimedSession({
@@ -149,16 +177,21 @@ function speakWordThenSpell(word, rung) {
   });
 }
 
-// The visual pulse repeats; the spoken word only fires when `speak` is true
-// (first nudge + each wrong tap) so the hint never drones on audibly.
+// The visual pulse repeats; the spoken help only fires when `speak` is true
+// (the first flash of a nudge) so the hint never drones on audibly. It used to
+// speak on every wrong tap as well, which handed her the word spelled out each
+// time she guessed — and a guess cut it off after the first word, so tapping
+// fast came out as "mom … mom … mom". A wrong pick now rests the cards and then
+// says the round again, no more than it said to begin with.
 function flashSpellingHint(speak) {
   if (mode === 'quiz') {
     quizRoundHinted = true;
     flashHintEl(spellChoices.querySelector('[data-word="' + WORDS[quizTargetIndex] + '"]'));
     if (speak) speakWordThenSpell(WORDS[quizTargetIndex]);
   } else if (mode === 'read') {
+    readRoundHinted = true;
     flashHintEl(spellChoices.querySelector('[data-word="' + WORDS[readTargetIndex] + '"]'));
-    if (speak) speakWordThenSpell(WORDS[readTargetIndex]);
+    if (speak) speakReadPrompt(WORDS[readTargetIndex], READ_HELP);
   } else if (mode === 'spell') {
     flashHintEl(keyEls[WORDS[spellTargetIndex][typed.length]]);
   }
@@ -166,7 +199,6 @@ function flashSpellingHint(speak) {
 
 const hint = createHintNudge({
   onFlash: flashSpellingHint,
-  voiceOnMiss: true,
   isActive: function() {
     return !session.isSessionEnded() && (mode === 'quiz' || mode === 'spell' || mode === 'read');
   }
@@ -349,6 +381,7 @@ const READ_STATE_KEY = SPELLING_SESSION_KEY + ':read';
 
 // The rung is read here and only here, so it can only change between rounds.
 function announceQuizRound(target) {
+  roundMisses = 0;
   quizRoundMissed = false;
   quizRoundHinted = false;
   spellHint.textContent = QUIZ_PROMPT;
@@ -358,6 +391,7 @@ function announceQuizRound(target) {
 
 function startQuizRound() {
   if (session.isSessionEnded() || mode !== 'quiz') return;
+  wrongPause.stop();
   quizLocked = false;
   thumbsDown.hide();
 
@@ -386,7 +420,7 @@ function startQuizRound() {
 }
 
 function onChoice(word, btn, target) {
-  if (quizLocked || mode !== 'quiz') return;
+  if (quizLocked || mode !== 'quiz' || wrongPause.isResting()) return;
   if (word === target) {
     quizLocked = true;
     hint.stop();
@@ -417,11 +451,15 @@ function onChoice(word, btn, target) {
     thumbsDown.show();
     audio.playBuzzer();
     quizRoundMissed = true;
+    roundMisses += 1;
     session.mutateStats(function(stats) {
       stats.quizWrong += 1;
       pushUniqueStruggle(stats.quizStruggled, target);
     });
     hint.registerMiss();
+    wrongPause.start(spellChoices, function() {
+      if (mode === 'quiz' && !quizLocked && sayAgainAfterMiss()) speakWordThenSpell(target, quizRung(quizLadder.getRung()));
+    });
   }
 }
 
@@ -438,26 +476,14 @@ function enterQuiz() {
 
 // ---- Read It (Quiz's inverse: picture prompt → pick the written word) ----
 
-// isLookAlike (a 1-letter-different word, like cat/can/rat) comes from
-// shared/word-logic.js. We avoid those as distractors so a child reads the
-// whole word, not just one letter — the same spirit as Clock's Quiz rejecting
-// near times. With 73 words and at most a handful of look-alikes, there are
-// always plenty of clearly-different distractors left.
-function buildWordChoiceIndices(targetIdx) {
+// The two wrong words come from readDistractors (shared/word-logic.js): never a
+// look-alike (cat/can), and on all but the top rung no card starts with the same
+// letter as another, so the first letter is enough to find the word.
+function buildWordChoiceIndices(targetIdx, rung) {
   const target = WORDS[targetIdx];
-  const idxs = [targetIdx];
-  let tries = 0;
-  while (idxs.length < 3 && tries < 500) {
-    tries++;
-    const r = Math.floor(Math.random() * WORDS.length);
-    if (idxs.indexOf(r) !== -1 || isLookAlike(target, WORDS[r])) continue;
-    idxs.push(r);
-  }
-  // Safety net for tiny/degenerate word lists: fill with anything distinct.
-  while (idxs.length < 3 && idxs.length < WORDS.length) {
-    const r = Math.floor(Math.random() * WORDS.length);
-    if (idxs.indexOf(r) === -1) idxs.push(r);
-  }
+  const idxs = [targetIdx].concat(readDistractors(target, WORDS, rung).map(function(w) {
+    return WORDS.indexOf(w);
+  }));
   for (let i = idxs.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     const tmp = idxs[i];
@@ -465,6 +491,15 @@ function buildWordChoiceIndices(targetIdx) {
     idxs[j] = tmp;
   }
   return idxs;
+}
+
+// What Read It says, at `rung`: the word, then (lower down the ladder) its
+// letters or its first letter, as separate utterances with the letters slower.
+function speakReadPrompt(word, rung) {
+  const parts = readSpeech(word, rung);
+  speakSequence(parts.map(function(p) { return p.text; }), {
+    rates: parts.map(function(p) { return p.letter ? 0.7 : 0.85; })
+  });
 }
 
 function renderWordChoices(indices, target) {
@@ -480,8 +515,8 @@ function renderWordChoices(indices, target) {
   });
 }
 
-// Show the picture + say the word (but don't spell it aloud — that would give
-// the letters away). The struggling-child hint does spell it out.
+// Show the picture and say the round's prompt at the rung she's on. The rung is
+// read here and only here, so a round never changes under her.
 function showReadPrompt(target) {
   spellSlots.innerHTML = '';
   spellImg.src = IMG_FOR[target];
@@ -489,12 +524,16 @@ function showReadPrompt(target) {
   spellPicture.classList.add('is-visible');
   spellPicture.setAttribute('aria-hidden', 'false');
   spellHint.textContent = 'Find the word!';
-  speakText(target.toLowerCase(), { rate: 0.85 });
+  roundMisses = 0;
+  readRoundMissed = false;
+  readRoundHinted = false;
+  speakReadPrompt(target, readRung(readLadder.getRung()));
   hint.reset();
 }
 
 function startReadRound() {
   if (session.isSessionEnded() || mode !== 'read') return;
+  wrongPause.stop();
   readLocked = false;
   thumbsDown.hide();
 
@@ -513,7 +552,7 @@ function startReadRound() {
     next = Math.floor(Math.random() * WORDS.length);
   } while (WORDS.length > 1 && next === readTargetIndex);
   readTargetIndex = next;
-  const choiceIndices = buildWordChoiceIndices(readTargetIndex);
+  const choiceIndices = buildWordChoiceIndices(readTargetIndex, readRung(readLadder.getRung()));
   saveRoundState(READ_STATE_KEY, { targetIndex: readTargetIndex, choiceIndices: choiceIndices });
   const target = WORDS[readTargetIndex];
   renderWordChoices(choiceIndices, target);
@@ -521,11 +560,12 @@ function startReadRound() {
 }
 
 function onWordChoice(word, btn, target) {
-  if (readLocked || mode !== 'read') return;
+  if (readLocked || mode !== 'read' || wrongPause.isResting()) return;
   if (word === target) {
     readLocked = true;
     hint.stop();
     saveRoundState(READ_STATE_KEY, null);
+    readLadder.recordRound(readRoundMissed ? 'missed' : readRoundHinted ? 'assisted' : 'clean');
     btn.classList.add('correct');
     cancelSpeech();
     thumbsDown.hide();
@@ -542,11 +582,16 @@ function onWordChoice(word, btn, target) {
     window.setTimeout(function() { btn.classList.remove('wrong'); }, 500);
     thumbsDown.show();
     audio.playBuzzer();
+    readRoundMissed = true;
+    roundMisses += 1;
     session.mutateStats(function(stats) {
       stats.readWrong += 1;
       pushUniqueStruggle(stats.readStruggled, target);
     });
     hint.registerMiss();
+    wrongPause.start(spellChoices, function() {
+      if (mode === 'read' && !readLocked && sayAgainAfterMiss()) speakReadPrompt(target, readRung(readLadder.getRung()));
+    });
   }
 }
 
@@ -679,6 +724,7 @@ function setMode(next) {
   cancelSpeech();
   thumbsDown.hide();
   hint.stop();
+  wrongPause.stop();
   mode = next;
   keyboardEl.dataset.mode = mode;
   // Only Spell It lets you tap the picture to replay the word + spelling.
