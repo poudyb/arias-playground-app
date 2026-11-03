@@ -248,6 +248,9 @@ body.calc-page {
 /* Minus, plus and equals are the same colour as the numbers — lit or grey is
    the only thing colour means on this keypad — just with a bigger sign. */
 .calc-key--op { font-size: calc(var(--calc-w) * 0.14); }
+/* A Quiz rung with only one operator draws just that one, standing tall
+   where the two would be. */
+.calc-key--tall { grid-row: span 2; }
 
 .calc-key:not(:disabled):active,
 .calc-key.is-pressed:not(:disabled) {
@@ -449,7 +452,9 @@ body.calc-page {
   line-height: 1.1;
   text-align: center;
   letter-spacing: var(--digit-tighten);
-  color: #2e7d32;
+  /* The number to make is the answer she's aiming for, so it's the same dark
+     ink as the answer on the screen. Not green: green is the first number. */
+  color: #263238;
 }
 .make-goal.is-new .make-goal__num { animation: goal-new 0.5s ease-out; }
 .make-goal.is-made .make-goal__num { animation: goal-made 0.7s ease-out; }

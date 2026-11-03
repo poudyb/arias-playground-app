@@ -184,7 +184,7 @@
   }
 
   :root .make-goal__num {
-    color: #a5d6a7;
+    color: var(--night-ink);
   }
 
   :root .game-tile--calc .game-tile__label { color: #cfd8dc; }

@@ -60,11 +60,20 @@ let activeMode = null;
 // and red read to her as "interesting", so C was the key she pressed most.)
 // Once a sum is whole, = is the only key lit, so it is found by elimination
 // rather than by knowing what it's for.
-const KEY_LAYOUT = [
-  ['7'], ['8'], ['9'], ['-', '−', 'calc-key--op'],
-  ['4'], ['5'], ['6'], ['+', '+', 'calc-key--op'],
-  ['1'], ['2'], ['3'], ['=', '=', 'calc-key--op']
-];
+//
+// Only the operators the game can use are drawn at all. A Quiz rung that's
+// plus-only doesn't show a minus key sitting there grey for the whole round —
+// that read as "minus is broken", not "not this time". Its one operator stands
+// tall where the two would be.
+function keyLayout(ops) {
+  const both = ops.indexOf('+') !== -1 && ops.indexOf('-') !== -1;
+  const tall = both ? '' : ' calc-key--tall';
+  const opKeys = ['-', '+'].filter(function(op) { return ops.indexOf(op) !== -1; })
+    .map(function(op) { return [op, opSign(op), 'calc-key--op' + tall]; });
+  const layout = [['7'], ['8'], ['9'], opKeys[0], ['4'], ['5'], ['6']];
+  if (both) layout.push(opKeys[1]);
+  return layout.concat([['1'], ['2'], ['3'], ['=', '=', 'calc-key--op']]);
+}
 const KEY_NAMES = { '+': 'plus', '-': 'minus', '=': 'equals' };
 
 function opSign(op) {
@@ -140,7 +149,20 @@ function buildCalculator(options) {
   const keysEl = document.createElement('div');
   keysEl.className = 'calc-keys';
   const keyEls = {};
-  KEY_LAYOUT.forEach(function(spec) {
+  let drawnOps = '';
+
+  // (Re)draw the keypad for the operators the rules allow right now. Only
+  // called between rounds, so the keys never change under her mid-sum.
+  function drawKeys() {
+    const ops = options.getRules().ops || ['+', '-'];
+    if (ops.join('') === drawnOps) return;
+    drawnOps = ops.join('');
+    keysEl.innerHTML = '';
+    Object.keys(keyEls).forEach(function(k) { delete keyEls[k]; });
+    keyLayout(ops).forEach(addKey);
+  }
+
+  function addKey(spec) {
     const key = spec[0];
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -160,7 +182,8 @@ function buildCalculator(options) {
     btn.addEventListener('transitionend', function() { btn.classList.remove('is-pressed'); });
     keysEl.appendChild(btn);
     keyEls[key] = btn;
-  });
+  }
+  drawKeys();
   el.appendChild(keysEl);
 
   let state = emptyCalc();
@@ -182,6 +205,7 @@ function buildCalculator(options) {
     CALC_KEYS.forEach(function(key) {
       const on = !locked && isKeyEnabled(state, key, rules);
       const btn = keyEls[key];
+      if (!btn) return;
       btn.disabled = !on;
       btn.classList.toggle('is-next', on && (
         (phase === 'first' && (key === '+' || key === '-')) ||
@@ -231,7 +255,7 @@ function buildCalculator(options) {
     press: press,
     getState: function() { return state; },
     isLocked: function() { return locked; },
-    reset: function() { state = emptyCalc(); render(); },
+    reset: function() { state = emptyCalc(); drawKeys(); render(); },
     setLocked: function(value) { locked = value; render(); },
     render: render
   };
@@ -841,7 +865,9 @@ document.addEventListener('keydown', function(ev) {
   const key = /^[1-9]$/.test(ev.key) ? ev.key : KEYBOARD_KEYS[ev.key];
   if (!key) return;
   ev.preventDefault();
-  if (activeMode.calc.press(key)) restartAnimation(activeMode.calc.keyEls[key], 'is-pressed');
+  if (activeMode.calc.press(key) && activeMode.calc.keyEls[key]) {
+    restartAnimation(activeMode.calc.keyEls[key], 'is-pressed');
+  }
 });
 
 initGamePage({
