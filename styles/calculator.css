@@ -8,10 +8,15 @@
 body.calc-page {
   --calc-w: min(52vw, 70vh, 560px);
   --dot: min(4.2vw, 5.2vh, 48px);
-  --dot-a: #ff8f3a;
-  --dot-a-deep: #e65100;
-  --dot-b: #3a8dff;
-  --dot-b-deep: #1565c0;
+  /* The sum's three parts take Spelling's first / middle / last colours:
+     green for the first number, red for the sign in the middle, blue for the
+     second number. Green and blue are close cousins and sandwich the red, so
+     the first thing she presses is never the bright red one. Each number's
+     digit and its dots are the very same colour, so "3" and its three dots are
+     plainly one thing. */
+  --dot-a: #4caf50;
+  --num-op: #ef5350;
+  --dot-b: #42a5f5;
   min-height: 100vh;
   min-height: 100dvh;
   height: 100dvh;
@@ -166,8 +171,10 @@ body.calc-page {
   margin-bottom: calc(var(--pad) * 1.1);
   padding: 0 calc(var(--calc-w) * 0.05);
   border-radius: calc(var(--calc-w) * 0.035);
-  background: linear-gradient(180deg, #c5dcb5 0%, #d8ebc9 100%);
-  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.28);
+  /* Plain and light, so the green, red and blue on it read as themselves (a
+     pale-green LCD swallowed the green). */
+  background: linear-gradient(180deg, #eef1f3 0%, #ffffff 100%);
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.22);
   font-family: var(--font-letters);
   font-weight: 700;
   font-size: calc(var(--calc-w) * 0.15);
@@ -185,9 +192,9 @@ body.calc-page {
 
 /* The digits wear their dots' colours, so "3" and the three orange dots are
    plainly the same thing. */
-.calc-cell--a { color: var(--dot-a-deep); }
-.calc-cell--b { color: var(--dot-b-deep); }
-.calc-cell--op,
+.calc-cell--a { color: var(--dot-a); }
+.calc-cell--op { color: var(--num-op); }
+.calc-cell--b { color: var(--dot-b); }
 .calc-cell--eq { color: #455a64; }
 .calc-cell--r { letter-spacing: var(--digit-tighten); }
 /* The answer arrives by itself, so it arrives with a little bounce. */
@@ -330,7 +337,7 @@ body.calc-page {
   font-weight: 700;
   font-size: calc(var(--dot) * 1.4);
   line-height: 1;
-  color: #546e7a;
+  color: var(--num-op);
   min-width: calc(var(--dot) * 0.8);
   text-align: center;
 }
@@ -345,8 +352,8 @@ body.calc-page {
   border-radius: calc(var(--dot) * 0.5);
 }
 .tray.is-set { display: grid; }
-.tray--a.is-set { background: rgba(255, 143, 58, 0.12); }
-.tray--b.is-set { background: rgba(58, 141, 255, 0.12); }
+.tray--a.is-set { background: rgba(76, 175, 80, 0.12); }
+.tray--b.is-set { background: rgba(66, 165, 245, 0.12); }
 
 /* The answer: only there once she presses =, unless it's Make It's rings. */
 .tray--result { background: rgba(102, 187, 106, 0.12); }
@@ -392,8 +399,8 @@ body.calc-page {
   color: #fff;
   animation: dot-pop 0.36s ease-out backwards;
 }
-.dot--a { background: radial-gradient(circle at 35% 30%, #ffc28a 0%, var(--dot-a) 55%, #f57c00 100%); }
-.dot--b { background: radial-gradient(circle at 35% 30%, #9cc6ff 0%, var(--dot-b) 55%, #1e6fe0 100%); }
+.dot--a { background: radial-gradient(circle at 35% 30%, #a5d6a7 0%, var(--dot-a) 55%, #388e3c 100%); }
+.dot--b { background: radial-gradient(circle at 35% 30%, #90caf9 0%, var(--dot-b) 55%, #1e88e5 100%); }
 .dot--settled { animation: none; }
 .dot.is-counted { transform: scale(1.12); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
 

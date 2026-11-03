@@ -127,7 +127,8 @@ const ACTIVITIES = [
     artClasses: 'game-tile__art game-tile__art--calc',
     artHtml:
       '<span class="game-tile__art__calc-screen">' +
-      '<span class="game-tile__art__calc-a">3</span>+' +
+      '<span class="game-tile__art__calc-a">3</span>' +
+      '<span class="game-tile__art__calc-op">+</span>' +
       '<span class="game-tile__art__calc-b">2</span>' +
       '</span>',
     sessionKey: 'ariaCalcSession',

@@ -410,16 +410,17 @@ main {
     gap: 0.12em;
     padding: 0.05em 0.35em;
     border-radius: 0.2em;
-    background: linear-gradient(180deg, #c5dcb5 0%, #d8ebc9 100%);
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3), 0 3px 0 #37474f;
+    background: linear-gradient(180deg, #eef1f3 0%, #ffffff 100%);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.25), 0 3px 0 #37474f;
     font-family: var(--font-letters);
     font-weight: 700;
     font-size: clamp(2rem, 11vw, 3.1rem);
     line-height: 1.1;
     color: #455a64;
   }
-.game-tile__art__calc-a { color: #e65100; }
-.game-tile__art__calc-b { color: #1565c0; }
+.game-tile__art__calc-a { color: #4caf50; }
+.game-tile__art__calc-op { color: #ef5350; }
+.game-tile__art__calc-b { color: #42a5f5; }
 .game-tile--calc .game-tile__label {
     color: #263238;
   }

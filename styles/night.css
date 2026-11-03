@@ -160,14 +160,13 @@
   }
 
   :root .calc-screen {
-    background: linear-gradient(180deg, #8fa585 0%, #9fb595 100%);
+    background: linear-gradient(180deg, #aeb6c2 0%, #c2c9d3 100%);
   }
 
   :root .calc-key:not(:disabled) {
     background: #d9d2c0;
   }
 
-  :root .dots-sign,
   :root .make-goal {
     color: var(--night-ink);
   }
