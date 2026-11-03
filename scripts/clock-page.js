@@ -235,8 +235,8 @@ function ledHueFor(h, m, s, msFraction) {
 }
 
 // How far into the shared one-second beat everything currently is. Both
-// moving marks on the Match board run to it — the red pulse and the yellow
-// breathing — so it must match the seg-wrong-pulse and seg-missing-breathe
+// moving marks on the Match board run to it — the red swap and the yellow
+// breathing — so it must match the seg-wrong-swap and seg-missing-breathe
 // durations in clock.css.
 const MARK_BEAT_MS = 1000;
 

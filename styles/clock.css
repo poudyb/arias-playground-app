@@ -469,15 +469,31 @@ body {
       drop-shadow(0 0 3px rgba(255, 23, 68, 0.85))
       drop-shadow(0 0 8px rgba(213, 0, 0, 0.6));
   }
+  /* On a steady board a wrong line swaps between red and the plain colour of a
+     lit line, never dimming. It used to pulse between red and a faded red,
+     and at the faded end it looked like it was going away by itself — "is that
+     even there?" — when the whole point is that it IS there and shouldn't be.
+     Half the time it looks like any other line she has lit, half the time it's
+     red: a real line, in the wrong place. Not green for the lit half: green is
+     "keep this" on these boards. Same one-second beat as the yellow outlines
+     (markBeatOffset keeps them in step). */
 .clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-wrong {
-    animation: seg-wrong-pulse 1s ease-in-out infinite;
+    animation: seg-wrong-swap 1s ease-in-out infinite;
   }
 .clock-face--manual.marks-nudge .clock-digit-svg .seg {
     transition: fill 0.4s ease, stroke 0.4s ease, filter 0.4s ease;
   }
-@keyframes seg-wrong-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.55; }
+@keyframes seg-wrong-swap {
+    0%, 35%, 100% {
+      fill: #ff1744;
+      filter:
+        drop-shadow(0 0 3px rgba(255, 23, 68, 0.85))
+        drop-shadow(0 0 8px rgba(213, 0, 0, 0.6));
+    }
+    50%, 85% {
+      fill: var(--led-color);
+      filter: drop-shadow(0 0 2px var(--led-color));
+    }
   }
 .clock-digit-svg .seg {
     pointer-events: none;
