@@ -80,10 +80,17 @@ function isKeyEnabled(s, key, rules) {
   if (key === '+' || key === '-') return phase === 'first' && opCanFollow(key, s.a, rules);
   const d = digitOfKey(key);
   if (d == null) return false;
+  // In Quiz, the number she's asked to make (`rules.target`) can't start a sum:
+  // with no 0 to add or take away, a sum that starts with it can never come
+  // out right, and pressing the number she'd just been told was the one thing
+  // she did. Only as the first number — once a sum is started, the second
+  // number is hers to choose like any other.
+  const isTarget = rules.target != null && d === rules.target;
   if (phase === 'op') return s.op === '+' || d < s.a;
   // A first number is on only if some operator can follow it, so a number is
   // never a dead end (on a minus-only rung, 1 has nothing it can take away).
   if (phase === 'start' || phase === 'done') {
+    if (isTarget) return false;
     return CALC_OP_KEYS.some(function(op) { return opCanFollow(op, d, rules); });
   }
   return false;
@@ -169,8 +176,10 @@ function makeRung(level) {
   return MAKE_RUNGS[i];
 }
 
-function makeRules(rung) {
-  return { ops: rung.ops.slice() };
+// The keys a Quiz round leaves on: the rung's operators, and `target`, the
+// number to make (see isKeyEnabled).
+function makeRules(rung, target) {
+  return { ops: rung.ops.slice(), target: typeof target === 'number' ? target : null };
 }
 
 // Every sum the keys allow that comes out at `target`, smallest first number

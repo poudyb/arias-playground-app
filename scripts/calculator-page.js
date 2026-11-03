@@ -27,6 +27,8 @@ const CONFETTI_HEX = ['#ff8f3a', '#3a8dff', '#ffd54f', '#66bb6a', '#ba68c8', '#4
 const LEAVE_MS = 450;
 const GATHER_MS = 520;
 const GATHER_STAGGER_MS = 22;
+// How long Quiz waits without a key press before the hint lights a key.
+const QUIZ_HINT_IDLE_MS = 12000;
 // Free Play holds the keys after = until the answer has landed and been said,
 // then a short rest before the next sum can start; never longer than the
 // maximum, in case the speech doesn't report back.
@@ -642,6 +644,10 @@ function enterQuiz() {
   // better first number if hers can't get there. Never while an answer is
   // being shown.
   const hint = createHintNudge({
+    // A two-year-old stopping to think isn't stuck, and a round the hint had to
+    // help with doesn't count towards moving up, so give her as long as Clock
+    // Match does before stepping in.
+    idleMs: QUIZ_HINT_IDLE_MS,
     isActive: function() { return currentMode === 'quiz' && !session.isSessionEnded(); },
     onFlash: function() {
       if (!round || calc.isLocked()) return;
@@ -674,7 +680,6 @@ function enterQuiz() {
 
     const level = makeLadder.getRung();
     rung = makeRung(level);
-    rules = makeRules(rung);
     const saved = loadRoundState(MAKE_STATE_KEY);
     if (isSavedRound(saved, level)) {
       round = { rung: level, target: saved.target };
@@ -682,6 +687,7 @@ function enterQuiz() {
       round = { rung: level, target: makeTarget(rung, Math.random, round ? round.target : null) };
       saveRoundState(MAKE_STATE_KEY, round);
     }
+    rules = makeRules(rung, round.target);
 
     goalNum.textContent = String(round.target);
     restartAnimation(goal, 'is-new');

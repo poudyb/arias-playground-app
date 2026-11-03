@@ -67,10 +67,13 @@ test('an operator can\'t be pressed twice or swapped once chosen', () => {
 
 test('no run of key presses can make zero, a negative, a two-digit entry or a chained sum', () => {
   const random = seeded(42);
-  const ruleSets = [calc.FREE_RULES].concat(calc.MAKE_RUNGS.map(calc.makeRules));
+  const ruleSets = [calc.FREE_RULES];
+  calc.MAKE_RUNGS.forEach((rung) => {
+    for (let t = rung.min; t <= rung.max; t++) ruleSets.push(calc.makeRules(rung, t));
+  });
   for (const rules of ruleSets) {
     let s = calc.emptyCalc();
-    for (let i = 0; i < 5000; i++) {
+    for (let i = 0; i < 400; i++) {
       const keys = enabledKeys(s, rules);
       assert.ok(keys.length > 0, 'some key is always on: ' + JSON.stringify(s) + ' ' + JSON.stringify(rules));
       const k = keys[Math.floor(random() * keys.length)];
@@ -118,8 +121,8 @@ test('every number on every Quiz rung can be made with the keys that rung leaves
 
 test('following the hint from any point that can still get there ends in the number', () => {
   calc.MAKE_RUNGS.forEach((rung) => {
-    const rules = calc.makeRules(rung);
     for (let t = rung.min; t <= rung.max; t++) {
+      const rules = calc.makeRules(rung, t);
       // From a clean screen, and from every first number that can still make t.
       const starts = [[]].concat(DIGITS.map((k) => [k]).filter((p) => {
         const s = pressAll(p, rules);
@@ -140,7 +143,7 @@ test('following the hint from any point that can still get there ends in the num
 });
 
 test('the first hint for a number starts from the middle, not with 1', () => {
-  const rules = calc.makeRules(calc.makeRung(1));
+  const rules = calc.makeRules(calc.makeRung(1), 7);
   assert.strictEqual(calc.hintKeyFor(calc.emptyCalc(), 7, rules), '3');
   assert.strictEqual(calc.hintKeyFor(pressAll(['3'], rules), 7, rules), '+');
   assert.strictEqual(calc.hintKeyFor(pressAll(['3', '+'], rules), 7, rules), '4');
@@ -167,4 +170,34 @@ test('makeRung clamps a stored rung that is out of range or junk', () => {
   assert.strictEqual(calc.makeRung(-3), calc.MAKE_RUNGS[0]);
   assert.strictEqual(calc.makeRung(99), calc.MAKE_RUNGS[calc.MAKE_RUNGS.length - 1]);
   assert.strictEqual(calc.makeRung('x'), calc.MAKE_RUNGS[0]);
+});
+
+test('in Quiz the number to make can\'t start a sum, but is on once a sum has started', () => {
+  const plus = calc.makeRules(calc.makeRung(1), 5);
+  assert.ok(!calc.isKeyEnabled(calc.emptyCalc(), '5', plus), 'not as the first number');
+  assert.ok(calc.isKeyEnabled(pressAll(['2', '+'], plus), '5', plus), 'as the second number it is hers to choose');
+  const both = calc.makeRules(calc.makeRung(3), 3);
+  assert.ok(!calc.isKeyEnabled(calc.emptyCalc(), '3', both));
+  assert.ok(calc.isKeyEnabled(pressAll(['6', '-'], both), '3', both));
+  // and after a finished sum, starting the next one
+  assert.ok(!calc.isKeyEnabled(pressAll(['2', '+', '3', '='], plus), '5', plus));
+  // Free Play has no target, so nothing extra is off
+  assert.ok(calc.isKeyEnabled(calc.emptyCalc(), '5'));
+});
+
+test('the target being off never removes a right answer', () => {
+  calc.MAKE_RUNGS.forEach((rung) => {
+    for (let t = rung.min; t <= rung.max; t++) {
+      const rules = calc.makeRules(rung, t);
+      for (const sol of calc.solutionsFor(t, rules)) {
+        const keys = [String(sol.a), sol.op, String(sol.b), '='];
+        let s = calc.emptyCalc();
+        for (const k of keys) {
+          assert.ok(calc.isKeyEnabled(s, k, rules), sol.a + sol.op + sol.b + ' needs ' + k + ' on');
+          s = calc.calcPress(s, k, rules);
+        }
+        assert.strictEqual(s.result, t);
+      }
+    }
+  });
 });
