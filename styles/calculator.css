@@ -238,11 +238,9 @@ body.calc-page {
   transition: transform 0.06s ease, box-shadow 0.06s ease, background-color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
-/* Plus and minus are the same colour as the numbers — lit or grey is the only
-   thing colour means on this keypad — just with a bigger sign. Plus stands
-   tall down the right, like on a real calculator. */
+/* Minus, plus and equals are the same colour as the numbers — lit or grey is
+   the only thing colour means on this keypad — just with a bigger sign. */
 .calc-key--op { font-size: calc(var(--calc-w) * 0.14); }
-.calc-key--plus { grid-row: span 2; }
 
 .calc-key:not(:disabled):active,
 .calc-key.is-pressed:not(:disabled) {

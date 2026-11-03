@@ -4,25 +4,33 @@
 // tells it turns into something she can't read: a minus pressed first makes a
 // negative number, 3 - 5 makes another one, 5 then 3 makes fifty-three, a plus
 // after the answer chains on, and pressing = again repeats the last sum. This
-// one only ever does one thing — a number, plus or minus, a number — and the
-// answer comes up by itself. Every key that would step outside that is switched
-// off (and drawn greyed out) rather than left to do something surprising.
+// one only ever does one thing — a number, plus or minus, a number, equals —
+// and at every step only the keys for that step are lit. Everything else is
+// switched off (and drawn greyed out) rather than left to do something
+// surprising.
 //
 //   start  - nothing typed           numbers on
-//   first  - "3"                     + and - on, and the numbers (a different
-//                                    one replaces the 3: there's no C to undo)
+//   first  - "3"                     + and - on, nothing else: no second
+//                                    number, and no swapping the first one
 //   op     - "3 +"                   numbers on (for minus, only those under 3)
+//                                    — no swapping the operator either
+//   second - "3 + 4"                 only = on
 //   done   - "3 + 4 = 7"             numbers on, starting a fresh sum
 //
-// There is no 0, no C and no = at all. Zero is a concept for later; C was the
-// key she pressed most and it only ever took her backwards; and = was the step
-// she didn't know she had to take — the sum answers itself as soon as it's
-// whole. With no = there is nothing to repeat, and the answer can never be
-// carried into another sum. Minus never goes to zero either: 5 - 5 is off.
+// Every press counts and nothing can be undone. Pressing number after number,
+// each replacing the last, was a game of its own that never got to a sum. =
+// is the one key lit once a sum is whole, so it's a step she goes through
+// rather than one she has to know about; and it's lit only there, so there's
+// no pressing it again to repeat the sum, and the answer can never be carried
+// into another one.
+//
+// There is no 0 and no C. Zero is a concept for later; C was the key she
+// pressed most and it only ever took her backwards. Minus never goes to zero
+// either: 5 - 5 is off.
 
 const CALC_DIGIT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 const CALC_OP_KEYS = ['+', '-'];
-const CALC_KEYS = CALC_DIGIT_KEYS.concat(CALC_OP_KEYS);
+const CALC_KEYS = CALC_DIGIT_KEYS.concat(CALC_OP_KEYS, ['=']);
 
 // Free Play: everything a single-digit sum can use.
 const FREE_RULES = { ops: ['+', '-'] };
@@ -39,6 +47,7 @@ function emptyCalc() {
 
 function calcPhase(s) {
   if (s.result != null) return 'done';
+  if (s.b != null) return 'second';
   if (s.op != null) return 'op';
   if (s.a != null) return 'first';
   return 'start';
@@ -57,26 +66,37 @@ function opAllowed(op, rules) {
   return !rules.ops || rules.ops.indexOf(op) !== -1;
 }
 
+// Whether `op` can follow the first number `a`. Minus needs something to take
+// away that still leaves at least one.
+function opCanFollow(op, a, rules) {
+  if (!opAllowed(op, rules)) return false;
+  return op === '+' || a >= 2;
+}
+
 function isKeyEnabled(s, key, rules) {
   rules = rules || FREE_RULES;
   const phase = calcPhase(s);
-  if (key === '+') return phase === 'first' && opAllowed('+', rules);
-  // Minus needs something to take away that still leaves at least one.
-  if (key === '-') return phase === 'first' && opAllowed('-', rules) && s.a >= 2;
+  if (key === '=') return phase === 'second';
+  if (key === '+' || key === '-') return phase === 'first' && opCanFollow(key, s.a, rules);
   const d = digitOfKey(key);
   if (d == null) return false;
   if (phase === 'op') return s.op === '+' || d < s.a;
-  return true;
+  // A first number is on only if some operator can follow it, so a number is
+  // never a dead end (on a minus-only rung, 1 has nothing it can take away).
+  if (phase === 'start' || phase === 'done') {
+    return CALC_OP_KEYS.some(function(op) { return opCanFollow(op, d, rules); });
+  }
+  return false;
 }
 
 // The state after pressing `key`. A key that isn't enabled hands back the very
-// same object, so the page can tell nothing happened. The second number
-// finishes the sum: its answer is worked out there and then.
+// same object, so the page can tell nothing happened.
 function calcPress(s, key, rules) {
   if (!isKeyEnabled(s, key, rules)) return s;
+  if (key === '=') return { a: s.a, op: s.op, b: s.b, result: calcResult(s.a, s.op, s.b) };
   if (key === '+' || key === '-') return { a: s.a, op: key, b: null, result: null };
   const d = digitOfKey(key);
-  if (calcPhase(s) === 'op') return { a: s.a, op: s.op, b: d, result: calcResult(s.a, s.op, d) };
+  if (calcPhase(s) === 'op') return { a: s.a, op: s.op, b: d, result: null };
   return { a: d, op: null, b: null, result: null };
 }
 
@@ -174,11 +194,10 @@ function middleOf(list) {
 }
 
 // The one key to glow when she's stuck: the next press along a sum that makes
-// the target, picking up from whatever she has typed. A first number that can't
-// get there is swapped for one that can (pressing another number replaces it).
-// Null when there's nothing that helps: a sum that's finished, or one whose
-// operator has already taken it somewhere the target can't be reached from —
-// she finishes it, sees it's wrong, and gets a clean start.
+// the target, picking up from whatever she has typed. Null when there's nothing
+// that helps: a sum that's finished, or one that has already gone somewhere the
+// target can't be reached from — nothing can be undone, so she finishes it
+// (the only lit keys take her there), sees it's wrong, and gets a clean start.
 //
 // From a clean screen it starts from the middle of the list rather than the
 // end, so the hint for 7 is 3 + 4 and not 1 + 6.
@@ -189,12 +208,13 @@ function hintKeyFor(s, target, rules) {
   if (phase === 'start') return String(middleOf(sols).a);
   if (phase === 'first') {
     const m = sols.filter(function(x) { return x.a === s.a; });
-    return m.length ? middleOf(m).op : String(middleOf(sols).a);
+    return m.length ? middleOf(m).op : null;
   }
   if (phase === 'op') {
     const m = sols.filter(function(x) { return x.a === s.a && x.op === s.op; });
     return m.length ? String(m[0].b) : null;
   }
+  if (phase === 'second') return calcResult(s.a, s.op, s.b) === target ? '=' : null;
   return null;
 }
 

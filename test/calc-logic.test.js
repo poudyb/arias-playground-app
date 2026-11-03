@@ -24,37 +24,38 @@ function seeded(seed) {
 
 const DIGITS = calc.CALC_DIGIT_KEYS;
 
-test('there is no 0, no C and no equals key at all', () => {
-  assert.deepStrictEqual(calc.CALC_KEYS, ['1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-']);
+test('there is no 0 and no C; = is the only key besides numbers, plus and minus', () => {
+  assert.deepStrictEqual(calc.CALC_KEYS, ['1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '=']);
 });
 
-test('a clean screen only takes a number: no minus first', () => {
+test('a clean screen only takes a number: no minus first, no equals', () => {
   assert.deepStrictEqual(enabledKeys(calc.emptyCalc()), DIGITS);
 });
 
-test('after one number, plus and minus are on, and another number replaces it', () => {
+test('after one number only plus and minus are on: no second number, no swapping it', () => {
   const s = pressAll(['5']);
-  assert.deepStrictEqual(enabledKeys(s), DIGITS.concat(['+', '-']));
-  assert.deepStrictEqual(calc.calcPress(s, '3'), { a: 3, op: null, b: null, result: null },
-    '5 then 3 is 3, never fifty-three');
+  assert.deepStrictEqual(enabledKeys(s), ['+', '-']);
+  assert.strictEqual(calc.calcPress(s, '3'), s, '5 then 3 does nothing: never 3, never fifty-three');
 });
 
 test('minus needs something left over: off after 1, and only smaller numbers after it', () => {
-  assert.deepStrictEqual(enabledKeys(pressAll(['1'])), DIGITS.concat(['+']));
+  assert.deepStrictEqual(enabledKeys(pressAll(['1'])), ['+']);
   assert.deepStrictEqual(enabledKeys(pressAll(['4', '-'])), ['1', '2', '3']);
   assert.deepStrictEqual(enabledKeys(pressAll(['4', '+'])), DIGITS);
 });
 
-test('the second number finishes the sum by itself', () => {
-  assert.deepStrictEqual(pressAll(['3', '+', '4']), { a: 3, op: '+', b: 4, result: 7 });
-  assert.deepStrictEqual(pressAll(['9', '-', '2']), { a: 9, op: '-', b: 2, result: 7 });
+test('a whole sum lights only equals, and equals gives the answer', () => {
+  const s = pressAll(['3', '+', '4']);
+  assert.deepStrictEqual(s, { a: 3, op: '+', b: 4, result: null });
+  assert.deepStrictEqual(enabledKeys(s), ['=']);
+  assert.deepStrictEqual(calc.calcPress(s, '='), { a: 3, op: '+', b: 4, result: 7 });
+  assert.deepStrictEqual(pressAll(['9', '-', '2', '=']), { a: 9, op: '-', b: 2, result: 7 });
 });
 
-test('a finished sum takes no operator, so nothing chains on; a number starts afresh', () => {
-  const s = pressAll(['3', '+', '4']);
+test('equals works once: it never repeats, and nothing chains on; a number starts afresh', () => {
+  const s = pressAll(['3', '+', '4', '=']);
   assert.deepStrictEqual(enabledKeys(s), DIGITS);
-  assert.strictEqual(calc.calcPress(s, '+'), s);
-  assert.strictEqual(calc.calcPress(s, '-'), s);
+  for (const k of ['=', '+', '-']) assert.strictEqual(calc.calcPress(s, k), s, k + ' after the answer');
   assert.deepStrictEqual(calc.calcPress(s, '6'), { a: 6, op: null, b: null, result: null });
 });
 
@@ -66,20 +67,23 @@ test('an operator can\'t be pressed twice or swapped once chosen', () => {
 
 test('no run of key presses can make zero, a negative, a two-digit entry or a chained sum', () => {
   const random = seeded(42);
-  let s = calc.emptyCalc();
-  for (let i = 0; i < 20000; i++) {
-    const keys = enabledKeys(s);
-    assert.ok(keys.length > 0, 'some key is always on');
-    const k = keys[Math.floor(random() * keys.length)];
-    const next = calc.calcPress(s, k);
-    assert.notStrictEqual(next, s, k + ' was enabled, so it must do something');
-    s = next;
-    for (const v of [s.a, s.b]) {
-      if (v != null) assert.ok(Number.isInteger(v) && v >= 1 && v <= 9, 'operand ' + v);
-    }
-    if (s.result != null) {
-      assert.ok(s.result >= 1 && s.result <= 18, 'result ' + s.result);
-      assert.strictEqual(s.result, calc.calcResult(s.a, s.op, s.b));
+  const ruleSets = [calc.FREE_RULES].concat(calc.MAKE_RUNGS.map(calc.makeRules));
+  for (const rules of ruleSets) {
+    let s = calc.emptyCalc();
+    for (let i = 0; i < 5000; i++) {
+      const keys = enabledKeys(s, rules);
+      assert.ok(keys.length > 0, 'some key is always on: ' + JSON.stringify(s) + ' ' + JSON.stringify(rules));
+      const k = keys[Math.floor(random() * keys.length)];
+      const next = calc.calcPress(s, k, rules);
+      assert.notStrictEqual(next, s, k + ' was enabled, so it must do something');
+      s = next;
+      for (const v of [s.a, s.b]) {
+        if (v != null) assert.ok(Number.isInteger(v) && v >= 1 && v <= 9, 'operand ' + v);
+      }
+      if (s.result != null) {
+        assert.ok(s.result >= 1 && s.result <= 18, 'result ' + s.result);
+        assert.strictEqual(s.result, calc.calcResult(s.a, s.op, s.b));
+      }
     }
   }
 });
@@ -88,14 +92,17 @@ test('equationText and equationWords read the sum the way it is typed', () => {
   assert.strictEqual(calc.equationText(pressAll(['9', '-', '2', '='])), '9 − 2 = 7');
   assert.strictEqual(calc.equationWords(pressAll(['9', '-', '2', '='])), 'nine minus two equals seven');
   assert.strictEqual(calc.equationWords(pressAll(['9', '+'])), 'nine plus');
+  assert.strictEqual(calc.equationWords(pressAll(['9', '+', '2'])), 'nine plus two');
   assert.strictEqual(calc.equationWords(pressAll(['9', '+', '9', '='])), 'nine plus nine equals eighteen');
 });
 
-test('Make It only turns on the rung\'s operators', () => {
+test('Make It only turns on the rung\'s operators, and no number is a dead end', () => {
   const rules = calc.makeRules(calc.makeRung(0));
-  assert.deepStrictEqual(enabledKeys(pressAll(['4'], rules), rules), DIGITS.concat(['+']));
+  assert.deepStrictEqual(enabledKeys(pressAll(['4'], rules), rules), ['+']);
   const minus = calc.makeRules(calc.makeRung(2));
-  assert.deepStrictEqual(enabledKeys(pressAll(['4'], minus), minus), DIGITS.concat(['-']));
+  assert.deepStrictEqual(enabledKeys(calc.emptyCalc(), minus), DIGITS.slice(1),
+    'on a minus-only rung 1 has nothing it can take away, so it is off');
+  assert.deepStrictEqual(enabledKeys(pressAll(['4'], minus), minus), ['-']);
   assert.deepStrictEqual(enabledKeys(pressAll(['4', '-'], minus), minus), ['1', '2', '3']);
 });
 
@@ -109,12 +116,15 @@ test('every number on every Make It rung can be made with the keys that rung lea
   });
 });
 
-test('following the hint from any point always ends in the number she is making', () => {
+test('following the hint from any point that can still get there ends in the number', () => {
   calc.MAKE_RUNGS.forEach((rung) => {
     const rules = calc.makeRules(rung);
     for (let t = rung.min; t <= rung.max; t++) {
-      // From a clean screen, and from every first number she might have typed.
-      const starts = [[]].concat(DIGITS.map((k) => [k]));
+      // From a clean screen, and from every first number that can still make t.
+      const starts = [[]].concat(DIGITS.map((k) => [k]).filter((p) => {
+        const s = pressAll(p, rules);
+        return s.a != null && calc.solutionsFor(t, rules).some((x) => x.a === s.a);
+      }));
       for (const prefix of starts) {
         let s = pressAll(prefix, rules);
         for (let step = 0; step < 6 && s.result == null; step++) {
@@ -134,10 +144,10 @@ test('the first hint for a number starts from the middle, not with 1', () => {
   assert.strictEqual(calc.hintKeyFor(calc.emptyCalc(), 7, rules), '3');
   assert.strictEqual(calc.hintKeyFor(pressAll(['3'], rules), 7, rules), '+');
   assert.strictEqual(calc.hintKeyFor(pressAll(['3', '+'], rules), 7, rules), '4');
-  // A first number too big for plus is swapped for one that works.
-  assert.strictEqual(calc.hintKeyFor(pressAll(['9'], rules), 7, rules), '3');
-  // Past the point of no return there's nothing to point at.
-  assert.strictEqual(calc.hintKeyFor(pressAll(['9', '+'], rules), 7, rules), null);
+  assert.strictEqual(calc.hintKeyFor(pressAll(['3', '+', '4'], rules), 7, rules), '=');
+  // Nothing can be undone, so once a sum can't get there there's nothing to point at.
+  assert.strictEqual(calc.hintKeyFor(pressAll(['9'], rules), 7, rules), null);
+  assert.strictEqual(calc.hintKeyFor(pressAll(['3', '+', '1'], rules), 7, rules), null);
 });
 
 test('makeTarget stays in the rung\'s range and never repeats the last number', () => {
