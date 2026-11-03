@@ -49,9 +49,10 @@ function renderSummary(board, stats) {
         (cleared ? ' and finished ' + cleared + ' board' + (cleared === 1 ? '' : 's') + '!' : '!'));
     // For the grown-up: how the board size moves, which she is never told.
     appendBodyNote(body, 'Now on boards of ' + (MEMORY_LEVELS[memoryLevelIdx].pairs * 2) + ' cards. ' +
-      'A board with no wasted picks moves her up a size. Picking a card she had already seen, ' +
-      'in a way that couldn\'t match, is let go once a board; the second time ends it' +
-      (stats.memoryBoardsFailed ? ' (' + stats.memoryBoardsFailed + ' ended that way today)' : '') + '.');
+      'A board with no wasted picks moves her up a size. Turning over a card she had already ' +
+      'seen when it couldn\'t be the match gets the X; going back to a seen card first is let go ' +
+      'once a board. Boards are never cut short; two messy boards in a row make the next one smaller' +
+      (stats.memoryBoardsFailed ? ' (' + stats.memoryBoardsFailed + ' messy today)' : '') + '.');
     appendScoreSection(board, { icon: '🧠', title: 'Memory', body: body });
   }
 
@@ -302,9 +303,12 @@ function stopMatchGame() {
 // ---------------------------------------------------------------------------
 // Memory mode: a concentration game over the Spelling picture pool. Only a
 // board played without a slip grows the deck; a slip is a pick she had the
-// information to avoid (see shared/memory-logic.js). One slip per board gets
-// the buzzer and a shake; a second ends the board. Honest first looks at new
-// cards never count against her and only get the soft tone.
+// information to avoid (see shared/memory-logic.js). Turning over a card she'd
+// already seen, as the second card, when it isn't the match gets the big X;
+// going back to a seen card first is milder, the first one let go and later
+// ones a buzzer and a shake. The board never ends early: slips only decide
+// the size of the next one. Honest first looks at new cards never count
+// against her and only get the soft tone.
 //
 // Cards she has never turned over shimmer, a slow sheen across the back, so
 // the board itself shows where there is still something to find.
@@ -347,7 +351,8 @@ let memoryCards = [];
 let memoryFirstIdx = -1;
 let memoryWordTimer = null;
 let memoryLocked = false;
-let memorySlips = 0;
+let memoryKnownSlips = 0;
+let memoryGambles = 0;
 let memoryFailStreak = 0;
 let memoryMatchedPairs = 0;
 let memoryTimer = null;
@@ -437,13 +442,13 @@ function clearMemoryTimers() {
 // it off, and is never dropped for being the same word: "cat … cat" is the
 // match, and she should hear both halves of it. The first card of a turn
 // replaces whatever was being said (the intro, a cheer) — her tap wins.
-function flipMemoryUp(card, isSecond, silent) {
+function flipMemoryUp(card, isSecond) {
   card.faceUp = true;
   card.el.classList.remove('is-fresh');
   card.el.classList.add('is-flipped');
   card.el.setAttribute('aria-label', card.name + ', face up');
   // Say what was revealed so the child sees it and hears it named.
-  if (session.isSessionEnded() || silent) return null;
+  if (session.isSessionEnded()) return null;
   return speakText(card.name, { rate: 0.9, queue: isSecond });
 }
 
@@ -463,7 +468,8 @@ function buildMemoryBoard() {
   clearMemoryTimers();
   memoryFirstIdx = -1;
   memoryLocked = false;
-  memorySlips = 0;
+  memoryKnownSlips = 0;
+  memoryGambles = 0;
   memoryMatchedPairs = 0;
 
   const level = MEMORY_LEVELS[memoryLevelIdx];
@@ -550,7 +556,7 @@ function onMemoryCardTap(index) {
   if (outcome === 'match') {
     resolveMemoryMatch(first, card, spoken);
   } else {
-    resolveMemoryMismatch(first, card, outcome === 'slip');
+    resolveMemoryMismatch(first, card, outcome);
   }
 }
 
@@ -614,83 +620,62 @@ function resolveMemoryMatch(a, b, spoken) {
   });
 }
 
-function resolveMemoryMismatch(a, b, slip) {
+// `kind` is classifyMemoryTurn's verdict: 'honest', 'gamble' or 'known'.
+function resolveMemoryMismatch(a, b, kind) {
   memoryLocked = true;
 
-  if (slip) {
-    memorySlips += 1;
+  if (kind === 'known') memoryKnownSlips += 1;
+  if (kind === 'gamble') memoryGambles += 1;
+  // How loudly this miss is answered:
+  //   'x'    - a known slip: the big red X and the buzzer, the wrong-answer
+  //            feedback every game uses. She knew that card wasn't it.
+  //   'buzz' - a gamble past the first: the buzzer and a small shake.
+  //   'soft' - an honest miss, or the first gamble on the board, let go:
+  //            just the soft "your turn again" tone.
+  const feedback = kind === 'known' ? 'x'
+    : kind === 'gamble' && memoryGambleCounts(memoryGambles) ? 'buzz'
+    : 'soft';
+
+  if (feedback !== 'soft') {
     session.mutateStats(function(stats) {
       stats.usedMemory = true;
       stats.memoryUnforced += 1;
       pushUniqueStruggle(stats.struggled, b.key);
     });
   }
-  const failed = memoryBoardFailed(memorySlips);
 
-  // Hold both faces up long enough to see and hear them, then react. An honest
-  // miss gets the soft tone. The first slip gets the buzzer and a small shake
-  // (no big X): a warning. The second ends the board.
+  // Hold both faces up long enough to see and hear them, then react and turn
+  // them back. Nothing here ever ends the board.
   memoryTimer = window.setTimeout(function() {
     memoryTimer = null;
-    if (failed) {
-      failMemoryBoard(a, b);
-      return;
-    }
-    if (slip) {
+    if (feedback === 'soft') {
+      audio.playSoftTone();
+    } else {
+      if (feedback === 'x') thumbsDown.show();
       audio.playBuzzer();
       shakeMemoryCard(a);
       shakeMemoryCard(b);
-    } else {
-      audio.playSoftTone();
     }
     memoryTimer = window.setTimeout(function() {
       memoryTimer = null;
       flipMemoryDown(a);
       flipMemoryDown(b);
       memoryLocked = false;
-    }, slip ? 520 : 280);
+    }, feedback === 'soft' ? 280 : 620);
   }, 1500);
 }
 
-// A second slip: this is an answer she gave knowing better, so it gets the big
-// red X and the buzzer like any wrong answer. Then every card turns over to show
-// where they all were, and a new board is dealt — the same size, or one smaller
-// after two failed boards in a row.
-function failMemoryBoard(a, b) {
-  thumbsDown.show();
-  audio.playBuzzer();
-  shakeMemoryCard(a);
-  shakeMemoryCard(b);
-  session.mutateStats(function(stats) {
-    stats.usedMemory = true;
-    stats.memoryBoardsFailed += 1;
-  });
-  const next = nextMemoryLevel(memoryLevelIdx, 'failed', memoryFailStreak, MEMORY_LEVELS.length);
-  memoryLevelIdx = next.level;
-  memoryFailStreak = next.failStreak;
-  saveMemoryLevel();
-
-  memoryTimer = window.setTimeout(function() {
-    memoryTimer = null;
-    memoryCards.forEach(function(card) {
-      if (!card.matched && !card.faceUp) flipMemoryUp(card, false, true);
-    });
-    memoryTimer = window.setTimeout(function() {
-      memoryTimer = null;
-      if (memoryActive && !session.isSessionEnded()) buildMemoryBoard();
-    }, 2200);
-  }, 900);
-}
-
 function completeMemoryLevel() {
-  // Only a board with no slip moves her up; one slip keeps her on this size
-  // (see nextMemoryLevel). Either way she finished it, and that's celebrated.
-  const next = nextMemoryLevel(memoryLevelIdx, memorySlips === 0 ? 'clean' : 'slipped',
-    memoryFailStreak, MEMORY_LEVELS.length);
+  // How the board went decides the next one's size (see memoryBoardOutcome
+  // and nextMemoryLevel): only a clean board moves her up. Whatever happened,
+  // she finished it, and that's celebrated the same.
+  const outcome = memoryBoardOutcome(memoryKnownSlips, memoryGambles);
+  const next = nextMemoryLevel(memoryLevelIdx, outcome, memoryFailStreak, MEMORY_LEVELS.length);
 
   session.mutateStats(function(stats) {
     stats.usedMemory = true;
     stats.memoryLevelsCleared += 1;
+    if (outcome === 'failed') stats.memoryBoardsFailed += 1;
   });
 
   // Warm and simple - she lights up at "Hooray, you did it!", so lean on the

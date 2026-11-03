@@ -15,31 +15,47 @@ test('two new cards that do not match are honest exploring', () => {
   assert.strictEqual(mem.classifyMemoryTurn(card('cat'), card('dog')), 'honest');
 });
 
-test('turning a card she has already seen, that is not the match, is a slip', () => {
-  assert.strictEqual(mem.classifyMemoryTurn(card('cat'), card('dog', true)), 'slip');
-  assert.strictEqual(mem.classifyMemoryTurn(card('cat', true), card('dog', true)), 'slip');
+test('a seen second card that is not the match is the worse kind: known', () => {
+  assert.strictEqual(mem.classifyMemoryTurn(card('cat'), card('dog', true)), 'known');
+  assert.strictEqual(mem.classifyMemoryTurn(card('cat', true), card('dog', true)), 'known',
+    'seen then seen is the worse kind, not a gamble');
 });
 
-test('going back to a seen card and gambling on a new one is a slip', () => {
-  assert.strictEqual(mem.classifyMemoryTurn(card('cat', true), card('dog')), 'slip');
+test('going back to a seen card and gambling on a new one is the milder kind: gamble', () => {
+  assert.strictEqual(mem.classifyMemoryTurn(card('cat', true), card('dog')), 'gamble');
+});
+
+test('the first gamble on a board is let go; later ones count', () => {
+  assert.strictEqual(mem.memoryGambleCounts(1), false);
+  assert.strictEqual(mem.memoryGambleCounts(2), true);
+  assert.strictEqual(mem.memoryGambleCounts(3), true);
 });
 
 // The example from the spec: six cards; 1&2, then 1&3, then 1&4.
-test('1 & 2, then 1 & 3, then 1 & 4: the third turn fails the board', () => {
+test('1 & 2, then 1 & 3, then 1 & 4: two gambles, the second one counts', () => {
   const board = [card('a'), card('b'), card('c'), card('d'), card('a'), card('b')];
-  let slips = 0;
+  let gambles = 0;
   function turn(i, j) {
     const outcome = mem.classifyMemoryTurn(board[i], board[j]);
     board[i].seen = true;
     board[j].seen = true;
-    if (outcome === 'slip') slips++;
+    if (outcome === 'gamble') gambles++;
     return outcome;
   }
   assert.strictEqual(turn(0, 1), 'honest');
-  assert.strictEqual(turn(0, 2), 'slip');
-  assert.strictEqual(mem.memoryBoardFailed(slips), false, 'one slip is let go');
-  assert.strictEqual(turn(0, 3), 'slip');
-  assert.strictEqual(mem.memoryBoardFailed(slips), true);
+  assert.strictEqual(turn(0, 2), 'gamble');
+  assert.strictEqual(mem.memoryBoardOutcome(0, gambles), 'clean', 'one gamble is let go');
+  assert.strictEqual(turn(0, 3), 'gamble');
+  assert.strictEqual(mem.memoryBoardOutcome(0, gambles), 'slipped');
+});
+
+test('a single known slip is never let go: the board counts as failed', () => {
+  assert.strictEqual(mem.memoryBoardOutcome(0, 0), 'clean');
+  assert.strictEqual(mem.memoryBoardOutcome(0, 1), 'clean');
+  assert.strictEqual(mem.memoryBoardOutcome(0, 2), 'slipped');
+  assert.strictEqual(mem.memoryBoardOutcome(0, 3), 'failed');
+  assert.strictEqual(mem.memoryBoardOutcome(1, 0), 'failed');
+  assert.strictEqual(mem.memoryBoardOutcome(1, 1), 'failed');
 });
 
 test('only a clean board moves her up a size', () => {
