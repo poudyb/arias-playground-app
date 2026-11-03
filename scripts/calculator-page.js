@@ -5,7 +5,7 @@
 //               first, a minus that goes to zero or below, a second operator,
 //               equals again) is greyed out and does nothing. See
 //               shared/calc-logic.js. There is no 0 and no C.
-//   Make It   — a number to make ("Make 7!") and the calculator to make it
+//   Quiz      — a number to make ("Make 7!") and the calculator to make it
 //               with. Pressing = is her answer. Climbs a ladder (MAKE_RUNGS).
 //
 // Beside the calculator, every number she types is drawn as dots: orange for
@@ -16,8 +16,8 @@
 
 const CALC_SESSION_KEY = 'ariaCalcSession';
 const CALC_STATS_KEY = 'ariaCalcStats';
-const CALC_MODES = ['play', 'make'];
-const MAKE_STATE_KEY = CALC_SESSION_KEY + ':make';
+const CALC_MODES = ['freeplay', 'quiz'];
+const MAKE_STATE_KEY = CALC_SESSION_KEY + ':quiz';
 // How many different Free Play sums the parent summary keeps.
 const PLAY_SEEN_CAP = 12;
 const CONFETTI_HEX = ['#ff8f3a', '#3a8dff', '#ffd54f', '#66bb6a', '#ba68c8', '#4dd0e1'];
@@ -33,7 +33,7 @@ const GATHER_STAGGER_MS = 22;
 const ANSWER_REST_MS = 350;
 const ANSWER_HOLD_MAX_MS = 4500;
 
-// Where Make It sits on its ladder: three clean rounds climb a rung, two with
+// Where Quiz sits on its ladder: three clean rounds climb a rung, two with
 // a miss drop one, a round she only got after the hint passes through. Read
 // only when a round starts, never shown to her.
 const makeLadder = createLadderProgression({
@@ -240,7 +240,7 @@ function buildCalculator(options) {
 // ---- The dots --------------------------------------------------------------
 //
 // Two trays side by side while she types (first number, sign, second number),
-// and an answer tray they all gather into on =. In Make It the answer tray is
+// and an answer tray they all gather into on =. In Quiz the answer tray is
 // there from the start as a row of empty rings, one per dot the number needs,
 // and the dots drop into them.
 
@@ -500,7 +500,7 @@ function buildStage(modClass) {
 
 // ---- Free Play ---------------------------------------------------------------
 
-function enterPlay() {
+function enterFreeplay() {
   const ui = buildStage('calc-stage--play');
   const board = buildDotsBoard({ onCount: function() { countAloud(board); } });
   ui.side.appendChild(board.el);
@@ -560,9 +560,9 @@ function enterPlay() {
   };
 }
 
-// ---- Make It -------------------------------------------------------------------
+// ---- Quiz ----------------------------------------------------------------------
 
-function enterMake() {
+function enterQuiz() {
   const ui = buildStage('calc-stage--make');
 
   const goal = document.createElement('div');
@@ -618,7 +618,7 @@ function enterMake() {
   // better first number if hers can't get there. Never while an answer is
   // being shown.
   const hint = createHintNudge({
-    isActive: function() { return currentMode === 'make' && !session.isSessionEnded(); },
+    isActive: function() { return currentMode === 'quiz' && !session.isSessionEnded(); },
     onFlash: function() {
       if (!round || calc.isLocked()) return;
       const key = hintKeyFor(calc.getState(), round.target, rules);
@@ -689,7 +689,7 @@ function enterMake() {
   function onRight() {
     hint.stop();
     saveRoundState(MAKE_STATE_KEY, null);
-    session.mutateStats(function(stats) { stats.makeCorrect += 1; });
+    session.mutateStats(function(stats) { stats.quizCorrect += 1; });
     makeLadder.recordRound(roundMissed ? 'missed' : roundHinted ? 'assisted' : 'clean');
     // A right answer straight after a wrong one mustn't celebrate under the X.
     thumbsDown.hide();
@@ -715,8 +715,8 @@ function enterMake() {
   function onWrong() {
     roundMissed = true;
     session.mutateStats(function(stats) {
-      stats.makeWrong += 1;
-      pushUniqueStruggle(stats.makeStruggled, round.target);
+      stats.quizWrong += 1;
+      pushUniqueStruggle(stats.quizStruggled, round.target);
     });
     thumbsDown.show();
     audio.playBuzzer();
@@ -754,7 +754,7 @@ function enterMake() {
 // ---- Summary, modes, page ------------------------------------------------------
 
 function renderSummary(boardEl, stats) {
-  if (stats.usedPlay) {
+  if (stats.usedFreeplay) {
     const body = createIntroBody(stats.playSums > 0
       ? 'You did ' + stats.playSums + ' ' + (stats.playSums === 1 ? 'sum' : 'sums') + ' on the calculator!'
       : 'You opened Free Play - press a number, plus or minus, and another number next time!');
@@ -765,18 +765,18 @@ function renderSummary(boardEl, stats) {
     appendScoreSection(boardEl, { modClass: 'score-section--free', icon: '🧮', title: 'Free Play', body: body });
   }
 
-  if (stats.usedMake) {
-    const intro = stats.makeCorrect === 0 && stats.makeWrong === 0
-      ? 'You opened Make It - make the number with the calculator next time!'
-      : 'Make It: ' + stats.makeCorrect + ' made' + (stats.makeWrong ? ', ' + stats.makeWrong + ' oops' : '') + '.';
+  if (stats.usedQuiz) {
+    const intro = stats.quizCorrect === 0 && stats.quizWrong === 0
+      ? 'You opened Quiz - make the number with the calculator next time!'
+      : 'Quiz: ' + stats.quizCorrect + ' made' + (stats.quizWrong ? ', ' + stats.quizWrong + ' oops' : '') + '.';
     const body = createIntroBody(intro);
     // Where she is on the ladder, in words: the only place it is ever said.
     appendBodyNote(body, makeRung(makeLadder.getRung()).note);
-    if (stats.makeStruggled.length > 0) {
-      appendBodyNote(body, stats.makeCorrect > 0 ? 'These took another try:' : 'These were tricky:').style.fontWeight = '600';
-      body.appendChild(createPillWrap(stats.makeStruggled, function(pill, n) { pill.textContent = String(n); }));
+    if (stats.quizStruggled.length > 0) {
+      appendBodyNote(body, stats.quizCorrect > 0 ? 'These took another try:' : 'These were tricky:').style.fontWeight = '600';
+      body.appendChild(createPillWrap(stats.quizStruggled, function(pill, n) { pill.textContent = String(n); }));
     }
-    appendScoreSection(boardEl, { modClass: 'score-section--quiz', icon: '🎯', title: 'Make It', body: body });
+    appendScoreSection(boardEl, { modClass: 'score-section--quiz', icon: '🎯', title: 'Quiz', body: body });
   }
 
   cancelSpeech();
@@ -800,7 +800,7 @@ const session = createTimedSession({
 
 function setMode(name) {
   if (session.isSessionEnded()) return;
-  if (CALC_MODES.indexOf(name) === -1) name = 'play';
+  if (CALC_MODES.indexOf(name) === -1) name = 'freeplay';
   if (currentMode === name && activeMode != null) return;
   currentMode = name;
   rememberSessionMode(CALC_SESSION_KEY, currentMode);
@@ -815,11 +815,11 @@ function setMode(name) {
   thumbsDown.hide();
 
   session.mutateStats(function(stats) {
-    if (name === 'play') stats.usedPlay = true;
-    else if (name === 'make') stats.usedMake = true;
+    if (name === 'freeplay') stats.usedFreeplay = true;
+    else if (name === 'quiz') stats.usedQuiz = true;
   });
 
-  activeMode = name === 'make' ? enterMake() : enterPlay();
+  activeMode = name === 'quiz' ? enterQuiz() : enterFreeplay();
 }
 
 document.querySelectorAll('.mode-btn').forEach(function(btn) {
@@ -847,10 +847,10 @@ document.addEventListener('keydown', function(ev) {
 initGamePage({
   session: session,
   stop: stopCalcGame,
-  start: function() { setMode(readSessionMode(CALC_SESSION_KEY, 'play')); },
+  start: function() { setMode(readSessionMode(CALC_SESSION_KEY, 'freeplay')); },
   onResume: function() {
     stopCalcGame();
-    const mode = currentMode || 'play';
+    const mode = currentMode || 'freeplay';
     currentMode = null;
     setMode(mode);
   }

@@ -120,7 +120,7 @@ function equationWords(s) {
   return parts.join(' ');
 }
 
-// ---- Make It ---------------------------------------------------------------
+// ---- Quiz ---------------------------------------------------------------
 //
 // A number to make, and the calculator to make it with: "Make 7!" — 3 + 4, or
 // 9 - 2, or any other way she finds. The finished sum is her answer, so a wrong

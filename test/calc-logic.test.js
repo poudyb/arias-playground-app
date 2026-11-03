@@ -96,7 +96,7 @@ test('equationText and equationWords read the sum the way it is typed', () => {
   assert.strictEqual(calc.equationWords(pressAll(['9', '+', '9', '='])), 'nine plus nine equals eighteen');
 });
 
-test('Make It only turns on the rung\'s operators, and no number is a dead end', () => {
+test('Quiz only turns on the rung\'s operators, and no number is a dead end', () => {
   const rules = calc.makeRules(calc.makeRung(0));
   assert.deepStrictEqual(enabledKeys(pressAll(['4'], rules), rules), ['+']);
   const minus = calc.makeRules(calc.makeRung(2));
@@ -106,7 +106,7 @@ test('Make It only turns on the rung\'s operators, and no number is a dead end',
   assert.deepStrictEqual(enabledKeys(pressAll(['4', '-'], minus), minus), ['1', '2', '3']);
 });
 
-test('every number on every Make It rung can be made with the keys that rung leaves on', () => {
+test('every number on every Quiz rung can be made with the keys that rung leaves on', () => {
   calc.MAKE_RUNGS.forEach((rung, i) => {
     const rules = calc.makeRules(rung);
     for (let t = rung.min; t <= rung.max; t++) {

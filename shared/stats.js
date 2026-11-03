@@ -126,11 +126,11 @@ function createCalcStats() {
   return {
     playSums: 0,
     playSeen: [],
-    makeCorrect: 0,
-    makeWrong: 0,
-    makeStruggled: [],
-    usedPlay: false,
-    usedMake: false
+    quizCorrect: 0,
+    quizWrong: 0,
+    quizStruggled: [],
+    usedFreeplay: false,
+    usedQuiz: false
   };
 }
 
