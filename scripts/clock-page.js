@@ -226,13 +226,7 @@ function renderClockTime(face, h, m, s, opts) {
   }
 }
 
-// The running clock's color drifts through the spectrum over ten minutes. Match
-// mode reads the same hue so a correctly-placed segment can wear the exact
-// color the clock above is wearing at that moment.
-function ledHueFor(h, m, s, msFraction) {
-  const elapsed = h * 3600 + m * 60 + s + (msFraction || 0);
-  return (elapsed * 360 / 600) % 360;
-}
+// ledHueFor (the running clock's drifting colour) lives in shared/clock-logic.js.
 
 // How far into the shared one-second beat everything currently is. Both
 // moving marks on the Match board run to it — the red swap and the yellow

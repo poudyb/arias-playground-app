@@ -275,3 +275,18 @@ test('the Quiz and Next ladders start easiest and each have a note for every run
 test('Next can say its 3:60 decoy aloud', () => {
   assert.strictEqual(clock.timeToWords(3, 60), 'three sixty');
 });
+
+// Red means "wrong line" on the Match board, and a wrong line swaps between the
+// clock's colour and red, so the clock's colour must never be red itself.
+test('the running clock\'s colour never passes through red, and never jumps', () => {
+  let prev = null;
+  for (let t = 0; t < 12 * 3600; t += 0.5) {
+    const h = Math.floor(t / 3600) + 1, m = Math.floor(t / 60) % 60, s = Math.floor(t) % 60;
+    const hue = clock.ledHueFor(h, m, s, t % 1);
+    assert.ok(hue >= clock.LED_HUE_LOW && hue <= clock.LED_HUE_HIGH, 'hue ' + hue + ' at ' + t);
+    // Red sits around 0 / 360 (hsl) and 20-30 (oklch); the band stays well clear.
+    assert.ok(hue > 50 && hue < 330, 'hue ' + hue + ' is near red');
+    if (prev != null && t % 3600 !== 0) assert.ok(Math.abs(hue - prev) < 1, 'jumped from ' + prev + ' to ' + hue);
+    prev = hue;
+  }
+});

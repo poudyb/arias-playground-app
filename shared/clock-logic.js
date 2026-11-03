@@ -359,6 +359,26 @@ function clampRungOf(rungs, level) {
   return rungs[i];
 }
 
+// The running clock's colour drifts slowly while it runs, and Match reads the
+// same hue so every line she lights wears the colour the clock above is wearing
+// at that moment.
+//
+// It sweeps from orange round through green, blue and violet and back again,
+// once each way every ten minutes, rather than all the way round the wheel —
+// so it never passes through red. Red is kept for one thing on the Match board:
+// a wrong line, which swaps between the clock's colour and red. While the clock
+// itself was red, that swap would have shown nothing at all.
+const LED_HUE_LOW = 65;
+const LED_HUE_HIGH = 315;
+const LED_HUE_SWEEP_SECONDS = 300;
+
+function ledHueFor(h, m, s, msFraction) {
+  const elapsed = h * 3600 + m * 60 + s + (msFraction || 0);
+  const phase = (elapsed % (2 * LED_HUE_SWEEP_SECONDS)) / LED_HUE_SWEEP_SECONDS; // 0..2
+  const t = phase <= 1 ? phase : 2 - phase;                                     // 0..1..0
+  return LED_HUE_LOW + t * (LED_HUE_HIGH - LED_HUE_LOW);
+}
+
 // Exported for Node's test runner; ignored in the browser (no `module`).
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -387,6 +407,9 @@ if (typeof module !== 'undefined' && module.exports) {
     quizRound,
     NEXT_RUNGS,
     nextRung,
-    nextRound
+    nextRound,
+    ledHueFor,
+    LED_HUE_LOW,
+    LED_HUE_HIGH
   };
 }
