@@ -27,6 +27,11 @@ const CONFETTI_HEX = ['#ff8f3a', '#3a8dff', '#ffd54f', '#66bb6a', '#ba68c8', '#4
 const LEAVE_MS = 450;
 const GATHER_MS = 520;
 const GATHER_STAGGER_MS = 22;
+// Free Play holds the keys after = until the answer has landed and been said,
+// then a short rest before the next sum can start; never longer than the
+// maximum, in case the speech doesn't report back.
+const ANSWER_REST_MS = 350;
+const ANSWER_HOLD_MAX_MS = 4500;
 
 // Where Make It sits on its ladder: three clean rounds climb a rung, two with
 // a miss drop one, a round she only got after the hint passes through. Read
@@ -94,6 +99,16 @@ function speakKey(key, next) {
   const word = KEY_NAMES[key] || CALC_NUMBER_WORDS[Number(key)];
   const startsSum = next && calcPhase(next) === 'first';
   if (word) speakText(word, { rate: 0.9, queue: !startsSum });
+}
+
+// Run `go` once `utterance` has finished being said (or at once if nothing was
+// said). The caller keeps its own fallback timer.
+function whenSpoken(utterance, go) {
+  if (!utterance) { go(); return; }
+  let done = false;
+  function once() { if (!done) { done = true; go(); } }
+  utterance.addEventListener('end', once);
+  utterance.addEventListener('error', once);
 }
 
 // ---- The calculator --------------------------------------------------------
@@ -500,15 +515,45 @@ function enterPlay() {
         stats.playSums += 1;
         if (stats.playSeen.length < PLAY_SEEN_CAP) pushUniqueStruggle(stats.playSeen, equationText(next));
       });
-      speakText('equals ' + CALC_NUMBER_WORDS[next.result], { rate: 0.9, queue: true });
-      board.resolve(function() { audio.playChime(); });
+      // The answer is the reward, so it gets seen and heard in full: every key
+      // stays grey until the dots have landed and "equals seven" has been said.
+      // Tapping on quickly used to start the next sum straight away and cut
+      // both off.
+      calc.setLocked(true);
+      const spoken = speakText('equals ' + CALC_NUMBER_WORDS[next.result], { rate: 0.9, queue: true });
+      let landed = false;
+      let said = false;
+      function unlockWhenDone() {
+        if (!landed || !said || answerHold == null) return;
+        clearTimeout(answerHold);
+        answerHold = window.setTimeout(function() {
+          answerHold = null;
+          calc.setLocked(false);
+        }, ANSWER_REST_MS);
+      }
+      // A fallback in case the speech never reports back (no voice, muted,
+      // dropped): the keys always come back.
+      answerHold = window.setTimeout(function() {
+        landed = true;
+        said = true;
+        unlockWhenDone();
+      }, ANSWER_HOLD_MAX_MS);
+      whenSpoken(spoken, function() { said = true; unlockWhenDone(); });
+      board.resolve(function() {
+        audio.playChime();
+        landed = true;
+        unlockWhenDone();
+      });
     }
   });
   ui.stage.appendChild(calc.el);
+  let answerHold = null;
 
   return {
     calc: calc,
     teardown: function() {
+      clearTimeout(answerHold);
+      answerHold = null;
       board.cancel();
       cancelSpeech();
     }
