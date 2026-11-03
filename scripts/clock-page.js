@@ -623,7 +623,7 @@ function enterMatch() {
   }
 
   // Grade every lit segment against the clock above, one line at a time: on a
-  // board whose marks are on, a line that belongs goes green so she can see
+  // board whose marks are on, a line that belongs goes blue so she can see
   // each stroke land instead of waiting for the whole digit to be right. A line
   // that doesn't belong turns pulsing red — it has to shout as loudly as the
   // correct ones do, or a stray stroke leaves the clock looking right while
@@ -662,7 +662,7 @@ function enterMatch() {
         segs[i].classList.toggle('seg-wrong', wrong);
       }
       // A digit with every line right glows a little brighter than a lone
-      // green line, so a finished digit is something worth keeping. Only the
+      // blue line, so a finished digit is something worth keeping. Only the
       // CSS for a board whose marks are on lets it show.
       manualFace._slots[pos].classList.toggle('digit-done', setsEqual(manualState[pos], target));
     });
@@ -766,7 +766,7 @@ function enterMatch() {
     const digitWasRight = setsEqual(set, target);
     if (mistaken && rung.marks === 'steady') {
       // On a board whose marks are on, a tap that goes the wrong way — most
-      // often taking away a green line along with the red ones — gets a small
+      // often taking away a blue line along with the red ones — gets a small
       // shake of that digit and the soft "uh-oh", the way a wrong letter does
       // in Spell It. It's a step she's still working on, not an answer, so no
       // big X. Only where the marks are on: anywhere else the sound would hand
@@ -790,7 +790,7 @@ function enterMatch() {
     if (rung.marks === 'steady' && !isMatching && !digitWasRight && setsEqual(set, target)) {
       celebrateDigit(pos);
     }
-    // A line she's just put in the right place pops as it goes green. Only
+    // A line she's just put in the right place pops as it goes blue. Only
     // the CSS for a board whose marks are on lets it show. The delay that kept
     // its yellow breathing on the shared beat has to go first, or the pop would
     // start already over.
@@ -873,7 +873,7 @@ function enterMatch() {
   });
 
   // Take the pop and the shake off once they've played, or the pop would play
-  // again the next time that segment turned green without being tapped — a
+  // again the next time that segment turned blue without being tapped — a
   // fresh board filling in.
   manualFace.addEventListener('animationend', function(ev) {
     if (ev.animationName === 'seg-placed-pop') ev.target.classList.remove('seg-placed');

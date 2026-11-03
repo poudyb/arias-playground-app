@@ -227,11 +227,15 @@ body {
   .clock-face--option .clock-digit-svg .seg.on {
     filter: drop-shadow(0 0 2px #80deea);
   }
+  /* A lit line on her clock that nothing has judged — on the rungs whose marks
+     are hidden, every line she lights — is a plain soft white. It used to be a
+     pale cyan, and with blue now the colour of "right", a cyan line would have
+     hinted "right" about lines that may well be wrong. White says only "lit". */
 .clock-face--manual .clock-digit-svg {
-    --led-color: #b2ebf2;
+    --led-color: #eceff1;
   }
 .clock-face--manual .clock-digit-svg .seg.on {
-    filter: drop-shadow(0 0 2px #b2ebf2);
+    filter: drop-shadow(0 0 2px #eceff1);
   }
 .match-stack {
     display: flex;
@@ -243,9 +247,11 @@ body {
     margin-inline: 0;
   }
 .clock-face--manual {
-    /* The happy state: a matched clock goes all one bright blue. */
-    --led-match-color: #4fc3f7;
-    --seg-right-color: #00e676;
+    /* Blue is the one colour that means "right" on her clock: a line in the
+       right place, and the whole clock once it matches. A matched clock is
+       told apart by how much it glows, not by a different colour. */
+    --seg-right-color: #4fc3f7;
+    --led-match-color: var(--seg-right-color);
     --seg-missing-color: #ffd600;
   }
   /* A matched clock glows: the whole face lit blue from inside and out, and
@@ -284,11 +290,14 @@ body {
     box-shadow: 0 0 6px var(--led-match-color), 0 0 14px var(--led-match-color);
     opacity: 1;
   }
-/* A line in the right place goes green: keep this one. It used to wear the
+/* A line in the right place goes blue: keep this one. It used to wear the
      colour the clock above was wearing, which only says "right" to someone who
      already knows the rule — to her it was just one more colour on a board of
      several, and with nothing marking it as a line to keep she took those away
-     along with the red. Green against red is the pair she already knows.
+     along with the red. Then it was green, which meant there were two colours
+     for "right": green for a line and blue for the whole clock. Now it's the
+     same blue the finished clock turns, so every right line is a piece of the
+     finished clock already.
 
      That is a mark like any other, so it belongs to the rung too: on a nudging
      or silent board it stays the plain unjudged colour, or the board would go
@@ -300,25 +309,24 @@ body {
       drop-shadow(0 0 3px var(--seg-right-color))
       drop-shadow(0 0 8px var(--seg-right-color));
   }
-  /* A finished board turns bright blue, every digit, on every rung, with the
-     face glowing the same blue around it (above). It used to turn the colour
-     the clock above happened to be wearing, which was a quiet change easily
-     missed, and on some hues barely different from the green. The higher the
-     rung, the more this is the ONLY thing that says she's right, since it
-     arrives all at once instead of leading her there one line at a time. Comes
-     after the green above so it wins. */
+  /* A finished board is all blue, every digit, on every rung, glowing brighter
+     than any single right line, with the whole face glowing and breathing
+     around it (above). On a marked board the lines were blue already, so what
+     arrives is the glow; on the higher rungs, where her lines are plain white,
+     the blue arrives all at once and is the ONLY thing that says she's right.
+     Comes after the line rule above so it wins. */
 .clock-face--manual.matching .clock-digit-svg .seg.on.seg-right {
     fill: var(--led-match-color);
     filter:
-      drop-shadow(0 0 4px var(--led-match-color))
-      drop-shadow(0 0 12px var(--led-match-color));
+      drop-shadow(0 0 5px var(--led-match-color))
+      drop-shadow(0 0 16px var(--led-match-color));
   }
-  /* A digit with every line right: the same green with a bright rim and a
+  /* A digit with every line right: the same blue with a bright rim and a
      stronger glow, so a finished digit is the thing on the board most worth
      having. Taking a line from it puts the rim out again. Not on a finished
-     board, where the clock's own colour takes over. */
+     board, where the whole clock's glow takes over. */
 .clock-face--manual.marks-steady:not(.matching) .clock-digit-svg.digit-done .seg.on.seg-right {
-    stroke: #d6ffe6;
+    stroke: #e1f5fe;
     stroke-width: 1;
     filter:
       drop-shadow(0 0 4px var(--seg-right-color))
@@ -399,7 +407,7 @@ body {
     20%, 70% { opacity: 1; }
   }
   /* A line she put in the right place by tapping it pops once as it goes
-     green, so the tap itself is answered and not just the colour. */
+     blue, so the tap itself is answered and not just the colour. */
 .clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-right.seg-placed {
     animation: seg-placed-pop 0.35s ease-out;
   }
@@ -440,14 +448,14 @@ body {
      did exactly that and thought she was done.
 
      So it's yellow, a colour of its own between the red that says "take this
-     away" and the green that says "keep it", and it breathes in and out on the
+     away" and the blue that says "keep it", and it breathes in and out on the
      red's beat, so a board with any of these on it never sits still the way a
      finished one does, however tidy the shape they make.
 
      It used to do more: glow, and have its dashes crawl round the outline.
      That made the outlines the liveliest thing on the board, livelier than the
-     green lines she should be keeping, and she went on clearing lines to make
-     more of them. Now it's a quiet, unlit outline, and the green lines and the
+     blue lines she should be keeping, and she went on clearing lines to make
+     more of them. Now it's a quiet, unlit outline, and the blue lines and the
      finished digits (.digit-done) are what shine. */
 .clock-face--manual.marks-steady .clock-digit-svg .seg.seg-missing,
   .clock-face--manual.marks-nudge .clock-digit-svg .seg.seg-missing.seg-nudging {
@@ -469,18 +477,15 @@ body {
       drop-shadow(0 0 3px rgba(255, 23, 68, 0.85))
       drop-shadow(0 0 8px rgba(213, 0, 0, 0.6));
   }
-  /* On a steady board a wrong line swaps between red and the green of the lines
-     around it, never dimming. It used to pulse between red and a faded red,
-     and at the faded end it looked like it was going away by itself — "is that
-     even there?" — when the whole point is that it IS there and shouldn't be.
-     Half the time it looks just like the other lines she has lit, half the time
-     it's red: a real line, in the wrong place.
-
-     The lit half is the same green on purpose, not a colour of its own. A pale
-     blue was tried and only added a fourth colour to a board that already has
-     green, red and yellow, and one close to the bright blue a matched clock
-     turns. Same one-second beat as the yellow outlines (markBeatOffset keeps
-     them in step). */
+  /* On a steady board a wrong line swaps between red and the blue of the right
+     lines around it, never dimming. It used to pulse between red and a faded
+     red, and at the faded end it looked like it was going away by itself —
+     "is that even there?" — when the whole point is that it IS there and
+     shouldn't be. Half the time it looks just like the other lines she has lit,
+     half the time it's red: a real line, in the wrong place. Only the board's
+     own colours, never one of its own: blue, red, and the yellow outlines.
+     Same one-second beat as those outlines (markBeatOffset keeps them in
+     step). */
 .clock-face--manual.marks-steady .clock-digit-svg .seg.on.seg-wrong {
     animation: seg-wrong-swap 1s ease-in-out infinite;
   }
