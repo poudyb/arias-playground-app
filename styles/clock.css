@@ -292,16 +292,20 @@ body {
       drop-shadow(0 0 5px var(--led-match-color))
       drop-shadow(0 0 16px var(--led-match-color));
   }
-  /* A digit with every line right: a bright white rim and a stronger glow in
-     its own colour, so a finished digit is the thing on the board most worth
-     having. Taking a line from it puts the rim out again. Not on a finished
-     board, where the whole clock's blue takes over. */
-.clock-face--manual.marks-steady:not(.matching) .clock-digit-svg.digit-done .seg.on.seg-right {
-    stroke: #ffffff;
+  /* A digit with every line right turns the glowing blue a finished clock
+     turns, with a bright rim, on every rung — the same "complete" colour,
+     because a finished digit is a piece of the finished clock. It's what makes
+     a finished digit the thing on the board most worth having, and it stays as
+     long as the digit is right; taking a line from it puts it back to the
+     clock's colour. (With only a thin white rim in the clock's own colour, a
+     finished digit looked like all the rest.) */
+.clock-face--manual:not(.matching) .clock-digit-svg.digit-done .seg.on {
+    fill: var(--led-match-color);
+    stroke: #e1f5fe;
     stroke-width: 1;
     filter:
-      drop-shadow(0 0 4px var(--led-color))
-      drop-shadow(0 0 10px var(--led-color));
+      drop-shadow(0 0 4px var(--led-match-color))
+      drop-shadow(0 0 10px var(--led-match-color));
   }
   /* The star that pops up over a digit her tap has just finished (see
      celebrateDigit). Placed by the script at the top centre of the digit. */
@@ -355,10 +359,9 @@ body {
         0 0 30px 6px rgba(255, 138, 76, 0.7);
     }
   }
-  /* Every tap on the board lights the matching digit on the clock above, so
-     she can see which one she's copying (see echoDigitAbove). A soft light
-     behind the digit as well as a brightening, so it shows even on a leading
-     hour digit with nothing lit. */
+  /* When the minute turns on a board she'd finished, the digits that changed on
+     the clock above give a gentle nod (see echoDigitAbove): a small swell, no
+     brightening and no light behind it, so it points without alarming. */
 .clock-face--real .clock-digit-svg {
     border-radius: 10px;
   }
@@ -366,12 +369,12 @@ body {
     animation: digit-echo 0.7s ease-out;
   }
 @keyframes digit-echo {
-    0%, 100% { transform: scale(1); filter: brightness(1); background: rgba(255, 255, 255, 0); }
-    35% { transform: scale(1.12); filter: brightness(1.7); background: rgba(255, 255, 255, 0.16); }
+    0%, 100% { transform: scale(1); }
+    40% { transform: scale(1.1); }
   }
 @keyframes digit-echo-still {
-    0%, 100% { filter: brightness(1); background: rgba(255, 255, 255, 0); }
-    35% { filter: brightness(1.7); background: rgba(255, 255, 255, 0.16); }
+    0%, 100% { opacity: 1; }
+    40% { opacity: 0.75; }
   }
 @keyframes digit-star-fade {
     0%, 100% { opacity: 0; }

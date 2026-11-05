@@ -724,18 +724,21 @@ function enterMatch() {
     restartAnimation(svg, 'digit-shake');
   }
 
-  // She was clearing the whole board without ever looking up: nothing tied the
-  // board to the clock above it, so taking lines away looked like the game.
-  // Every tap now lights the digit above that the one she touched is copying.
-  // On every rung and for every tap, right or wrong, so it never gives away
-  // whether the tap was right; it only says where to look.
+  // A gentle nod of a digit on the clock above, when the minute turns on a
+  // board she'd finished (carryBoard), to show which digit moved. It used to
+  // flash on every tap as well, brightening the digit above with a light behind
+  // it; in the clock's yellow it came out as a sharp flash on every right tap,
+  // which read to her (and to a grown-up) as "you did something wrong".
   function echoDigitAbove(pos) {
     restartAnimation(realFace._slots[pos], 'digit-echo');
   }
 
   // A digit her tap has just made right: a star over it and the chime, so a
   // finished digit is a prize in its own right and not just one step towards
-  // the board. Only where the marks are on, since it says the digit is right.
+  // the board. On every rung: it used to be only where the marks are on, so as
+  // she climbed the prize that kept her going quietly went away. It only ever
+  // says "this one's right", never which line is wrong, so it takes nothing
+  // away from what the higher rungs are for.
   function celebrateDigit(pos) {
     if (starredDigits.has(pos)) return;
     starredDigits.add(pos);
@@ -778,10 +781,9 @@ function enterMatch() {
     if (wasLit) set.delete(segName);
     else set.add(segName);
     setDigitState(manualFace._slots[pos], set);
-    echoDigitAbove(pos);
     evaluateMatch(true);
     // A tap that finishes the whole board gets the confetti instead.
-    if (rung.marks === 'steady' && !isMatching && !digitWasRight && setsEqual(set, target)) {
+    if (!isMatching && !digitWasRight && setsEqual(set, target)) {
       celebrateDigit(pos);
     }
     // A line she's just put in the right place pops as it goes blue. Only
