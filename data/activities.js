@@ -2,7 +2,7 @@ const ACTIVITIES = [
   {
     id: 'alphabets',
     href: 'alphabet.html',
-    title: 'Learn Alphabets',
+    title: 'Alphabet',
     hint: 'Letters A to Z!',
     tileClass: '',
     artClasses: 'game-tile__art game-tile__art--letters',
