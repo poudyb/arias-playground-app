@@ -27,19 +27,6 @@ const CONFETTI_HEX = ['#ff8f3a', '#3a8dff', '#ffd54f', '#66bb6a', '#ba68c8', '#4
 const LEAVE_MS = 450;
 const GATHER_MS = 520;
 const GATHER_STAGGER_MS = 22;
-
-// The glide's ease, cubic-bezier(0.3, 0.8, 0.3, 1): quick away, gentle landing.
-// The bezier's x(s) is solved for s by bisection, then y(s) is the progress.
-function gatherEase(t) {
-  function bez(p1, p2, s) { const r = 1 - s; return 3 * r * r * s * p1 + 3 * r * s * s * p2 + s * s * s; }
-  let lo = 0, hi = 1, s = t;
-  for (let i = 0; i < 20; i++) {
-    s = (lo + hi) / 2;
-    if (bez(0.3, 0.3, s) < t) lo = s; else hi = s;
-  }
-  return bez(0.8, 1, s);
-}
-
 // How long Quiz waits without a key press before the hint lights a key.
 const QUIZ_HINT_IDLE_MS = 12000;
 // Free Play holds the keys after = until the answer has landed and been said,
@@ -310,7 +297,16 @@ function buildDotsBoard(options) {
   el.appendChild(result);
 
   const timers = [];
-  let glideFrame = 0;
+  // The "count for me" run in progress, if any (see countForMe).
+  let autoRun = 0;
+
+  // Count for me: under the board, not on it, so a touch on the dots is always
+  // hers. The page puts it in place.
+  const countBtn = document.createElement('button');
+  countBtn.type = 'button';
+  countBtn.className = 'count-btn';
+  countBtn.setAttribute('aria-label', 'Count them for me');
+  countBtn.innerHTML = '<span aria-hidden="true">\ud83d\udd0a</span> 1 2 3';
   let rings = 0;
 
   function later(fn, ms) {
@@ -325,8 +321,7 @@ function buildDotsBoard(options) {
   function cancel() {
     timers.forEach(function(id) { clearTimeout(id); });
     timers.length = 0;
-    stopGlide();
-    toArray(result.querySelectorAll('.dot')).forEach(function(d) { d.style.transform = ''; });
+    stopAuto();
   }
 
   function makeDot(kind, i) {
@@ -371,6 +366,7 @@ function buildDotsBoard(options) {
     sign.textContent = '';
     result.classList.remove('is-full', 'is-short', 'is-over');
     buildSlots(rings);
+    syncCountBtn();
   }
 
   function setRings(n) {
@@ -388,6 +384,12 @@ function buildDotsBoard(options) {
   // Minus wipes them once she says how many go: some of the dots she numbered
   // are leaving, and what stays would be numbered wrong for the answer.
   function onPress(key, prev, next) {
+    stopAuto();
+    followKey(key, prev, next);
+    syncCountBtn();
+  }
+
+  function followKey(key, prev, next) {
     if (key === '=') return;
     if (key === CALC_CLEAR_KEY) {
       clear();
@@ -417,38 +419,6 @@ function buildDotsBoard(options) {
     }
   }
 
-  // The glide is stepped here, a frame at a time, rather than handed to
-  // element.animate(). With animate() the iPad sometimes left the dots frozen a
-  // frame or two short of their places (7 + 9: the late ones out of line, one
-  // overlapping its neighbour), as if Safari's compositor never painted the
-  // last frame. Written from here, the final frame clears the offset outright.
-  function stopGlide() {
-    if (glideFrame) cancelAnimationFrame(glideFrame);
-    glideFrame = 0;
-  }
-
-  function glide(moves) {
-    stopGlide();
-    const start = performance.now();
-    function step(now) {
-      let moving = false;
-      moves.forEach(function(m) {
-        const t = (now - start - m.delay) / GATHER_MS;
-        if (t >= 1) {
-          if (m.el.style.transform) m.el.style.transform = '';
-          return;
-        }
-        moving = true;
-        const left = 1 - gatherEase(Math.max(0, t));
-        m.el.style.transform = 'translate(' + (m.dx * left) + 'px, ' + (m.dy * left) + 'px)';
-      });
-      glideFrame = moving ? requestAnimationFrame(step) : 0;
-    }
-    // The first frame goes on now, in the same task as the move, so no dot is
-    // ever painted in its new place before it sets off.
-    step(start);
-  }
-
   // Slide the dots that stay into the answer tray. Measured before and after
   // the move, then each one is played back from where it was, so they glide
   // across rather than jump.
@@ -462,15 +432,23 @@ function buildDotsBoard(options) {
     });
     sign.textContent = '';
     el.classList.add('is-resolved');
-    if (reduceMotion || dots.length === 0) return;
-    const moves = [];
+    syncCountBtn();
+    if (reduceMotion || dots.length === 0 || typeof dots[0].animate !== 'function') return;
     dots.forEach(function(d, i) {
       const last = d.getBoundingClientRect();
       const dx = first[i].left - last.left;
       const dy = first[i].top - last.top;
-      if (dx || dy) moves.push({ el: d, dx: dx, dy: dy, delay: i * GATHER_STAGGER_MS });
+      if (!dx && !dy) return;
+      d.animate([
+        { transform: 'translate(' + dx + 'px, ' + dy + 'px)' },
+        { transform: 'translate(0, 0)' }
+      ], {
+        duration: GATHER_MS,
+        delay: i * GATHER_STAGGER_MS,
+        easing: 'cubic-bezier(0.3, 0.8, 0.3, 1)',
+        fill: 'backwards'
+      });
     });
-    glide(moves);
   }
 
   function resolve(done) {
@@ -568,7 +546,7 @@ function buildDotsBoard(options) {
     return items.filter(function(it) { return it.classList.contains('is-counted'); }).length;
   }
 
-  function countItem(item, items) {
+  function countItem(item, items, byApp) {
     const n = countedSoFar(items) + 1;
     // Her touch has seen the pop-in; counting mustn't replay it.
     if (item.classList.contains('dot')) item.classList.add('dot--settled');
@@ -581,8 +559,61 @@ function buildDotsBoard(options) {
         it.classList.add('is-hop');
       });
     }
-    if (options && options.onCount) options.onCount(n, finished);
+    if (options && options.onCount) options.onCount(n, finished, !!byApp);
   }
+
+  // ---- Count for me ----
+  //
+  // She loved the board counting by itself, so it's still there, on its own
+  // button: one press counts aloud, a number appearing on each dot as it's
+  // said. It's one count shared with her finger. It carries on from whatever
+  // she has counted (she's done 1 to 5, it says "six, seven, eight"), and a
+  // touch on a dot mid-count stops it and lets her take over from there.
+  // Pressing it again mid-count does nothing rather than start it all over;
+  // once they're all counted, it counts them afresh.
+  function countForMe() {
+    if (autoRun || session.isSessionEnded()) return;
+    let items = countable();
+    if (items.length === 0) return;
+    if (countedSoFar(items) >= items.length) {
+      clearCounting();
+      items = countable();
+    }
+    const todo = items.filter(function(it) { return !it.classList.contains('is-counted'); });
+    const from = countedSoFar(items);
+    const run = autoRun = Date.now();
+    countBtn.classList.add('is-counting');
+    speakSequence(todo.map(function(_, i) { return CALC_NUMBER_WORDS[from + i + 1]; }), {
+      rates: todo.map(function() { return 1; }),
+      onPart: function(i) {
+        if (autoRun !== run || todo[i].classList.contains('is-counted')) return;
+        countItem(todo[i], items, true);
+      },
+      onEnd: function() {
+        if (autoRun !== run) return;
+        autoRun = 0;
+        countBtn.classList.remove('is-counting');
+      }
+    });
+  }
+
+  function stopAuto() {
+    if (!autoRun) return;
+    autoRun = 0;
+    countBtn.classList.remove('is-counting');
+    cancelSpeech();
+  }
+
+  // Nothing to count (a clean screen in Free Play): the button steps out of
+  // sight, keeping its place so nothing moves when it comes back.
+  function syncCountBtn() {
+    countBtn.classList.toggle('is-idle', countable().length === 0);
+  }
+
+  countBtn.addEventListener('click', function() {
+    countForMe();
+    countBtn.blur();
+  });
 
   function sayAgain(item) {
     if (options && options.onRecount) options.onRecount(Number(item.textContent));
@@ -611,6 +642,7 @@ function buildDotsBoard(options) {
   el.addEventListener('pointerdown', function(ev) {
     if (ev.button > 0) return;
     fingerId = ev.pointerId;
+    stopAuto();
     if (el.setPointerCapture) {
       try { el.setPointerCapture(ev.pointerId); } catch (e) { /* not capturable */ }
     }
@@ -639,6 +671,7 @@ function buildDotsBoard(options) {
     if (ev.key !== 'Enter' && ev.key !== ' ') return;
     ev.preventDefault();
     ev.stopPropagation();
+    stopAuto();
     let items = countable();
     if (items.length === 0) return;
     if (countedSoFar(items) >= items.length) {
@@ -650,9 +683,11 @@ function buildDotsBoard(options) {
   });
 
   buildSlots(0);
+  syncCountBtn();
 
   return {
     el: el,
+    countBtn: countBtn,
     onPress: onPress,
     resolve: resolve,
     clear: clear,
@@ -662,12 +697,12 @@ function buildDotsBoard(options) {
   };
 }
 
-// What the page does as she counts: say each number as she touches its dot,
-// and a chime once she's counted them all.
+// What the page does as she counts: say each number as she touches its dot
+// (a "count for me" run says its own), and a chime once they're all counted.
 function countingVoice(extra) {
   return {
-    onCount: function(n, finished) {
-      speakText(CALC_NUMBER_WORDS[n], { rate: 1 });
+    onCount: function(n, finished, byApp) {
+      if (!byApp) speakText(CALC_NUMBER_WORDS[n], { rate: 1 });
       if (finished) audio.playChime();
       if (extra) extra();
     },
@@ -694,6 +729,7 @@ function enterFreeplay() {
   const ui = buildStage('calc-stage--play');
   const board = buildDotsBoard(countingVoice());
   ui.side.appendChild(board.el);
+  ui.side.appendChild(board.countBtn);
 
   const calc = buildCalculator({
     getRules: function() { return FREE_RULES; },
@@ -775,6 +811,7 @@ function enterQuiz() {
   const board = buildDotsBoard(countingVoice(function() { hint.poke(); }));
   board.el.classList.add('dots-board--goal');
   ui.side.appendChild(board.el);
+  ui.side.appendChild(board.countBtn);
 
   let round = null;
   let rung = makeRung(0);
