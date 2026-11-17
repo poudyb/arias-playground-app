@@ -84,6 +84,34 @@ function nextMemoryLevel(level, outcome, failStreak, levelCount) {
   return { level: level, failStreak: 0 };
 }
 
+// Free Play deals every card face up and has no wrong answer. `lifted` is the
+// index of the card she picked last (-1 for none), `tapped` the one she just
+// touched, `cards` the board as [{ key, matched }].
+//
+//   lift  - nothing was picked: this card lifts and says its name
+//   again - the lifted card again: it says its name again
+//   match - its twin: the pair goes
+//   swap  - any other card: it becomes the lifted one instead
+function freePlayTap(cards, lifted, tapped) {
+  if (lifted === -1) return 'lift';
+  if (lifted === tapped) return 'again';
+  if (cards[lifted].key === cards[tapped].key) return 'match';
+  return 'swap';
+}
+
+// The cards Free Play's hint pulses: the lifted card's twin, or when nothing is
+// lifted, both cards of the first pair still on the board.
+function freePlayHintIndices(cards, lifted) {
+  const open = cards.findIndex(function(card) { return !card.matched; });
+  if (open === -1) return [];
+  const key = lifted === -1 ? cards[open].key : cards[lifted].key;
+  const indices = [];
+  cards.forEach(function(card, i) {
+    if (!card.matched && card.key === key && i !== lifted) indices.push(i);
+  });
+  return indices;
+}
+
 // Exported for Node's test runner; ignored in the browser (no `module`).
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -91,6 +119,8 @@ if (typeof module !== 'undefined' && module.exports) {
     classifyMemoryTurn,
     memoryGambleCounts,
     memoryBoardOutcome,
-    nextMemoryLevel
+    nextMemoryLevel,
+    freePlayTap,
+    freePlayHintIndices
   };
 }

@@ -1,0 +1,343 @@
+body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: var(--font-ui);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    background: linear-gradient(180deg, #e0f7fa 0%, #b2ebf2 42%, #80deea 100%);
+    padding: 52px 12px 16px;
+  }
+.home-btn {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 150;
+    font-family: var(--font-letters);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 3px solid #006064;
+    background: #fff;
+    color: #004d40;
+    text-decoration: none;
+    box-shadow: 0 3px 0 #004d40;
+    -webkit-tap-highlight-color: transparent;
+  }
+.home-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #004d40;
+  }
+#mode-buttons {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 100;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    max-width: 58vw;
+  }
+.mode-btn {
+    background: #eee;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-family: var(--font-ui);
+    color: #666;
+    cursor: pointer;
+  }
+.mode-btn.active {
+    background: #00838f;
+    border-color: #006064;
+    color: #fff;
+  }
+.mode-btn.active { pointer-events: none; }
+#app-main {
+    width: min(92vw, 720px);
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: clamp(8px, 2vw, 14px);
+  }
+.memory-board {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 2vw, 16px);
+    padding: 4px 0 8px;
+  }
+.memory-grid {
+    --cols: 2;
+    --rows: 2;
+    --gap: clamp(6px, 1.6vw, 14px);
+    --viewport-height: 100vh;
+    
+    --cell: max(64px, min(
+      240px,
+      calc((92vw - (var(--cols) - 1) * var(--gap)) / var(--cols)),
+      calc((var(--viewport-height) - 120px - (var(--rows) - 1) * var(--gap)) / var(--rows))
+    ));
+    display: grid;
+    grid-template-columns: repeat(var(--cols), var(--cell));
+    grid-auto-rows: var(--cell);
+    gap: var(--gap);
+    justify-content: center;
+    align-content: center;
+  }
+.memory-grid--center-last-pair .memory-card:nth-child(9) {
+    grid-column: 2;
+  }
+@supports (height: 100dvh) {
+    .memory-grid { --viewport-height: 100dvh; }
+  }
+.memory-card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    border: none;
+    background: none;
+    padding: 0;
+    perspective: 700px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+.memory-card__inner {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+.memory-card.is-flipped .memory-card__inner {
+    transform: rotateY(180deg);
+  }
+.memory-card__face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+  }
+.memory-card__back {
+    background: linear-gradient(155deg, #26c6da 0%, #00838f 100%);
+    border: 5px solid #fff;
+    box-shadow: 0 6px 0 #006064, 0 12px 24px rgba(0, 0, 0, 0.12);
+  }
+.memory-card__back::after {
+    content: "";
+    width: 42%;
+    height: 42%;
+    border-radius: 50%;
+    border: 5px solid rgba(255, 255, 255, 0.55);
+    box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.18);
+  }
+/* A card she has never turned over shimmers: a soft band of light sweeps
+     across the back from top-left to bottom-right, and the board's cards take
+     their turn one diagonal after another (--shimmer-delay, set per card), so
+     the sheen rolls across the board as one wave and then rests. Once a card
+     has been seen it goes still for good, so what still shimmers is exactly
+     what's left to find. */
+.memory-card__back::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0) 40%,
+      rgba(255, 255, 255, 0.5) 50%,
+      rgba(255, 255, 255, 0) 60%);
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    pointer-events: none;
+  }
+.memory-card.is-fresh .memory-card__back::before {
+    animation: memory-shimmer 3.6s ease-in-out infinite;
+    animation-delay: var(--shimmer-delay, 0s);
+  }
+@keyframes memory-shimmer {
+    0% { transform: translate(-50%, -50%); opacity: 1; }
+    35% { transform: translate(50%, 50%); opacity: 1; }
+    36%, 100% { transform: translate(50%, 50%); opacity: 0; }
+  }
+.memory-card__front {
+    transform: rotateY(180deg);
+    flex-direction: column;
+    padding-bottom: clamp(4px, 1vw, 8px);
+    background: linear-gradient(165deg, #fff 0%, #e0f7fa 100%);
+    border: 5px solid #fff;
+    box-shadow: 0 6px 0 #00838f, 0 12px 24px rgba(0, 0, 0, 0.1);
+  }
+.memory-card:active .memory-card__inner {
+    transform: scale(0.97);
+  }
+.memory-card.is-flipped:active .memory-card__inner {
+    transform: rotateY(180deg) scale(0.97);
+  }
+.memory-card__art {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+.memory-card__art img {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+    -webkit-user-drag: none;
+    filter: drop-shadow(0 3px 4px rgba(0, 77, 64, 0.18));
+  }
+.memory-card__art.pop {
+    animation: match-pop 0.32s ease-out;
+  }
+@keyframes match-pop {
+    0% { transform: scale(0.94); }
+    55% { transform: scale(1.04); }
+    100% { transform: scale(1); }
+  }
+.memory-card.is-matched {
+    opacity: 0;
+    transform: scale(0.7);
+    pointer-events: none;
+  }
+.memory-card.shake {
+    animation: memory-shake 0.4s ease;
+  }
+@keyframes memory-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+@media (prefers-reduced-motion: reduce) {
+    .memory-card,
+    .memory-card__inner {
+      transition: none;
+    }
+    .memory-card__art.pop,
+    .memory-card.shake,
+    .memory-card.is-fresh .memory-card__back::before {
+      animation: none;
+    }
+    /* Without the sweep, a card not yet seen keeps a still sheen instead. */
+    .memory-card.is-fresh .memory-card__back::before {
+      opacity: 1;
+      transform: translate(0, 0);
+    }
+    .memory-card.is-matched {
+      transform: none;
+    }
+  }
+.memory-card.is-picked {
+    transform: translateY(-6px) scale(1.06);
+    z-index: 1;
+  }
+.memory-card.is-picked .memory-card__front {
+    border-color: #ffca28;
+    box-shadow: 0 0 0 4px rgba(255, 202, 40, 0.55), 0 6px 0 #00838f, 0 12px 24px rgba(0, 0, 0, 0.14);
+  }
+#play-timer {
+    display: none;
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 140;
+    font-family: var(--font-letters);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(0, 131, 143, 0.92);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    pointer-events: none;
+  }
+.session-end-card {
+    max-width: 24rem;
+    width: 100%;
+    background: linear-gradient(160deg, #e0f7fa 0%, #b2ebf2 40%, #80deea 100%);
+    border-radius: 24px;
+    padding: clamp(1.35rem, 4vw, 1.85rem);
+    font-family: var(--font-letters);
+    box-shadow: 0 4px 0 #00838f, 0 16px 48px rgba(0, 0, 0, 0.2);
+    border: 4px solid #fff;
+  }
+.session-end-card h2 {
+    font-size: clamp(1.5rem, 5.5vw, 1.85rem);
+    color: #004d40;
+    margin-bottom: 0.25rem;
+    text-align: center;
+  }
+.session-end-card .session-end-sub {
+    color: #006064;
+  }
+.score-section {
+    border-radius: 16px;
+    padding: 0.75rem 0.85rem;
+    border: 3px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.08);
+    background: linear-gradient(135deg, #fff 0%, #e0f7fa 100%);
+  }
+.score-section__head {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+  }
+.score-section__title {
+    color: #004d40;
+  }
+.session-end-home {
+    background: #00838f;
+    box-shadow: 0 3px 0 #006064;
+  }
+@keyframes emoji-pop {
+    0%   { transform: scale(0) rotate(-20deg); opacity: 1; }
+    30%  { transform: scale(1.2) rotate(5deg); opacity: 1; }
+    50%  { transform: scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: scale(1.3) rotate(10deg); opacity: 0; }
+  }
+@keyframes confetti-burst {
+    0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) rotate(var(--rot)); opacity: 0; }
+  }
+@keyframes hint-flash-pulse {
+    0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 179, 0, 0)); }
+    45% { filter: drop-shadow(0 0 13px rgba(255, 179, 0, 0.95)); }
+  }
+
+  /* Hover styling is gated on a device that can actually hover. A tablet has no
+     pointer to hover with, and Safari fakes it: a tap leaves :hover stuck on
+     whatever was tapped until something else is tapped. With the tiles lifting
+     on hover, pressing one game made the previously-pressed one look pressed
+     too - two cards animating for one tap. */
+  @media (hover: hover) {
+  .mode-btn:hover { background: #ddd; }
+  }

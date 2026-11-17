@@ -89,6 +89,21 @@ const ACTIVITIES = [
     defaultStats: function() { return createSameAsStats(); }
   },
   {
+    id: 'memory',
+    href: 'memory.html',
+    title: 'Memory',
+    hint: 'Find the pairs!',
+    tileClass: 'game-tile--memory',
+    artClasses: 'game-tile__art game-tile__art--memory',
+    artHtml:
+      '<span class="game-tile__art__card">🐱</span>' +
+      '<span class="game-tile__art__card game-tile__art__card--back"></span>' +
+      '<span class="game-tile__art__card">🐱</span>',
+    sessionKey: 'ariaMemorySession',
+    statsKey: 'ariaMemoryStats',
+    defaultStats: function() { return createMemoryStats(); }
+  },
+  {
     id: 'clock',
     href: 'clock.html',
     title: 'Clock',

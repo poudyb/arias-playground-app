@@ -361,6 +361,42 @@ main {
       0 4px 0 #00838f,
       0 8px 16px rgba(0, 0, 0, 0.18);
   }
+.game-tile--memory {
+    background: linear-gradient(145deg, #fce4ec 0%, #f8bbd0 45%, #f48fb1 100%);
+    box-shadow:
+      0 8px 0 #ad1457,
+      0 14px 28px rgba(0, 0, 0, 0.2);
+  }
+.game-tile__art--memory {
+    gap: clamp(0.3rem, 2.5vw, 0.5rem);
+    filter: drop-shadow(0 3px 0 rgba(173, 20, 87, 0.3));
+  }
+.game-tile__art__card {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25em;
+    height: 1.25em;
+    border-radius: 0.22em;
+    border: 0.07em solid #fff;
+    background: linear-gradient(165deg, #fff 0%, #e0f7fa 100%);
+    font-size: 0.8em;
+  }
+.game-tile__art__card--back {
+    background: linear-gradient(155deg, #26c6da 0%, #00838f 100%);
+  }
+.game-tile--memory .game-tile__label {
+    color: #880e4f;
+  }
+.game-tile--memory .game-tile__hint {
+    color: #ad1457;
+    opacity: 0.95;
+  }
+.game-tile--memory:active {
+    box-shadow:
+      0 4px 0 #ad1457,
+      0 8px 16px rgba(0, 0, 0, 0.18);
+  }
 .game-tile--clock {
     background: linear-gradient(145deg, #0d1b2a 0%, #1b263b 45%, #243447 100%);
     box-shadow:
@@ -535,6 +571,11 @@ main {
   .game-tile--same:hover {
     box-shadow:
       0 12px 0 #00838f,
+      0 18px 32px rgba(0, 0, 0, 0.22);
+  }
+  .game-tile--memory:hover {
+    box-shadow:
+      0 12px 0 #ad1457,
       0 18px 32px rgba(0, 0, 0, 0.22);
   }
   .game-tile--calc:hover {

@@ -59,13 +59,16 @@ test('normalizeModeStats prefers the current field over the legacy one', () => {
 });
 
 test('normalize* round-trips a full valid stats object unchanged', () => {
-  for (const make of [stats.createSameAsStats, stats.createClockStats, stats.createSpellingStats, stats.createCalcStats]) {
+  const pairs = [
+    [stats.createSameAsStats, stats.normalizeSameAsStats],
+    [stats.createMemoryStats, stats.normalizeMemoryStats],
+    [stats.createClockStats, stats.normalizeClockStats],
+    [stats.createSpellingStats, stats.normalizeSpellingStats],
+    [stats.createCalcStats, stats.normalizeCalcStats]
+  ];
+  for (const [make, normalize] of pairs) {
     const fresh = make();
     fresh.quizCorrect = (fresh.quizCorrect || 0) + 2;
-    const normalize = make === stats.createSameAsStats ? stats.normalizeSameAsStats
-      : make === stats.createClockStats ? stats.normalizeClockStats
-      : make === stats.createCalcStats ? stats.normalizeCalcStats
-      : stats.normalizeSpellingStats;
     assert.deepStrictEqual(normalize(fresh), fresh);
   }
 });

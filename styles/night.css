@@ -208,6 +208,7 @@
   :root .game-tile--animals .game-tile__label { color: #a5d6a7; }
   :root .game-tile--shapes .game-tile__label { color: #ce93d8; }
   :root .game-tile--same .game-tile__label { color: #80deea; }
+  :root .game-tile--memory .game-tile__label { color: #f48fb1; }
   :root .game-tile--clock .game-tile__label { color: #ffd180; }
 
   :root .game-tile__art__dot {

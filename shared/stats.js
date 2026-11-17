@@ -65,17 +65,28 @@ function createSameAsStats() {
     matchWrong: 0,
     struggled: [],
     usedAnimals: false,
-    usedShapes: false,
-    usedMemory: false,
-    memoryMatches: 0,
-    memoryLevelsCleared: 0,
-    memoryUnforced: 0,
-    memoryBoardsFailed: 0
+    usedShapes: false
   };
 }
 
 function normalizeSameAsStats(parsed) {
   return normalizeStatsBySchema(parsed, createSameAsStats());
+}
+
+function createMemoryStats() {
+  return {
+    freeMatches: 0,
+    freeBoards: 0,
+    flipMatches: 0,
+    flipBoards: 0,
+    flipBoardsFailed: 0,
+    usedFreeplay: false,
+    usedFlip: false
+  };
+}
+
+function normalizeMemoryStats(parsed) {
+  return normalizeStatsBySchema(parsed, createMemoryStats());
 }
 
 function createClockStats() {
@@ -147,6 +158,8 @@ if (typeof module !== 'undefined' && module.exports) {
     normalizeModeStats,
     createSameAsStats,
     normalizeSameAsStats,
+    createMemoryStats,
+    normalizeMemoryStats,
     createClockStats,
     normalizeClockStats,
     createSpellingStats,

@@ -75,3 +75,25 @@ test('any finished board clears the failed streak', () => {
   assert.deepStrictEqual(mem.nextMemoryLevel(3, 'slipped', 1, 7), { level: 3, failStreak: 0 });
   assert.deepStrictEqual(mem.nextMemoryLevel(3, 'failed', 'junk', 7), { level: 3, failStreak: 1 });
 });
+
+const board = (...keys) => keys.map((key) => ({ key, matched: false }));
+
+test('Free Play: a tap lifts, says again, matches its twin, or swaps; never a wrong answer', () => {
+  const cards = board('cat', 'dog', 'cat', 'dog');
+  assert.strictEqual(mem.freePlayTap(cards, -1, 1), 'lift');
+  assert.strictEqual(mem.freePlayTap(cards, 1, 1), 'again');
+  assert.strictEqual(mem.freePlayTap(cards, 0, 2), 'match');
+  assert.strictEqual(mem.freePlayTap(cards, 0, 1), 'swap');
+});
+
+test('Free Play hint: the lifted card\'s twin, else both cards of the first pair left', () => {
+  const cards = board('cat', 'dog', 'cat', 'dog');
+  assert.deepStrictEqual(mem.freePlayHintIndices(cards, 1), [3]);
+  assert.deepStrictEqual(mem.freePlayHintIndices(cards, -1), [0, 2]);
+  cards[0].matched = true;
+  cards[2].matched = true;
+  assert.deepStrictEqual(mem.freePlayHintIndices(cards, -1), [1, 3], 'a matched pair is skipped');
+  cards[1].matched = true;
+  cards[3].matched = true;
+  assert.deepStrictEqual(mem.freePlayHintIndices(cards, -1), [], 'nothing left to point at');
+});
