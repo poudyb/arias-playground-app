@@ -252,9 +252,18 @@ body.calc-page {
    where the two would be. */
 .calc-key--tall { grid-row: span 2; }
 /* Free Play's C: the keypad's width across the top, and not as tall as a key,
-   so the calculator only grows by a slim row. */
-.calc-keys.has-clear { grid-template-rows: calc(var(--key-h) * 0.62); }
-.calc-key--clear { grid-column: 1 / -1; font-size: calc(var(--calc-w) * 0.09); }
+   so the calculator only grows by a slim row. It sits midway between the
+   screen and the numbers: its row carries extra room below it, so the space
+   under C matches the space over it rather than C hugging 7 8 9. */
+.calc-keys.has-clear {
+  grid-template-rows: calc(var(--key-h) * 0.62 + var(--pad) * 1.1 - var(--gap));
+}
+.calc-key--clear {
+  grid-column: 1 / -1;
+  align-self: start;
+  height: calc(var(--key-h) * 0.62);
+  font-size: calc(var(--calc-w) * 0.09);
+}
 
 .calc-key:not(:disabled):active,
 .calc-key.is-pressed:not(:disabled) {
@@ -368,12 +377,8 @@ body.calc-page {
 .tray--result { background: rgba(102, 187, 106, 0.12); }
 .dots-board.is-resolved .tray--result,
 .dots-board.has-rings .tray--result { display: grid; }
-/* Past ten, a little gap: two full rows of five, then the rest. The rows
-   size to their dots, so the gap pushes the third row down and the fourth
-   follows it (with fixed-height rows the third slid into the fourth, and on
-   16 and over the bottom row overlapped the one above it). */
-.tray--result { grid-auto-rows: minmax(var(--dot), auto); }
-.tray--result .slot:nth-child(n+11):nth-child(-n+15) { margin-top: calc(var(--dot) * 0.3); }
+/* The rows are evenly spaced. (An extra gap after ten, meant to show two full
+   rows then the rest, just looked like dots out of place.) */
 
 .slot {
   position: relative;
