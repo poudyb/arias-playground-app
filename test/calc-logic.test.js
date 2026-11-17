@@ -57,13 +57,13 @@ test('equals works once: it never repeats, and nothing chains on', () => {
   for (const k of ['=', '+', '-']) assert.strictEqual(calc.calcPress(s, k), s, k + ' after the answer');
 });
 
-test('Free Play: after the answer C is the only key on, and it gives a clean screen', () => {
+test('Free Play: after the answer C or a number moves on', () => {
   const s = pressAll(['3', '+', '4', '=']);
-  assert.deepStrictEqual(enabledKeys(s), ['C']);
-  for (const d of DIGITS) assert.strictEqual(calc.calcPress(s, d), s, d + ' after the answer');
+  assert.deepStrictEqual(enabledKeys(s), DIGITS.concat(['C']));
   const cleared = calc.calcPress(s, 'C');
   assert.deepStrictEqual(cleared, calc.emptyCalc());
   assert.deepStrictEqual(enabledKeys(cleared), DIGITS);
+  assert.deepStrictEqual(calc.calcPress(s, '6'), { a: 6, op: null, b: null, result: null });
 });
 
 test('C is off at every step before the answer: it never takes her backwards', () => {

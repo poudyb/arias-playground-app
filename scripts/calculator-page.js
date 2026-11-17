@@ -489,11 +489,17 @@ function buildDotsBoard(options) {
   function markCounted(item, n) {
     item.textContent = String(n);
     item.classList.add('is-counted');
+    // A pop as the number appears, played once: its class comes off after, so
+    // a later animation ending (the hop) or a move (into the answer) doesn't
+    // play it again.
+    item.classList.remove('is-popping');
+    void item.offsetWidth;
+    item.classList.add('is-popping');
   }
 
   function clearCounting() {
-    toArray(el.querySelectorAll('.is-counted, .is-hop')).forEach(function(item) {
-      item.classList.remove('is-counted', 'is-hop');
+    toArray(el.querySelectorAll('.is-counted, .is-hop, .is-popping')).forEach(function(item) {
+      item.classList.remove('is-counted', 'is-hop', 'is-popping');
       item.textContent = '';
     });
   }
@@ -508,22 +514,28 @@ function buildDotsBoard(options) {
   // It's forgiving. Any order is fine. A touch that misses, between dots or just
   // off one, counts the nearest dot not yet counted. Sliding a finger over the
   // dots counts each one it passes. Touching one she has already counted says
-  // its number again and changes nothing, so the count is never lost under
-  // her. When the last one is counted they all give a little hop, and the next
-  // touch starts a fresh count.
+  // its number again and changes nothing, but only a touch squarely on it: one
+  // near its edge that was meant for the uncounted dot beside it counts that
+  // one. When the last one is counted they all give a little hop, and the
+  // count stays up: touching them again just says their numbers, so a bounce
+  // of her finger or showing someone her 16 never wipes it. A touch a moment
+  // later starts a fresh count, for counting them again.
 
   function centreDistance(item, x, y) {
     const r = item.getBoundingClientRect();
     return Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2));
   }
 
-  // The item under the point, if the point is on it (or in the gap right by it).
-  function itemUnder(items, x, y) {
+  // The item the point is on: within `share` of its width from the centre (half
+  // is anywhere on the circle).
+  function itemOn(items, x, y, share) {
     let best = null;
     let bestD = Infinity;
     items.forEach(function(item) {
       const d = centreDistance(item, x, y);
-      const reach = item.getBoundingClientRect().width * 0.6;
+      // Its laid-out size: a counted dot is drawn bigger (and bigger still as it
+      // pops), and mustn't take touches meant for the one beside it.
+      const reach = item.offsetWidth * share;
       if (d <= reach && d < bestD) { best = item; bestD = d; }
     });
     return best;
@@ -536,11 +548,16 @@ function buildDotsBoard(options) {
     items.forEach(function(item) {
       if (item.classList.contains('is-counted')) return;
       const d = centreDistance(item, x, y);
-      const reach = item.getBoundingClientRect().width * 1.2;
+      const reach = item.offsetWidth * 1.2;
       if (d <= reach && d < bestD) { best = item; bestD = d; }
     });
     return best;
   }
+
+  // When the last one was counted. For a moment after, touches only say the
+  // numbers again (see touchAt).
+  let finishedAt = 0;
+  const FINISHED_HOLD_MS = 2500;
 
   function countedSoFar(items) {
     return items.filter(function(it) { return it.classList.contains('is-counted'); }).length;
@@ -552,10 +569,12 @@ function buildDotsBoard(options) {
     if (item.classList.contains('dot')) item.classList.add('dot--settled');
     markCounted(item, n);
     const finished = n === items.length;
+    if (finished) finishedAt = Date.now();
     if (finished && !reduceMotion) {
       items.forEach(function(it, i) {
         if (it.classList.contains('dot')) it.classList.add('dot--settled');
         it.style.animationDelay = (i * 30) + 'ms';
+        it.classList.remove('is-popping');
         it.classList.add('is-hop');
       });
     }
@@ -620,21 +639,32 @@ function buildDotsBoard(options) {
   }
 
   // A touch at (x, y). `sliding` is a finger already down and moving: that only
-  // counts a dot it's actually on, never says one again, and never reaches.
+  // counts a dot it's well inside, never says one again, and never reaches, so
+  // a tap that wobbles doesn't count the dot next door.
   function touchAt(x, y, sliding) {
     if (session.isSessionEnded()) return;
     let items = countable();
     if (items.length === 0) return;
-    if (!sliding && countedSoFar(items) >= items.length) {
+    const on = itemOn(items, x, y, sliding ? 0.42 : 0.5);
+    if (countedSoFar(items) >= items.length) {
+      if (sliding) return;
+      // All counted. Just after, a touch only says that dot's number again;
+      // later, a touch on a dot starts counting them all again from it.
+      if (Date.now() - finishedAt < FINISHED_HOLD_MS) {
+        if (on) sayAgain(on);
+        return;
+      }
+      if (!on) return;
       clearCounting();
       items = countable();
-    }
-    const under = itemUnder(items, x, y);
-    if (under && under.classList.contains('is-counted')) {
-      if (!sliding) sayAgain(under);
+      countItem(on, items);
       return;
     }
-    const target = under || (sliding ? null : nearestUncounted(items, x, y));
+    if (on && on.classList.contains('is-counted')) {
+      if (!sliding) sayAgain(on);
+      return;
+    }
+    const target = on || (sliding ? null : nearestUncounted(items, x, y));
     if (target) countItem(target, items);
   }
 
@@ -660,6 +690,7 @@ function buildDotsBoard(options) {
   // A tap mustn't leave a focus ring round the whole board.
   el.addEventListener('click', function() { el.blur(); });
   el.addEventListener('animationend', function(ev) {
+    if (ev.animationName === 'count-pop') ev.target.classList.remove('is-popping');
     if (ev.animationName === 'dot-hop') {
       ev.target.classList.remove('is-hop');
       ev.target.style.animationDelay = '';

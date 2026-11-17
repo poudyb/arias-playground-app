@@ -15,10 +15,10 @@
 //   op     - "3 +"                   numbers on (for minus, only those under 3)
 //                                    — no swapping the operator either
 //   second - "3 + 4"                 only = on
-//   done   - "3 + 4 = 7"             Free Play: only C on, which wipes the
-//                                    screen for the next sum. Quiz has no C
-//                                    and moves on by itself (numbers on, for
-//                                    a fresh sum, if it's ever left there)
+//   done   - "3 + 4 = 7"             numbers on, starting a fresh sum, and
+//                                    in Free Play C too, which just wipes the
+//                                    screen (Quiz has no C: it moves on by
+//                                    itself)
 //
 // Every press counts and nothing can be undone. Pressing number after number,
 // each replacing the last, was a game of its own that never got to a sum. =
@@ -30,13 +30,13 @@
 // There is no 0. Zero is a concept for later, and minus never goes to zero
 // either: 5 - 5 is off.
 //
-// C is only ever on once a sum is finished, and then it's the only key on. The
-// old C was on all the time: it was the key she pressed most, and it only ever
-// took her backwards. Without one, a number pressed after the answer started
-// the next sum, but sitting in front of "3 + 4 = 7" with the plus and minus
-// grey and the numbers lit, she didn't see that and tried minus, then plus.
-// Now the finished sum has one way on, the same as every other step, and C
-// means "next sum", never "undo".
+// C is only ever on once a sum is finished. The old C was on all the time: it
+// was the key she pressed most, and it only ever took her backwards. Without
+// one, a number pressed after the answer started the next sum, but sitting in
+// front of "3 + 4 = 7" with plus and minus grey she didn't always see that,
+// and tried minus, then plus. So the finished sum has a C, glowing as the next
+// step the way = does, but a number still works too: she was used to that,
+// and it's no less a way on. C means "next sum", never "undo".
 
 const CALC_DIGIT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 const CALC_OP_KEYS = ['+', '-'];
@@ -100,8 +100,6 @@ function isKeyEnabled(s, key, rules) {
   // number is hers to choose like any other.
   const isTarget = rules.target != null && d === rules.target;
   if (phase === 'op') return s.op === '+' || d < s.a;
-  // With a C, the answer stays up until she presses it.
-  if (phase === 'done' && rules.clear) return false;
   // A first number is on only if some operator can follow it, so a number is
   // never a dead end (on a minus-only rung, 1 has nothing it can take away).
   if (phase === 'start' || phase === 'done') {
