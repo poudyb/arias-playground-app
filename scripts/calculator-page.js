@@ -381,8 +381,13 @@ function buildDotsBoard(options) {
 
   // Follow the calculator one key at a time. Equals is left to resolve(), which
   // the page calls so it can act once the dots have landed.
+  //
+  // What she has counted stays through a plus: she counts her 5, presses +
+  // and 3, and carries on "6, 7, 8" on the new dots (counting on, which is how
+  // adding starts), and her numbers ride into the answer with their dots.
+  // Minus wipes them once she says how many go: some of the dots she numbered
+  // are leaving, and what stays would be numbered wrong for the answer.
   function onPress(key, prev, next) {
-    clearCounting();
     if (key === '=') return;
     if (key === CALC_CLEAR_KEY) {
       clear();
@@ -404,6 +409,7 @@ function buildDotsBoard(options) {
     }
     // Minus: the last few of her dots get a blue ring, the colour of the
     // number taking them away. They're still there until she presses =.
+    clearCounting();
     const dots = trayA.children;
     for (let i = next.a - next.b, k = 0; i < next.a; i++, k++) {
       dots[i].classList.add('dot--leaving');
@@ -469,7 +475,6 @@ function buildDotsBoard(options) {
 
   function resolve(done) {
     cancel();
-    clearCounting();
     const leaving = toArray(trayA.querySelectorAll('.dot--leaving'));
     const staying = toArray(trayA.querySelectorAll('.dot:not(.dot--leaving)'))
       .concat(toArray(trayB.querySelectorAll('.dot')));
@@ -559,12 +564,12 @@ function buildDotsBoard(options) {
     return best;
   }
 
-  function countedSoFar() {
-    return el.querySelectorAll('.is-counted').length;
+  function countedSoFar(items) {
+    return items.filter(function(it) { return it.classList.contains('is-counted'); }).length;
   }
 
   function countItem(item, items) {
-    const n = countedSoFar() + 1;
+    const n = countedSoFar(items) + 1;
     // Her touch has seen the pop-in; counting mustn't replay it.
     if (item.classList.contains('dot')) item.classList.add('dot--settled');
     markCounted(item, n);
@@ -589,7 +594,7 @@ function buildDotsBoard(options) {
     if (session.isSessionEnded()) return;
     let items = countable();
     if (items.length === 0) return;
-    if (!sliding && countedSoFar() >= items.length) {
+    if (!sliding && countedSoFar(items) >= items.length) {
       clearCounting();
       items = countable();
     }
@@ -636,7 +641,7 @@ function buildDotsBoard(options) {
     ev.stopPropagation();
     let items = countable();
     if (items.length === 0) return;
-    if (countedSoFar() >= items.length) {
+    if (countedSoFar(items) >= items.length) {
       clearCounting();
       items = countable();
     }
