@@ -378,11 +378,11 @@ function buildDotsBoard(options) {
   // Follow the calculator one key at a time. Equals is left to resolve(), which
   // the page calls so it can act once the dots have landed.
   //
-  // What she has counted stays through a plus: she counts her 5, presses +
-  // and 3, and carries on "6, 7, 8" on the new dots (counting on, which is how
-  // adding starts), and her numbers ride into the answer with their dots.
-  // Minus wipes them once she says how many go: some of the dots she numbered
-  // are leaving, and what stays would be numbered wrong for the answer.
+  // Each number she types is counted on its own (see countGroups), so what
+  // she has counted stays through + or - and the second number: her green 1
+  // to 5 are still there when the blue dots arrive, which count 1, 2, 3 for
+  // themselves. Equals wipes them: the dots join up into one answer, and
+  // that's counted from 1 to the total.
   function onPress(key, prev, next) {
     stopAuto();
     followKey(key, prev, next);
@@ -390,7 +390,10 @@ function buildDotsBoard(options) {
   }
 
   function followKey(key, prev, next) {
-    if (key === '=') return;
+    if (key === '=') {
+      clearCounting();
+      return;
+    }
     if (key === CALC_CLEAR_KEY) {
       clear();
       return;
@@ -410,8 +413,8 @@ function buildDotsBoard(options) {
       return;
     }
     // Minus: the last few of her dots get a blue ring, the colour of the
-    // number taking them away. They're still there until she presses =.
-    clearCounting();
+    // number taking them away. They're still there until she presses =, and
+    // still hers to count: the green number is all of them.
     const dots = trayA.children;
     for (let i = next.a - next.b, k = 0; i < next.a; i++, k++) {
       dots[i].classList.add('dot--leaving');
@@ -475,15 +478,27 @@ function buildDotsBoard(options) {
     }, leaving.length && !reduceMotion ? LEAVE_MS : 0);
   }
 
-  // What she can count on the board: the answer once there is one, otherwise
-  // the dots she has (not the ones about to be taken away), and with nothing
-  // typed yet the rings, so she can count how many she's making.
+  // What she can count, as groups each counted from 1 on its own. Once there's
+  // an answer, that's the one group. Before it, each number she has typed is
+  // its own: the green dots of the first, then the blue dots of a plus. For a
+  // minus the green group is all of the first number, the ringed ones going
+  // included: "six, and two of them go". With nothing typed, Quiz's rings, so
+  // she can count how many she's making.
+  function countGroups() {
+    if (el.classList.contains('is-resolved')) return [toArray(result.querySelectorAll('.dot'))];
+    const typed = [toArray(trayA.querySelectorAll('.dot')), toArray(trayB.querySelectorAll('.dot'))]
+      .filter(function(g) { return g.length > 0; });
+    if (typed.length > 0) return typed;
+    const ringSlots = toArray(result.querySelectorAll('.slot--ring'));
+    return ringSlots.length > 0 ? [ringSlots] : [];
+  }
+
   function countable() {
-    if (el.classList.contains('is-resolved')) return toArray(result.querySelectorAll('.dot'));
-    const dots = toArray(trayA.querySelectorAll('.dot:not(.dot--leaving)'))
-      .concat(toArray(trayB.querySelectorAll('.dot')));
-    if (dots.length > 0) return dots;
-    return toArray(result.querySelectorAll('.slot--ring'));
+    return [].concat.apply([], countGroups());
+  }
+
+  function groupOf(item) {
+    return countGroups().filter(function(g) { return g.indexOf(item) !== -1; })[0] || [item];
   }
 
   function markCounted(item, n) {
@@ -511,15 +526,17 @@ function buildDotsBoard(options) {
   // it's said aloud. (A tap used to count every dot by itself, so her "one"
   // touch set off "one, two, three..." and a second touch started it all over.)
   //
-  // It's forgiving. Any order is fine. A touch that misses, between dots or just
+  // Each number counts on its own before =, and the answer from 1 after it
+  // (see countGroups). It's forgiving. Any order is fine. A touch that misses, between dots or just
   // off one, counts the nearest dot not yet counted. Sliding a finger over the
   // dots counts each one it passes. Touching one she has already counted says
   // its number again and changes nothing, but only a touch squarely on it: one
   // near its edge that was meant for the uncounted dot beside it counts that
-  // one. When the last one is counted they all give a little hop, and the
-  // count stays up: touching them again just says their numbers, so a bounce
-  // of her finger or showing someone her 16 never wipes it. A touch a moment
-  // later starts a fresh count, for counting them again.
+  // one. When the last one of a number is counted, that number's dots give a
+  // little hop. Once everything's counted the count stays up: touching them
+  // again just says their numbers, so a bounce of her finger or showing
+  // someone her 16 never wipes it. A touch a moment later starts a fresh
+  // count, for counting them again.
 
   function centreDistance(item, x, y) {
     const r = item.getBoundingClientRect();
@@ -563,15 +580,21 @@ function buildDotsBoard(options) {
     return items.filter(function(it) { return it.classList.contains('is-counted'); }).length;
   }
 
-  function countItem(item, items, byApp) {
-    const n = countedSoFar(items) + 1;
+  function allCounted() {
+    const items = countable();
+    return items.length > 0 && countedSoFar(items) >= items.length;
+  }
+
+  function countItem(item, byApp) {
+    const group = groupOf(item);
+    const n = countedSoFar(group) + 1;
     // Her touch has seen the pop-in; counting mustn't replay it.
     if (item.classList.contains('dot')) item.classList.add('dot--settled');
     markCounted(item, n);
-    const finished = n === items.length;
-    if (finished) finishedAt = Date.now();
+    const finished = n === group.length;
+    if (allCounted()) finishedAt = Date.now();
     if (finished && !reduceMotion) {
-      items.forEach(function(it, i) {
+      group.forEach(function(it, i) {
         if (it.classList.contains('dot')) it.classList.add('dot--settled');
         it.style.animationDelay = (i * 30) + 'ms';
         it.classList.remove('is-popping');
@@ -585,28 +608,34 @@ function buildDotsBoard(options) {
   //
   // She loved the board counting by itself, so it's still there, on its own
   // button: one press counts aloud, a number appearing on each dot as it's
-  // said. It's one count shared with her finger. It carries on from whatever
-  // she has counted (she's done 1 to 5, it says "six, seven, eight"), and a
-  // touch on a dot mid-count stops it and lets her take over from there.
-  // Pressing it again mid-count does nothing rather than start it all over;
-  // once they're all counted, it counts them afresh.
+  // said, each number from 1 on its own the way her finger counts them. It's
+  // one count shared with her finger. It carries on from whatever she has
+  // counted (she's done 1 to 5, it says "six, seven"), and a touch on a dot
+  // mid-count stops it and lets her take over from there. Pressing it again
+  // mid-count does nothing rather than start it all over; once they're all
+  // counted, it counts them afresh.
   function countForMe() {
     if (autoRun || session.isSessionEnded()) return;
-    let items = countable();
-    if (items.length === 0) return;
-    if (countedSoFar(items) >= items.length) {
-      clearCounting();
-      items = countable();
-    }
-    const todo = items.filter(function(it) { return !it.classList.contains('is-counted'); });
-    const from = countedSoFar(items);
+    if (countable().length === 0) return;
+    if (allCounted()) clearCounting();
+    const todo = [];
+    const words = [];
+    countGroups().forEach(function(group) {
+      let n = countedSoFar(group);
+      group.forEach(function(it) {
+        if (it.classList.contains('is-counted')) return;
+        n += 1;
+        todo.push(it);
+        words.push(CALC_NUMBER_WORDS[n]);
+      });
+    });
     const run = autoRun = Date.now();
     countBtn.classList.add('is-counting');
-    speakSequence(todo.map(function(_, i) { return CALC_NUMBER_WORDS[from + i + 1]; }), {
-      rates: todo.map(function() { return 1; }),
+    speakSequence(words, {
+      rates: words.map(function() { return 1; }),
       onPart: function(i) {
         if (autoRun !== run || todo[i].classList.contains('is-counted')) return;
-        countItem(todo[i], items, true);
+        countItem(todo[i], true);
       },
       onEnd: function() {
         if (autoRun !== run) return;
@@ -643,10 +672,10 @@ function buildDotsBoard(options) {
   // a tap that wobbles doesn't count the dot next door.
   function touchAt(x, y, sliding) {
     if (session.isSessionEnded()) return;
-    let items = countable();
+    const items = countable();
     if (items.length === 0) return;
     const on = itemOn(items, x, y, sliding ? 0.42 : 0.5);
-    if (countedSoFar(items) >= items.length) {
+    if (allCounted()) {
       if (sliding) return;
       // All counted. Just after, a touch only says that dot's number again;
       // later, a touch on a dot starts counting them all again from it.
@@ -656,8 +685,7 @@ function buildDotsBoard(options) {
       }
       if (!on) return;
       clearCounting();
-      items = countable();
-      countItem(on, items);
+      countItem(on);
       return;
     }
     if (on && on.classList.contains('is-counted')) {
@@ -665,7 +693,7 @@ function buildDotsBoard(options) {
       return;
     }
     const target = on || (sliding ? null : nearestUncounted(items, x, y));
-    if (target) countItem(target, items);
+    if (target) countItem(target);
   }
 
   let fingerId = null;
@@ -703,14 +731,10 @@ function buildDotsBoard(options) {
     ev.preventDefault();
     ev.stopPropagation();
     stopAuto();
-    let items = countable();
-    if (items.length === 0) return;
-    if (countedSoFar(items) >= items.length) {
-      clearCounting();
-      items = countable();
-    }
-    const next = items.filter(function(it) { return !it.classList.contains('is-counted'); })[0];
-    if (next) countItem(next, items);
+    if (countable().length === 0) return;
+    if (allCounted()) clearCounting();
+    const next = countable().filter(function(it) { return !it.classList.contains('is-counted'); })[0];
+    if (next) countItem(next);
   });
 
   buildSlots(0);

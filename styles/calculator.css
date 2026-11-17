@@ -511,7 +511,10 @@ body.calc-page {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Count for me: a white pill under the dots. */
+/* Count for me: a quiet outline under the dots, not a key. The calculator's
+   keys are bright, raised and made for pressing; this one is there when she
+   wants it rather than calling to her, so it has no fill, no ledge and muted
+   text, and only lights up while it's counting. */
 .count-btn {
   align-self: center;
   display: inline-flex;
@@ -519,20 +522,20 @@ body.calc-page {
   gap: 0.4em;
   font-family: var(--font-letters);
   font-weight: 700;
-  font-size: clamp(1.1rem, 3.4vmin, 1.7rem);
+  font-size: clamp(0.95rem, 2.8vmin, 1.4rem);
   line-height: 1;
-  color: #37474f;
+  color: #78909c;
   padding: 0.4em 0.85em;
   border-radius: 999px;
-  border: 2px solid #cfd8dc;
-  background: #fff;
-  box-shadow: 0 3px 0 #b0bec5;
+  border: 2px solid rgba(96, 125, 139, 0.3);
+  background: transparent;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.count-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #b0bec5; }
-.count-btn.is-counting { border-color: #ffb300; box-shadow: 0 3px 0 #b0bec5, 0 0 0 4px rgba(255, 179, 0, 0.35); }
+.count-btn > span { opacity: 0.7; }
+.count-btn:active { background: rgba(96, 125, 139, 0.1); }
+.count-btn.is-counting { color: #37474f; border-color: #ffb300; background: rgba(255, 255, 255, 0.6); }
 .count-btn.is-idle { visibility: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
