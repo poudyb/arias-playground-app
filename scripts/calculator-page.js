@@ -27,6 +27,19 @@ const CONFETTI_HEX = ['#ff8f3a', '#3a8dff', '#ffd54f', '#66bb6a', '#ba68c8', '#4
 const LEAVE_MS = 450;
 const GATHER_MS = 520;
 const GATHER_STAGGER_MS = 22;
+
+// The glide's ease, cubic-bezier(0.3, 0.8, 0.3, 1): quick away, gentle landing.
+// The bezier's x(s) is solved for s by bisection, then y(s) is the progress.
+function gatherEase(t) {
+  function bez(p1, p2, s) { const r = 1 - s; return 3 * r * r * s * p1 + 3 * r * s * s * p2 + s * s * s; }
+  let lo = 0, hi = 1, s = t;
+  for (let i = 0; i < 20; i++) {
+    s = (lo + hi) / 2;
+    if (bez(0.3, 0.3, s) < t) lo = s; else hi = s;
+  }
+  return bez(0.8, 1, s);
+}
+
 // How long Quiz waits without a key press before the hint lights a key.
 const QUIZ_HINT_IDLE_MS = 12000;
 // Free Play holds the keys after = until the answer has landed and been said,
@@ -296,6 +309,7 @@ function buildDotsBoard(options) {
   el.appendChild(result);
 
   const timers = [];
+  let glideFrame = 0;
   let rings = 0;
 
   function later(fn, ms) {
@@ -310,6 +324,8 @@ function buildDotsBoard(options) {
   function cancel() {
     timers.forEach(function(id) { clearTimeout(id); });
     timers.length = 0;
+    stopGlide();
+    toArray(result.querySelectorAll('.dot')).forEach(function(d) { d.style.transform = ''; });
   }
 
   function makeDot(kind, i) {
@@ -390,6 +406,38 @@ function buildDotsBoard(options) {
     }
   }
 
+  // The glide is stepped here, a frame at a time, rather than handed to
+  // element.animate(). With animate() the iPad sometimes left the dots frozen a
+  // frame or two short of their places (7 + 9: the late ones out of line, one
+  // overlapping its neighbour), as if Safari's compositor never painted the
+  // last frame. Written from here, the final frame clears the offset outright.
+  function stopGlide() {
+    if (glideFrame) cancelAnimationFrame(glideFrame);
+    glideFrame = 0;
+  }
+
+  function glide(moves) {
+    stopGlide();
+    const start = performance.now();
+    function step(now) {
+      let moving = false;
+      moves.forEach(function(m) {
+        const t = (now - start - m.delay) / GATHER_MS;
+        if (t >= 1) {
+          if (m.el.style.transform) m.el.style.transform = '';
+          return;
+        }
+        moving = true;
+        const left = 1 - gatherEase(Math.max(0, t));
+        m.el.style.transform = 'translate(' + (m.dx * left) + 'px, ' + (m.dy * left) + 'px)';
+      });
+      glideFrame = moving ? requestAnimationFrame(step) : 0;
+    }
+    // The first frame goes on now, in the same task as the move, so no dot is
+    // ever painted in its new place before it sets off.
+    step(start);
+  }
+
   // Slide the dots that stay into the answer tray. Measured before and after
   // the move, then each one is played back from where it was, so they glide
   // across rather than jump.
@@ -403,22 +451,15 @@ function buildDotsBoard(options) {
     });
     sign.textContent = '';
     el.classList.add('is-resolved');
-    if (reduceMotion || dots.length === 0 || typeof dots[0].animate !== 'function') return;
+    if (reduceMotion || dots.length === 0) return;
+    const moves = [];
     dots.forEach(function(d, i) {
       const last = d.getBoundingClientRect();
       const dx = first[i].left - last.left;
       const dy = first[i].top - last.top;
-      if (!dx && !dy) return;
-      d.animate([
-        { transform: 'translate(' + dx + 'px, ' + dy + 'px)' },
-        { transform: 'translate(0, 0)' }
-      ], {
-        duration: GATHER_MS,
-        delay: i * GATHER_STAGGER_MS,
-        easing: 'cubic-bezier(0.3, 0.8, 0.3, 1)',
-        fill: 'backwards'
-      });
+      if (dx || dy) moves.push({ el: d, dx: dx, dy: dy, delay: i * GATHER_STAGGER_MS });
     });
+    glide(moves);
   }
 
   function resolve(done) {
