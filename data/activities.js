@@ -2,7 +2,7 @@ const ACTIVITIES = [
   {
     id: 'alphabets',
     href: 'alphabet.html',
-    title: 'Alphabet',
+    title: 'Learn ABCs',
     hint: 'Letters A to Z!',
     tileClass: '',
     artClasses: 'game-tile__art game-tile__art--letters',
@@ -17,7 +17,7 @@ const ACTIVITIES = [
     id: 'numbers',
     href: 'numbers.html',
     title: 'Learn Numbers',
-    hint: 'Numbers 0 to 9!',
+    hint: '0 to 20',
     tileClass: 'game-tile--numbers',
     artClasses: 'game-tile__art game-tile__art--letters game-tile__art--numbers',
     artHtml:
@@ -34,10 +34,10 @@ const ACTIVITIES = [
     id: 'animals',
     href: 'animals.html',
     title: 'Learn Animals and Sounds',
-    hint: 'Roars, chirps and more!',
+    hint: 'Moos, quacks and more!',
     tileClass: 'game-tile--animals',
     artClasses: 'game-tile__art',
-    artHtml: '🦁🔊🐘',
+    artHtml: '🐄🔊🦆',
     sessionKey: 'ariaAnimalsSession',
     statsKey: 'ariaAnimalsStats',
     defaultStats: function() { return createModeStats('freeAnimals'); }
@@ -61,7 +61,7 @@ const ACTIVITIES = [
     id: 'colors',
     href: 'colors.html',
     title: 'Learn Colors',
-    hint: 'Big dots - names only!',
+    hint: 'Red, blue, yellow and more!',
     tileClass: 'game-tile--colors',
     artClasses: 'game-tile__art game-tile__art--colors-dots',
     artHtml:

@@ -32,7 +32,7 @@ function isLookAlike(a, b) {
 // top all she hears is the letters and has to blend them into the word herself,
 // which is the reading Quiz is there to build. Ordered most help to least.
 //
-//   sentence  "Which one is cow?"  c  o  w  "cow"
+//   sentence  "Find the picture for cow!"  c  o  w  "cow"
 //   word      "cow"  c  o  w
 //   spelling  c  o  w
 //
@@ -43,7 +43,7 @@ function isLookAlike(a, b) {
 const QUIZ_RUNGS = [
   {
     opening: 'sentence', closing: true,
-    note: 'Each round asks "Which one is ___?" out loud, then spells the word and says it again.'
+    note: 'Each round says "Find the picture for ___!" out loud, then spells the word and says it again.'
   },
   {
     opening: 'word', closing: false,
@@ -73,7 +73,7 @@ function quizSpeech(word, rung) {
   const all = [];
   for (let i = 0; i < w.length; i++) all.push(i);
   const parts = [];
-  if (rung.opening === 'sentence') parts.push({ text: 'Which one is ' + w + '?', lit: all, letter: false });
+  if (rung.opening === 'sentence') parts.push({ text: 'Find the picture for ' + w + '!', lit: all, letter: false });
   else if (rung.opening === 'word') parts.push({ text: w, lit: all, letter: false });
   for (let i = 0; i < w.length; i++) parts.push({ text: w[i], lit: [i], letter: true });
   if (rung.closing) parts.push({ text: w, lit: all, letter: false });

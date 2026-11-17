@@ -104,7 +104,7 @@ function renderSummary(board, stats) {
   if (stats.usedRead || stats.readCorrect > 0) {
     const body = createIntroBody(stats.readCorrect > 0
       ? 'You read ' + stats.readCorrect + ' ' + (stats.readCorrect === 1 ? 'word' : 'words') + '!' +
-        (stats.readWrong ? ' (' + stats.readWrong + ' oops taps)' : '')
+        (stats.readWrong ? ' (' + stats.readWrong + ' ' + (stats.readWrong === 1 ? 'oops tap' : 'oops taps') + ')' : '')
       : 'You opened Read It - pick the word that matches the picture next time!');
     appendBodyNote(body, readRung(readLadder.getRung()).note);
     appendScoreSection(board, {

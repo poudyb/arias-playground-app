@@ -56,7 +56,7 @@ const LEARNING_SYMBOLS_CONFIG = {
   touchHint: 'Tap any number!',
   keyboardHint: 'Press any number!',
   summary: {
-    freeplayEmpty: 'You opened Free play - next time, tap lots of numbers to count along! 🔢',
+    freeplayEmpty: 'You opened Free Play - next time, tap lots of numbers to count along! 🔢',
     freeplayCount: function(count) {
       return 'You explored ' + count + ' ' + (count === 1 ? 'number' : 'numbers') + '! 🔢';
     },

@@ -19,7 +19,7 @@ function renderSummary(board, stats) {
   renderThreeModeSummary(board, stats, buildModeSummaryConfig({
     freeplay: {
       countField: 'freeColors',
-      emptyMessage: 'You opened Free play - tap colors to hear their names next time!',
+      emptyMessage: 'You opened Free Play - tap colors to hear their names next time!',
       countMessage: function(count) {
         return 'You tapped colors ' + count + ' ' + (count === 1 ? 'time' : 'times') + '!';
       }

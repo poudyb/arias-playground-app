@@ -89,7 +89,6 @@ const SHAPES = [
   }
 ];
 
-function shapeEmojiForKey(key) {
-  const shape = SHAPES.find(function(item) { return item.key === key; });
-  return shape ? shape.emoji : '?';
+function shapeForKey(key) {
+  return SHAPES.find(function(item) { return item.key === key; });
 }

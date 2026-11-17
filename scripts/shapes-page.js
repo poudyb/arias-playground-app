@@ -11,7 +11,10 @@ const MODE_SESSION_KEY = 'ariaShapesSession';
 let activity = null;
 
 function renderShapePill(pill, key) {
-  pill.textContent = shapeEmojiForKey(key);
+  const shape = shapeForKey(key);
+  if (!shape) pill.textContent = '?';
+  else if (shape.svgMarkup) pill.innerHTML = shape.svgMarkup;
+  else pill.textContent = shape.emoji;
   pill.setAttribute('title', key);
 }
 
@@ -19,7 +22,7 @@ function renderSummary(board, stats) {
   renderThreeModeSummary(board, stats, buildModeSummaryConfig({
     freeplay: {
       countField: 'freeShapes',
-      emptyMessage: 'You opened Free play - next time, tap shapes to hear colors and names! 🔷',
+      emptyMessage: 'You opened Free Play - next time, tap shapes to hear colors and names! 🔷',
       countMessage: function(count) {
         return 'You explored shapes ' + count + ' ' + (count === 1 ? 'time' : 'times') + '! 🔷';
       }

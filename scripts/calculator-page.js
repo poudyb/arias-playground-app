@@ -1045,7 +1045,7 @@ function renderSummary(boardEl, stats) {
       ? 'You did ' + stats.playSums + ' ' + (stats.playSums === 1 ? 'sum' : 'sums') + ' on the calculator!'
       : 'You opened Free Play - press a number, plus or minus, and another number next time!');
     if (stats.playSeen.length > 0) {
-      appendBodyNote(body, 'Some she tried:').style.fontWeight = '600';
+      appendBodyNote(body, 'Some you tried:').style.fontWeight = '600';
       body.appendChild(createPillWrap(stats.playSeen, function(pill, text) { pill.textContent = text; }));
     }
     appendScoreSection(boardEl, { modClass: 'score-section--free', icon: '🧮', title: 'Free Play', body: body });

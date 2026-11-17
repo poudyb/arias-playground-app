@@ -474,6 +474,11 @@ body.chase-active {
     border: 2px solid rgba(106, 27, 154, 0.28);
     box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06);
   }
+.score-pill .shape-tile-svg {
+    width: 1.4em;
+    height: 1.4em;
+    display: block;
+  }
 .score-celebrate {
     font-size: 0.95rem;
     font-weight: 700;

@@ -35,7 +35,7 @@ test('isLookAlike treats different-length words as not look-alike', () => {
 const said = (word, rung) => quizSpeech(word, rung).map((p) => p.text);
 
 test('the top of the Quiz ladder asks the question, the bottom only spells', () => {
-  assert.deepStrictEqual(said('cow', QUIZ_RUNGS[0]), ['Which one is cow?', 'c', 'o', 'w', 'cow']);
+  assert.deepStrictEqual(said('cow', QUIZ_RUNGS[0]), ['Find the picture for cow!', 'c', 'o', 'w', 'cow']);
   assert.deepStrictEqual(said('cow', QUIZ_RUNGS[1]), ['cow', 'c', 'o', 'w']);
   assert.deepStrictEqual(said('cow', QUIZ_RUNGS[2]), ['c', 'o', 'w']);
 });

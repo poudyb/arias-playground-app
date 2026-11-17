@@ -12,8 +12,8 @@ function createSubheading(text) {
   return sub;
 }
 
-const COMMON_NOT_VISITED = 'This mode was not accessed during this play session.';
-const COMMON_PERFECT_QUIZ = 'Every answer was first try - you are a star! ⭐';
+const COMMON_NOT_VISITED = 'Not played this time.';
+const COMMON_PERFECT_QUIZ = 'Every answer right the first time! ⭐';
 
 function buildModeSummaryConfig(options) {
   const { freeplay, quiz, chase } = options;
@@ -21,7 +21,7 @@ function buildModeSummaryConfig(options) {
     freeplay: {
       modClass: 'score-section--free',
       icon: '🎨',
-      title: 'Free play',
+      title: 'Free Play',
       notVisitedMessage: COMMON_NOT_VISITED,
       ...freeplay
     },

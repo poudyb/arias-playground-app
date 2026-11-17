@@ -8,7 +8,7 @@ const LEARNING_SYMBOLS_CONFIG = {
   touchHint: 'Tap any letter!',
   keyboardHint: 'Press any letter!',
   summary: {
-    freeplayEmpty: 'You opened Free play - next time, tap lots of letters to fill the rainbow! 🌈',
+    freeplayEmpty: 'You opened Free Play - next time, tap lots of letters to fill the rainbow! 🌈',
     freeplayCount: function(count) {
       return 'You explored ' + count + ' ' + (count === 1 ? 'letter' : 'letters') + '! 🌈';
     },

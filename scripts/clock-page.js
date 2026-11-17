@@ -328,7 +328,7 @@ function renderSummary(board, stats) {
   if (stats.usedQuiz) {
     const intro = stats.quizCorrect === 0 && stats.quizWrong === 0
       ? 'You opened Quiz - listen and pick the time next time!'
-      : 'Quiz: ' + stats.quizCorrect + ' correct' + (stats.quizWrong ? ', ' + stats.quizWrong + ' oops taps' : '') + '.';
+      : 'Quiz: ' + stats.quizCorrect + ' correct' + (stats.quizWrong ? ', ' + stats.quizWrong + ' ' + (stats.quizWrong === 1 ? 'oops tap' : 'oops taps') : '') + '.';
     const label = stats.quizCorrect > 0 ? 'These took an extra try (you got them!):' : 'These were tricky:';
     appendScoreSection(board, {
       icon: '❓',
@@ -340,20 +340,20 @@ function renderSummary(board, stats) {
   if (stats.usedNext) {
     const intro = stats.nextCorrect === 0 && stats.nextWrong === 0
       ? 'You opened Next - pick the time that comes next!'
-      : 'Next: ' + stats.nextCorrect + ' correct' + (stats.nextWrong ? ', ' + stats.nextWrong + ' oops taps' : '') + '.';
+      : 'Next: ' + stats.nextCorrect + ' correct' + (stats.nextWrong ? ', ' + stats.nextWrong + ' ' + (stats.nextWrong === 1 ? 'oops tap' : 'oops taps') : '') + '.';
     appendScoreSection(board, {
       icon: '⏭️',
-      title: 'What comes next?',
+      title: 'Next',
       body: buildModeBody(intro, stats.nextStruggled, 'These needed another look:',
         nextRung(nextLadder.getRung()).note)
     });
   }
 
   const modes = [];
-  if (stats.usedWatch) modes.push('watch');
-  if (stats.usedMatch) modes.push('match');
-  if (stats.usedQuiz) modes.push('quiz');
-  if (stats.usedNext) modes.push('next');
+  if (stats.usedWatch) modes.push('Watch');
+  if (stats.usedMatch) modes.push('Match');
+  if (stats.usedQuiz) modes.push('Quiz');
+  if (stats.usedNext) modes.push('Next');
   if (modes.length > 0) {
     appendScoreSection(board, {
       icon: '🎯',

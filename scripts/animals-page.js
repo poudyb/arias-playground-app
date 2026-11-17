@@ -23,7 +23,7 @@ function renderSummary(board, stats) {
   renderThreeModeSummary(board, stats, buildModeSummaryConfig({
     freeplay: {
       countField: 'freeAnimals',
-      emptyMessage: 'You opened Free play - next time, tap lots of animals to hear every sound! 🌿',
+      emptyMessage: 'You opened Free Play - next time, tap lots of animals to hear every sound! 🌿',
       countMessage: function(count) {
         return 'You tapped animals ' + count + ' ' + (count === 1 ? 'time' : 'times') + '! 🌿';
       }

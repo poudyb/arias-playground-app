@@ -36,7 +36,7 @@ function renderSummary(board, stats) {
       title: 'Matches',
       body: correct === 0 && wrong === 0
         ? 'Tap the picture that looks just like the one on top!'
-        : 'Nice matching - ' + correct + ' correct' + (wrong ? ', ' + wrong + ' oops taps' : '') + '!'
+        : 'Nice matching - ' + correct + ' correct' + (wrong ? ', ' + wrong + ' ' + (wrong === 1 ? 'oops tap' : 'oops taps') : '') + '!'
     });
   }
 
@@ -191,8 +191,7 @@ function applyRoundState(ti, ci, choiceItemIndices) {
   CHOICES.forEach(function(c, i) {
     const itemIndex = choiceItemIndices[i];
     renderArt(c.art, pool[itemIndex]);
-    const label = pool[itemIndex].name + (itemIndex === targetIndex ? ' - matches top' : '');
-    c.btn.setAttribute('aria-label', label);
+    c.btn.setAttribute('aria-label', pool[itemIndex].name);
   });
   renderArt(refArt, pool[targetIndex]);
 }
