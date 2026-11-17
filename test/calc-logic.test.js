@@ -24,8 +24,8 @@ function seeded(seed) {
 
 const DIGITS = calc.CALC_DIGIT_KEYS;
 
-test('there is no 0 and no C; = is the only key besides numbers, plus and minus', () => {
-  assert.deepStrictEqual(calc.CALC_KEYS, ['1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '=']);
+test('there is no 0; besides numbers, plus and minus there are only = and C', () => {
+  assert.deepStrictEqual(calc.CALC_KEYS, ['1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '=', 'C']);
 });
 
 test('a clean screen only takes a number: no minus first, no equals', () => {
@@ -52,11 +52,33 @@ test('a whole sum lights only equals, and equals gives the answer', () => {
   assert.deepStrictEqual(pressAll(['9', '-', '2', '=']), { a: 9, op: '-', b: 2, result: 7 });
 });
 
-test('equals works once: it never repeats, and nothing chains on; a number starts afresh', () => {
+test('equals works once: it never repeats, and nothing chains on', () => {
   const s = pressAll(['3', '+', '4', '=']);
-  assert.deepStrictEqual(enabledKeys(s), DIGITS);
   for (const k of ['=', '+', '-']) assert.strictEqual(calc.calcPress(s, k), s, k + ' after the answer');
-  assert.deepStrictEqual(calc.calcPress(s, '6'), { a: 6, op: null, b: null, result: null });
+});
+
+test('Free Play: after the answer C is the only key on, and it gives a clean screen', () => {
+  const s = pressAll(['3', '+', '4', '=']);
+  assert.deepStrictEqual(enabledKeys(s), ['C']);
+  for (const d of DIGITS) assert.strictEqual(calc.calcPress(s, d), s, d + ' after the answer');
+  const cleared = calc.calcPress(s, 'C');
+  assert.deepStrictEqual(cleared, calc.emptyCalc());
+  assert.deepStrictEqual(enabledKeys(cleared), DIGITS);
+});
+
+test('C is off at every step before the answer: it never takes her backwards', () => {
+  for (const keys of [[], ['5'], ['5', '+'], ['5', '+', '3']]) {
+    const s = pressAll(keys);
+    assert.ok(!calc.isKeyEnabled(s, 'C'), 'C after ' + keys.join(' '));
+    assert.strictEqual(calc.calcPress(s, 'C'), s);
+  }
+});
+
+test('Quiz has no C: after an answer it is off and a number starts afresh', () => {
+  const rules = calc.makeRules(calc.makeRung(0), 4);
+  const s = pressAll(['2', '+', '2', '='], rules);
+  assert.ok(!calc.isKeyEnabled(s, 'C', rules));
+  assert.deepStrictEqual(calc.calcPress(s, '3', rules), { a: 3, op: null, b: null, result: null });
 });
 
 test('an operator can\'t be pressed twice or swapped once chosen', () => {

@@ -15,7 +15,10 @@
 //   op     - "3 +"                   numbers on (for minus, only those under 3)
 //                                    — no swapping the operator either
 //   second - "3 + 4"                 only = on
-//   done   - "3 + 4 = 7"             numbers on, starting a fresh sum
+//   done   - "3 + 4 = 7"             Free Play: only C on, which wipes the
+//                                    screen for the next sum. Quiz has no C
+//                                    and moves on by itself (numbers on, for
+//                                    a fresh sum, if it's ever left there)
 //
 // Every press counts and nothing can be undone. Pressing number after number,
 // each replacing the last, was a game of its own that never got to a sum. =
@@ -24,16 +27,25 @@
 // no pressing it again to repeat the sum, and the answer can never be carried
 // into another one.
 //
-// There is no 0 and no C. Zero is a concept for later; C was the key she
-// pressed most and it only ever took her backwards. Minus never goes to zero
+// There is no 0. Zero is a concept for later, and minus never goes to zero
 // either: 5 - 5 is off.
+//
+// C is only ever on once a sum is finished, and then it's the only key on. The
+// old C was on all the time: it was the key she pressed most, and it only ever
+// took her backwards. Without one, a number pressed after the answer started
+// the next sum, but sitting in front of "3 + 4 = 7" with the plus and minus
+// grey and the numbers lit, she didn't see that and tried minus, then plus.
+// Now the finished sum has one way on, the same as every other step, and C
+// means "next sum", never "undo".
 
 const CALC_DIGIT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 const CALC_OP_KEYS = ['+', '-'];
-const CALC_KEYS = CALC_DIGIT_KEYS.concat(CALC_OP_KEYS, ['=']);
+const CALC_CLEAR_KEY = 'C';
+const CALC_KEYS = CALC_DIGIT_KEYS.concat(CALC_OP_KEYS, ['=', CALC_CLEAR_KEY]);
 
-// Free Play: everything a single-digit sum can use.
-const FREE_RULES = { ops: ['+', '-'] };
+// Free Play: everything a single-digit sum can use, and C to move on from the
+// answer. Quiz's rules (makeRules) have no `clear`: it wipes the screen itself.
+const FREE_RULES = { ops: ['+', '-'], clear: true };
 
 const CALC_NUMBER_WORDS = [
   'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
@@ -76,6 +88,7 @@ function opCanFollow(op, a, rules) {
 function isKeyEnabled(s, key, rules) {
   rules = rules || FREE_RULES;
   const phase = calcPhase(s);
+  if (key === CALC_CLEAR_KEY) return phase === 'done' && !!rules.clear;
   if (key === '=') return phase === 'second';
   if (key === '+' || key === '-') return phase === 'first' && opCanFollow(key, s.a, rules);
   const d = digitOfKey(key);
@@ -87,6 +100,8 @@ function isKeyEnabled(s, key, rules) {
   // number is hers to choose like any other.
   const isTarget = rules.target != null && d === rules.target;
   if (phase === 'op') return s.op === '+' || d < s.a;
+  // With a C, the answer stays up until she presses it.
+  if (phase === 'done' && rules.clear) return false;
   // A first number is on only if some operator can follow it, so a number is
   // never a dead end (on a minus-only rung, 1 has nothing it can take away).
   if (phase === 'start' || phase === 'done') {
@@ -100,6 +115,7 @@ function isKeyEnabled(s, key, rules) {
 // same object, so the page can tell nothing happened.
 function calcPress(s, key, rules) {
   if (!isKeyEnabled(s, key, rules)) return s;
+  if (key === CALC_CLEAR_KEY) return emptyCalc();
   if (key === '=') return { a: s.a, op: s.op, b: s.b, result: calcResult(s.a, s.op, s.b) };
   if (key === '+' || key === '-') return { a: s.a, op: key, b: null, result: null };
   const d = digitOfKey(key);
@@ -245,6 +261,7 @@ if (typeof module !== 'undefined' && module.exports) {
     CALC_DIGIT_KEYS,
     CALC_OP_KEYS,
     CALC_KEYS,
+    CALC_CLEAR_KEY,
     CALC_NUMBER_WORDS,
     FREE_RULES,
     emptyCalc,

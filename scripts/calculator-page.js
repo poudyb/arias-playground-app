@@ -80,16 +80,20 @@ let activeMode = null;
 // plus-only doesn't show a minus key sitting there grey for the whole round —
 // that read as "minus is broken", not "not this time". Its one operator stands
 // tall where the two would be.
-function keyLayout(ops) {
+//
+// Free Play's C is a key the width of the keypad, across the top under the
+// screen it wipes: lit only once the answer is up, when it's the one way on.
+function keyLayout(ops, clear) {
   const both = ops.indexOf('+') !== -1 && ops.indexOf('-') !== -1;
   const tall = both ? '' : ' calc-key--tall';
   const opKeys = ['-', '+'].filter(function(op) { return ops.indexOf(op) !== -1; })
     .map(function(op) { return [op, opSign(op), 'calc-key--op' + tall]; });
   const layout = [['7'], ['8'], ['9'], opKeys[0], ['4'], ['5'], ['6']];
   if (both) layout.push(opKeys[1]);
-  return layout.concat([['1'], ['2'], ['3'], ['=', '=', 'calc-key--op']]);
+  const keys = layout.concat([['1'], ['2'], ['3'], ['=', '=', 'calc-key--op']]);
+  return clear ? [[CALC_CLEAR_KEY, 'C', 'calc-key--clear']].concat(keys) : keys;
 }
-const KEY_NAMES = { '+': 'plus', '-': 'minus', '=': 'equals' };
+const KEY_NAMES = { '+': 'plus', '-': 'minus', '=': 'equals', C: 'clear' };
 
 function opSign(op) {
   return op === '-' ? '−' : '+';
@@ -121,8 +125,8 @@ function speakKey(key, next) {
   // Equals is said with its answer, by the page.
   if (key === '=') return;
   const word = KEY_NAMES[key] || CALC_NUMBER_WORDS[Number(key)];
-  const startsSum = next && calcPhase(next) === 'first';
-  if (word) speakText(word, { rate: 0.9, queue: !startsSum });
+  const startsAfresh = next && (calcPhase(next) === 'first' || calcPhase(next) === 'start');
+  if (word) speakText(word, { rate: 0.9, queue: !startsAfresh });
 }
 
 // Run `go` once `utterance` has finished being said (or at once if nothing was
@@ -164,17 +168,20 @@ function buildCalculator(options) {
   const keysEl = document.createElement('div');
   keysEl.className = 'calc-keys';
   const keyEls = {};
-  let drawnOps = '';
+  let drawnLayout = '';
 
   // (Re)draw the keypad for the operators the rules allow right now. Only
   // called between rounds, so the keys never change under her mid-sum.
   function drawKeys() {
-    const ops = options.getRules().ops || ['+', '-'];
-    if (ops.join('') === drawnOps) return;
-    drawnOps = ops.join('');
+    const rules = options.getRules();
+    const ops = rules.ops || ['+', '-'];
+    const layout = ops.join('') + (rules.clear ? 'C' : '');
+    if (layout === drawnLayout) return;
+    drawnLayout = layout;
     keysEl.innerHTML = '';
+    keysEl.classList.toggle('has-clear', !!rules.clear);
     Object.keys(keyEls).forEach(function(k) { delete keyEls[k]; });
-    keyLayout(ops).forEach(addKey);
+    keyLayout(ops, !!rules.clear).forEach(addKey);
   }
 
   function addKey(spec) {
@@ -224,7 +231,8 @@ function buildCalculator(options) {
       btn.disabled = !on;
       btn.classList.toggle('is-next', on && (
         (phase === 'first' && (key === '+' || key === '-')) ||
-        (phase === 'second' && key === '=')));
+        (phase === 'second' && key === '=') ||
+        (phase === 'done' && key === CALC_CLEAR_KEY)));
     });
   }
 
@@ -383,6 +391,10 @@ function buildDotsBoard(options) {
   function onPress(key, prev, next) {
     clearCounting();
     if (key === '=') return;
+    if (key === CALC_CLEAR_KEY) {
+      clear();
+      return;
+    }
     if (key === '+' || key === '-') {
       sign.textContent = opSign(key);
       return;
@@ -902,7 +914,10 @@ document.querySelectorAll('.mode-btn').forEach(function(btn) {
 
 // A keyboard works too, for a grown-up at a laptop. Only keys that are on do
 // anything, exactly as with taps.
-const KEYBOARD_KEYS = { '+': '+', '-': '-', '=': '=', Enter: '=' };
+const KEYBOARD_KEYS = {
+  '+': '+', '-': '-', '=': '=', Enter: '=',
+  c: CALC_CLEAR_KEY, C: CALC_CLEAR_KEY, Escape: CALC_CLEAR_KEY, Backspace: CALC_CLEAR_KEY, Delete: CALC_CLEAR_KEY
+};
 
 document.addEventListener('keydown', function(ev) {
   if (!activeMode || !activeMode.calc || ev.metaKey || ev.ctrlKey || ev.altKey) return;
