@@ -109,19 +109,12 @@ function toArray(list) {
   return Array.prototype.slice.call(list);
 }
 
-// Whether the dots are being counted aloud, which any key press interrupts.
-let countingAloud = false;
-
 // Each key says itself as it's pressed, so the sum is heard as it's built. The
 // first number of a sum replaces whatever was being said; the operator and the
 // second number wait their turn behind it, so a quick "3 + 3" is heard whole
 // ("three plus three") rather than as its last word, and the second "three"
 // isn't dropped for being the same word as the first.
 function speakKey(key, next) {
-  if (countingAloud) {
-    countingAloud = false;
-    cancelSpeech();
-  }
   // Equals is said with its answer, by the page.
   if (key === '=') return;
   const word = KEY_NAMES[key] || CALC_NUMBER_WORDS[Number(key)];
@@ -499,7 +492,7 @@ function buildDotsBoard(options) {
     }, leaving.length && !reduceMotion ? LEAVE_MS : 0);
   }
 
-  // What a tap on the board counts: the answer once there is one, otherwise
+  // What she can count on the board: the answer once there is one, otherwise
   // the dots she has (not the ones about to be taken away), and with nothing
   // typed yet the rings, so she can count how many she's making.
   function countable() {
@@ -516,26 +509,139 @@ function buildDotsBoard(options) {
   }
 
   function clearCounting() {
-    toArray(el.querySelectorAll('.is-counted')).forEach(function(item) {
-      item.classList.remove('is-counted');
+    toArray(el.querySelectorAll('.is-counted, .is-hop')).forEach(function(item) {
+      item.classList.remove('is-counted', 'is-hop');
       item.textContent = '';
     });
   }
 
-  function onTap() {
-    if (options && options.onCount) options.onCount();
+  // ---- Counting with her finger ----
+  //
+  // She counts the way children do, touching each dot and saying its number,
+  // so the board counts with her: the dot she touches gets the next number and
+  // it's said aloud. (A tap used to count every dot by itself, so her "one"
+  // touch set off "one, two, three..." and a second touch started it all over.)
+  //
+  // It's forgiving. Any order is fine. A touch that misses, between dots or just
+  // off one, counts the nearest dot not yet counted. Sliding a finger over the
+  // dots counts each one it passes. Touching one she has already counted says
+  // its number again and changes nothing, so the count is never lost under
+  // her. When the last one is counted they all give a little hop, and the next
+  // touch starts a fresh count.
+
+  function centreDistance(item, x, y) {
+    const r = item.getBoundingClientRect();
+    return Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2));
   }
 
-  el.addEventListener('click', function() {
-    onTap();
-    el.blur();
-  });
-  el.addEventListener('keydown', function(ev) {
-    if (ev.key === 'Enter' || ev.key === ' ') {
-      ev.preventDefault();
-      ev.stopPropagation();
-      onTap();
+  // The item under the point, if the point is on it (or in the gap right by it).
+  function itemUnder(items, x, y) {
+    let best = null;
+    let bestD = Infinity;
+    items.forEach(function(item) {
+      const d = centreDistance(item, x, y);
+      const reach = item.getBoundingClientRect().width * 0.6;
+      if (d <= reach && d < bestD) { best = item; bestD = d; }
+    });
+    return best;
+  }
+
+  // The nearest item not yet counted, within a dot and a bit of the point.
+  function nearestUncounted(items, x, y) {
+    let best = null;
+    let bestD = Infinity;
+    items.forEach(function(item) {
+      if (item.classList.contains('is-counted')) return;
+      const d = centreDistance(item, x, y);
+      const reach = item.getBoundingClientRect().width * 1.2;
+      if (d <= reach && d < bestD) { best = item; bestD = d; }
+    });
+    return best;
+  }
+
+  function countedSoFar() {
+    return el.querySelectorAll('.is-counted').length;
+  }
+
+  function countItem(item, items) {
+    const n = countedSoFar() + 1;
+    // Her touch has seen the pop-in; counting mustn't replay it.
+    if (item.classList.contains('dot')) item.classList.add('dot--settled');
+    markCounted(item, n);
+    const finished = n === items.length;
+    if (finished && !reduceMotion) {
+      items.forEach(function(it, i) {
+        if (it.classList.contains('dot')) it.classList.add('dot--settled');
+        it.style.animationDelay = (i * 30) + 'ms';
+        it.classList.add('is-hop');
+      });
     }
+    if (options && options.onCount) options.onCount(n, finished);
+  }
+
+  function sayAgain(item) {
+    if (options && options.onRecount) options.onRecount(Number(item.textContent));
+  }
+
+  // A touch at (x, y). `sliding` is a finger already down and moving: that only
+  // counts a dot it's actually on, never says one again, and never reaches.
+  function touchAt(x, y, sliding) {
+    if (session.isSessionEnded()) return;
+    let items = countable();
+    if (items.length === 0) return;
+    if (!sliding && countedSoFar() >= items.length) {
+      clearCounting();
+      items = countable();
+    }
+    const under = itemUnder(items, x, y);
+    if (under && under.classList.contains('is-counted')) {
+      if (!sliding) sayAgain(under);
+      return;
+    }
+    const target = under || (sliding ? null : nearestUncounted(items, x, y));
+    if (target) countItem(target, items);
+  }
+
+  let fingerId = null;
+  el.addEventListener('pointerdown', function(ev) {
+    if (ev.button > 0) return;
+    fingerId = ev.pointerId;
+    if (el.setPointerCapture) {
+      try { el.setPointerCapture(ev.pointerId); } catch (e) { /* not capturable */ }
+    }
+    touchAt(ev.clientX, ev.clientY, false);
+  });
+  el.addEventListener('pointermove', function(ev) {
+    if (ev.pointerId !== fingerId) return;
+    touchAt(ev.clientX, ev.clientY, true);
+  });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function(type) {
+    el.addEventListener(type, function(ev) {
+      if (ev.pointerId === fingerId) fingerId = null;
+    });
+  });
+  // A tap mustn't leave a focus ring round the whole board.
+  el.addEventListener('click', function() { el.blur(); });
+  el.addEventListener('animationend', function(ev) {
+    if (ev.animationName === 'dot-hop') {
+      ev.target.classList.remove('is-hop');
+      ev.target.style.animationDelay = '';
+    }
+  });
+
+  // From a keyboard, Enter or space counts the next one along.
+  el.addEventListener('keydown', function(ev) {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    let items = countable();
+    if (items.length === 0) return;
+    if (countedSoFar() >= items.length) {
+      clearCounting();
+      items = countable();
+    }
+    const next = items.filter(function(it) { return !it.classList.contains('is-counted'); })[0];
+    if (next) countItem(next, items);
   });
 
   buildSlots(0);
@@ -546,25 +652,25 @@ function buildDotsBoard(options) {
     resolve: resolve,
     clear: clear,
     setRings: setRings,
-    countable: countable,
-    markCounted: markCounted,
     clearCounting: clearCounting,
     cancel: cancel
   };
 }
 
-// Count the dots aloud, a number appearing on each one as it's said.
-function countAloud(board) {
-  if (session.isSessionEnded()) return;
-  const items = board.countable();
-  if (items.length === 0) return;
-  board.clearCounting();
-  countingAloud = true;
-  speakSequence(items.map(function(_, i) { return CALC_NUMBER_WORDS[i + 1]; }), {
-    rates: items.map(function() { return 1; }),
-    onPart: function(i) { board.markCounted(items[i], i + 1); },
-    onEnd: function() { countingAloud = false; }
-  });
+// What the page does as she counts: say each number as she touches its dot,
+// and a chime once she's counted them all.
+function countingVoice(extra) {
+  return {
+    onCount: function(n, finished) {
+      speakText(CALC_NUMBER_WORDS[n], { rate: 1 });
+      if (finished) audio.playChime();
+      if (extra) extra();
+    },
+    onRecount: function(n) {
+      if (CALC_NUMBER_WORDS[n]) speakText(CALC_NUMBER_WORDS[n], { rate: 1 });
+      if (extra) extra();
+    }
+  };
 }
 
 function buildStage(modClass) {
@@ -581,7 +687,7 @@ function buildStage(modClass) {
 
 function enterFreeplay() {
   const ui = buildStage('calc-stage--play');
-  const board = buildDotsBoard({ onCount: function() { countAloud(board); } });
+  const board = buildDotsBoard(countingVoice());
   ui.side.appendChild(board.el);
 
   const calc = buildCalculator({
@@ -661,7 +767,7 @@ function enterQuiz() {
   goal.appendChild(replay);
   ui.side.appendChild(goal);
 
-  const board = buildDotsBoard({ onCount: function() { countAloud(board); hint.poke(); } });
+  const board = buildDotsBoard(countingVoice(function() { hint.poke(); }));
   board.el.classList.add('dots-board--goal');
   ui.side.appendChild(board.el);
 

@@ -306,6 +306,8 @@ body.calc-page {
   box-shadow: 0 4px 18px rgba(38, 50, 56, 0.12);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  /* A finger sliding over the dots counts them, so it mustn't scroll or zoom. */
+  touch-action: none;
 }
 
 .dots-work {
@@ -410,6 +412,14 @@ body.calc-page {
 .dot--b { background: radial-gradient(circle at 35% 30%, #90caf9 0%, var(--dot-b) 55%, #1e88e5 100%); }
 .dot--settled { animation: none; }
 .dot.is-counted { transform: scale(1.12); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+/* All counted: a little hop along the row. Stronger than .dot--settled, which
+   is what's left once it's done, so the pop-in never plays again. */
+.dot.is-hop,
+.slot.is-hop { animation: dot-hop 0.42s ease-out both; }
+@keyframes dot-hop {
+  0%, 100% { transform: scale(1.12) translateY(0); }
+  45% { transform: scale(1.18) translateY(calc(var(--dot) * -0.35)); }
+}
 
 @keyframes dot-pop {
   0% { transform: scale(0); }
@@ -484,7 +494,7 @@ body.calc-page {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dot, .dot--leaving, .dot--gone { animation: none; }
+  .dot, .dot--leaving, .dot--gone, .dot.is-hop, .slot.is-hop { animation: none; }
   .calc-key.is-next { animation: none; box-shadow: 0 calc(var(--calc-w) * 0.014) 0 var(--ledge), 0 0 0 calc(var(--calc-w) * 0.012) rgba(255, 255, 255, 0.75); }
   .calc-screen[data-phase="start"] .calc-cursor { animation: none; }
   .calc-cell--r.is-new { animation: none; }
