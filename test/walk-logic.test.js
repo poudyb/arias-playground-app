@@ -20,7 +20,7 @@ test('a pattern reads into stones, a start and the friend', () => {
     goal: 4
   });
   assert.strictEqual(walk.parseWalkPattern(walk.WALK_FREE_GARDEN).goal, -1, 'Free Play has nobody to reach');
-  assert.throws(() => walk.parseWalkPattern('K.X.D.'));
+  assert.throws(() => walk.parseWalkPattern('K.M.D.'), 'mud is gone');
 });
 
 test('mirroring puts the friend on the other side', () => {
@@ -38,15 +38,15 @@ test('an arrow walks one stone, and stops at the end of the garden', () => {
   assert.deepStrictEqual(walk.walkMove(board, { pos: 0, facing: 'right' }, 'left'), { pos: 0, facing: 'left', result: 'edge' });
 });
 
-test('logs, mud and stumps stop a walk, and the arrow still turns her', () => {
+test('logs, rocks and stumps stop a walk, and the arrow still turns her', () => {
   assert.deepStrictEqual(walk.walkMove(boardOf('K.L.D.'), { pos: 1, facing: 'left' }, 'right'), { pos: 1, facing: 'right', result: 'blocked' });
-  assert.strictEqual(walk.walkMove(boardOf('KM..D.'), { pos: 0, facing: 'right' }, 'right').result, 'blocked');
+  assert.strictEqual(walk.walkMove(boardOf('KR..D.'), { pos: 0, facing: 'right' }, 'right').result, 'blocked');
   assert.strictEqual(walk.walkMove(boardOf('K.G...'), { pos: 1, facing: 'right' }, 'right').result, 'blocked');
 });
 
-test('jump clears a log or mud, climbs a stump, and hops on the spot otherwise', () => {
+test('jump clears a log or a rock, climbs a stump, and hops on the spot otherwise', () => {
   assert.deepStrictEqual(walk.walkMove(boardOf('K.L.D.'), { pos: 1, facing: 'right' }, 'jump'), { pos: 3, facing: 'right', result: 'over' });
-  assert.deepStrictEqual(walk.walkMove(boardOf('D.M.K.'), { pos: 3, facing: 'left' }, 'jump'), { pos: 1, facing: 'left', result: 'over' });
+  assert.deepStrictEqual(walk.walkMove(boardOf('D.R.K.'), { pos: 3, facing: 'left' }, 'jump'), { pos: 1, facing: 'left', result: 'over' });
   assert.deepStrictEqual(walk.walkMove(boardOf('K.G...'), { pos: 1, facing: 'right' }, 'jump'), { pos: 2, facing: 'right', result: 'onto' });
   assert.deepStrictEqual(walk.walkMove(boardOf('K..D..'), { pos: 0, facing: 'right' }, 'jump'), { pos: 0, facing: 'right', result: 'hop' });
   assert.strictEqual(walk.walkMove(boardOf('K..D.L'), { pos: 4, facing: 'right' }, 'jump').result, 'hop', 'no stone to land on past the log');
@@ -88,13 +88,13 @@ test('the first board is the → button alone, with nothing in the way', () => {
   const level = walk.WALK_LEVELS[0];
   assert.deepStrictEqual(level.buttons, ['right']);
   level.patterns.forEach((pattern) => {
-    assert.ok(!/[LMTG]/.test(pattern), pattern);
+    assert.ok(!/[LRTG]/.test(pattern), pattern);
   });
 });
 
 test('a rung with something to jump always has the jump button', () => {
   walk.WALK_LEVELS.forEach((level) => {
-    const needsJump = level.patterns.some((p) => /[LMTG]/.test(p));
+    const needsJump = level.patterns.some((p) => /[LRTG]/.test(p));
     assert.ok(!needsJump || level.buttons.includes('jump'), level.about);
   });
 });
@@ -161,7 +161,18 @@ test('Free Play\'s garden can be walked end to end, over and onto everything', (
     frontier = next;
   }
   garden.things.forEach((thing, pos) => {
-    const standable = thing !== 'log' && thing !== 'mud';
+    const standable = thing !== 'log' && thing !== 'rock';
     assert.strictEqual(reached.has(pos), standable, 'stone ' + pos + ' (' + (thing || 'open') + ')');
   });
+});
+
+test('a spoken hint waits until she has stopped, longest while she is on her way', () => {
+  assert.ok(walk.walkHintWaitMs('progress') > walk.walkHintWaitMs('nowhere'));
+  assert.strictEqual(walk.walkHintWaitMs('none'), walk.walkHintWaitMs('nowhere'));
+  assert.ok(walk.walkHintWaitMs('none') >= 8000, 'longer than a toddler\'s pause between presses');
+  assert.throws(() => walk.walkHintWaitMs('tap'));
+});
+
+test('the silent flash waits for more than one press that goes nowhere', () => {
+  assert.ok(walk.WALK_STUCK_PRESSES > 1);
 });

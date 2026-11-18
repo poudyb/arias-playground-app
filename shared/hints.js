@@ -8,7 +8,8 @@
 // Callers that voice a hint should only do so when speak is true, so the
 // repeat is visual-only and never drones on audibly.
 //
-//   reset()        - start a fresh round (clear misses, arm the idle timer)
+//   reset(ms)      - start a fresh round (clear misses, arm the idle timer,
+//                    for `ms` instead of idleMs when given)
 //   poke()         - a non-solving interaction happened; restart idle countdown
 //   registerMiss() - a wrong attempt happened
 //   stop()         - round solved, mode left, or game stopped
@@ -59,17 +60,17 @@ function createHintNudge(options = {}) {
     flashTimer = setInterval(function() { flash(false); }, flashEveryMs);
   }
 
-  function armIdle() {
+  function armIdle(ms) {
     if (idleTimer != null) clearTimeout(idleTimer);
-    idleTimer = setTimeout(function() { startNudging(true); }, idleMs);
+    idleTimer = setTimeout(function() { startNudging(true); }, ms || idleMs);
   }
 
   return {
-    reset: function() {
+    reset: function(ms) {
       misses = 0;
       nudging = false;
       clearTimers();
-      armIdle();
+      armIdle(ms);
     },
     poke: function() {
       if (!nudging) armIdle();

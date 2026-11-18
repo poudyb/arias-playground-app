@@ -47,6 +47,8 @@ let friendEl = null;
 let locked = false;
 let wasted = 0;
 let hinted = false;
+let lastPress = 'none';
+let nowhereStreak = 0;
 let lastBoardKey = null;
 let lastFriendKey = null;
 let boardSerial = 0;
@@ -209,8 +211,8 @@ function renderBoard() {
       case '':
         addThing('walk-stone', pos);
         break;
-      case 'mud':
-        addThing('walk-mud', pos);
+      case 'rock':
+        addThing('walk-rock', pos);
         break;
       case 'log': {
         const log = addThing('walk-log', pos, 'img');
@@ -281,10 +283,12 @@ function dealWalkBoard(greet) {
   state = walkStartState(board);
   wasted = 0;
   hinted = false;
+  lastPress = 'none';
+  nowhereStreak = 0;
   locked = false;
   renderBoard();
   sayIntro('Walk to the ' + friend.key + '!', greet);
-  hint.reset();
+  hint.reset(walkHintWaitMs(lastPress));
 }
 
 function enterFreeGarden(greet) {
@@ -373,10 +377,33 @@ function showMove(result) {
   }
 }
 
+function flashHelpfulButton() {
+  flashHintEl(actionBtns[walkPlan(board, state).firstAction]);
+}
+
+// She is trying something: the voice stops, and the spoken hint waits again.
+function notePress(wentNowhere) {
+  if (wentNowhere) {
+    wasted += 1;
+    nowhereStreak += 1;
+    lastPress = 'nowhere';
+    if (nowhereStreak >= WALK_STUCK_PRESSES) flashHelpfulButton();
+  } else {
+    nowhereStreak = 0;
+    lastPress = 'progress';
+  }
+  hint.reset(walkHintWaitMs(lastPress));
+}
+
+function quietForHerTap() {
+  dropIntro();
+  cancelSpeech();
+}
+
 function onAction(action) {
   if (board == null || locked || !pickerEl.hidden || session.isSessionEnded()) return;
   if (!board.buttons.includes(action)) return;
-  dropIntro();
+  quietForHerTap();
 
   const before = state;
   const moved = walkMove(board, state, action);
@@ -391,13 +418,8 @@ function onAction(action) {
       if (action === 'jump') stats.freeJumps += 1;
       else if (moved.result === 'step') stats.freeSteps += 1;
     });
-  } else if (moved.pos !== board.goal) {
-    if (wentNowhere) {
-      wasted += 1;
-      hint.registerMiss();
-    } else {
-      hint.reset();
-    }
+  } else if (!reached) {
+    notePress(wentNowhere);
   }
 
   const serial = boardSerial;
@@ -413,13 +435,12 @@ function onAction(action) {
 
 function onFriendTap() {
   if (mode !== 'walk' || locked || session.isSessionEnded()) return;
-  dropIntro();
-  wasted += 1;
+  quietForHerTap();
   session.mutateStats(function(stats) { stats.friendTaps += 1; });
   playPieceAnimation(friendEl, 'shake');
   audio.playSoftTone();
-  flashHintEl(actionBtns[walkPlan(board, state).firstAction]);
-  hint.registerMiss();
+  flashHelpfulButton();
+  notePress(true);
 }
 
 function renderPickerCards() {
@@ -477,7 +498,7 @@ function onPickAvatar(choice, card) {
       return;
     }
     renderBoard();
-    if (mode === 'walk') hint.reset();
+    if (mode === 'walk') hint.reset(walkHintWaitMs(lastPress));
     playPieceAnimation(youEl, 'is-hopping');
     speakText("That's you!", { rate: 0.9 });
   }, 700);

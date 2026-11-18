@@ -9,10 +9,10 @@
 //
 //   K  where she starts        .  an open stone
 //   D  the friend, on a stone  G  the friend, up on a stump
-//   L  a log                   M  a mud puddle
+//   L  a log                   R  a rock
 //   T  a stump with nobody on it
 //
-// Logs and mud are jumped over. A stump is too tall to walk into, so she jumps
+// Logs and rocks are jumped over. A stump is too tall to walk into, so she jumps
 // up onto it and walks off the other side.
 
 const WALK_ACTIONS = ['left', 'right', 'jump'];
@@ -24,21 +24,21 @@ const WALK_LEVELS = [
     about: '→ and jump, with a log in the way' },
   { buttons: ['left', 'right'], sides: ['right', 'left'], patterns: ['K..D..', '.K...D', 'K...D.'],
     about: '← and →, with the friend on either side' },
-  { buttons: WALK_ACTIONS, sides: ['right', 'left'], patterns: ['K.L.D.', '.K.M.D', 'K..L.D', 'K.M..D'],
-    about: 'all three buttons, with a log or a puddle in the way' },
+  { buttons: WALK_ACTIONS, sides: ['right', 'left'], patterns: ['K.L.D.', '.K.R.D', 'K..L.D', 'K.R..D'],
+    about: 'all three buttons, with a log or a rock in the way' },
   { buttons: WALK_ACTIONS, sides: ['right', 'left'], patterns: ['K..G..', '.K..G.', 'K...G.'],
     about: 'all three buttons, with the friend up on a stump' },
-  { buttons: WALK_ACTIONS, sides: ['right', 'left'], patterns: ['K.M.LD', 'K.L.G.', '.K.M.G', 'KL.M.D', 'K.T.D.'],
+  { buttons: WALK_ACTIONS, sides: ['right', 'left'], patterns: ['K.R.LD', 'K.L.G.', '.K.R.G', 'KL.R.D', 'K.T.D.'],
     about: 'all three buttons, with two things in the way' }
 ];
 
-const WALK_FREE_GARDEN = 'K.L.T.M.';
+const WALK_FREE_GARDEN = 'K.L.T.R.';
 
 // Presses that don't bring her closer are let go once a board, so the first
 // bump into a new log, or one tap on the friend, doesn't hold her back.
 const WALK_WASTED_FORGIVEN = 1;
 
-const PATTERN_THINGS = { '.': '', K: '', D: '', G: 'stump', L: 'log', M: 'mud', T: 'stump' };
+const PATTERN_THINGS = { '.': '', K: '', D: '', G: 'stump', L: 'log', R: 'rock', T: 'stump' };
 
 function parseWalkPattern(pattern) {
   const chars = pattern.split('');
@@ -112,15 +112,15 @@ function walkStartState(board) {
 }
 
 function isJumpedOver(thing) {
-  return thing === 'log' || thing === 'mud';
+  return thing === 'log' || thing === 'rock';
 }
 
 // What one press does. `result` is what the page shows:
 //
 //   step    - walked one stone (down off a stump included)
 //   edge    - walked into the end of the garden; she stays
-//   blocked - walked into a log, mud or a stump; she stays
-//   over    - jumped over the log or mud in front, landing past it
+//   blocked - walked into a log, a rock or a stump; she stays
+//   over    - jumped over the log or rock in front, landing past it
 //   onto    - jumped up onto the stump in front
 //   hop     - jumped with nothing in front to jump: a hop on the spot
 //
@@ -197,6 +197,26 @@ function isWalkPressWasted(board, before, after) {
   return walkPlan(board, after).presses >= walkPlan(board, before).presses;
 }
 
+// A voice while she is pressing reads to her as "that was wrong", and she
+// switches arrows even when she was on her way. So a hint only speaks once
+// she has stopped: the wait runs from her last press, and is longest when
+// that press was getting her there. `lastPress` is 'none' on a fresh board.
+function walkHintWaitMs(lastPress) {
+  switch (lastPress) {
+    case 'none':
+    case 'nowhere':
+      return 8000;
+    case 'progress':
+      return 15000;
+    default:
+      throw new Error('Unknown walk press: ' + lastPress);
+  }
+}
+
+// Presses in a row that go nowhere before the button that would help flashes,
+// silently: she is stuck but still trying, so she gets a look, not a voice.
+const WALK_STUCK_PRESSES = 2;
+
 // How a finished board went: missed when more presses went nowhere than the
 // one forgiven, assisted when she only got there once the hint was showing.
 function walkBoardOutcome(wasted, hinted) {
@@ -212,6 +232,8 @@ if (typeof module !== 'undefined' && module.exports) {
     WALK_LEVELS,
     WALK_FREE_GARDEN,
     WALK_WASTED_FORGIVEN,
+    WALK_STUCK_PRESSES,
+    walkHintWaitMs,
     parseWalkPattern,
     mirrorWalkPattern,
     buildWalkBoard,
