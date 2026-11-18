@@ -220,7 +220,54 @@ function createAudioFeedback() {
     });
   }
 
-  return { getAudioCtx, playChime, playBuzzer, playMatchTone, playSoftTone, playFanfare };
+  function playStep() {
+    whenRunning(function(ctx) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = 587.33;
+      gain.gain.value = 0.07;
+      gain.gain.setTargetAtTime(0, ctx.currentTime + 0.04, 0.025);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.16);
+    });
+  }
+
+  function playHop() {
+    whenRunning(function(ctx) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(330, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.22);
+      gain.gain.value = 0.09;
+      gain.gain.setTargetAtTime(0, ctx.currentTime + 0.2, 0.04);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.36);
+    });
+  }
+
+  function playBump() {
+    whenRunning(function(ctx) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(180, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.12);
+      gain.gain.value = 0.16;
+      gain.gain.setTargetAtTime(0, ctx.currentTime + 0.06, 0.03);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+    });
+  }
+
+  return { getAudioCtx, playChime, playBuzzer, playMatchTone, playSoftTone, playFanfare, playStep, playHop, playBump };
 }
 
 function setupInteractionUnlock(callbacks = []) {

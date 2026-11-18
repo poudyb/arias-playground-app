@@ -150,6 +150,50 @@
   :root .keyboard[data-pos="0"] { --key-bg: #1f3a2a; --key-ink: #c8e6c9; }
   :root .keyboard[data-pos="2"] { --key-bg: #1c3150; --key-ink: #bbdefb; }
 
+  /* ---- Walk and Jump -------------------------------------------------------------
+     The garden goes to dusk, not to navy: its characters stand on the sky,
+     so the sky is the paper behind them. */
+
+  :root .walk-stage {
+    background: linear-gradient(180deg, #8fa1b8 0%, #aeb6c2 70%, #a3ad98 100%);
+  }
+
+  :root .walk-cloud {
+    opacity: 0.35;
+  }
+
+  :root .walk-ground {
+    background: linear-gradient(180deg, #6f8f55 0%, #66854d 12%, #7d8f6c 13%, #7d8f6c 100%);
+    border-top-color: #5b7a43;
+  }
+
+  :root .walk-controls {
+    background: #7d8f6c;
+  }
+
+  :root .walk-stone {
+    background: rgba(227, 232, 240, 0.6);
+  }
+
+  :root .walk-btn {
+    border-color: var(--night-rim);
+    filter: brightness(0.85);
+  }
+
+  :root .who-picker {
+    background: var(--night-bg);
+  }
+
+  :root .who-picker__title {
+    color: var(--night-ink);
+  }
+
+  :root .who-card,
+  :root .who-btn {
+    background: var(--night-paper);
+    border-color: var(--night-rim);
+  }
+
   /* ---- Calculator ----------------------------------------------------------------
      The calculator body is dark already; the screen and the cream keys come
      down a little so they don't glow in a dark room. The dots keep their
@@ -209,6 +253,7 @@
   :root .game-tile--shapes .game-tile__label { color: #ce93d8; }
   :root .game-tile--same .game-tile__label { color: #80deea; }
   :root .game-tile--memory .game-tile__label { color: #f48fb1; }
+  :root .game-tile--walk .game-tile__label { color: #c5e1a5; }
   :root .game-tile--clock .game-tile__label { color: #ffd180; }
 
   :root .game-tile__art__dot {

@@ -104,6 +104,18 @@ const ACTIVITIES = [
     defaultStats: function() { return createMemoryStats(); }
   },
   {
+    id: 'walk',
+    href: 'walk.html',
+    title: 'Walk and Jump',
+    hint: 'Walk to a friend!',
+    tileClass: 'game-tile--walk',
+    artClasses: 'game-tile__art game-tile__art--walk',
+    artHtml: '🐱➡️🐶',
+    sessionKey: 'ariaWalkSession',
+    statsKey: 'ariaWalkStats',
+    defaultStats: function() { return createWalkStats(); }
+  },
+  {
     id: 'clock',
     href: 'clock.html',
     title: 'Clock',

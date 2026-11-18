@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Walk and Jump — Aria's Playroom</title>
+<link rel="stylesheet" href="styles/fonts.css">
+<link rel="stylesheet" href="styles/shared.css">
+<link rel="stylesheet" href="styles/walk.css">
+<link rel="stylesheet" href="styles/night.css">
+</head>
+<body>
+
+<div id="play-timer" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<div id="session-end-overlay" aria-modal="true" role="dialog" aria-labelledby="session-end-title" aria-hidden="true">
+  <div class="session-end-card">
+    <h2 id="session-end-title">Time's up!</h2>
+    <p class="session-end-sub">Here's how your walking went!</p>
+    <div class="session-end-stats" id="session-end-stats"></div>
+    <a href="index.html" class="session-end-home" id="session-end-home">Back to home</a>
+  </div>
+</div>
+
+<a href="index.html" class="home-btn" id="link-home" aria-label="Back to games">← Home</a>
+
+<div id="mode-buttons">
+  <button type="button" class="who-btn" id="who-btn" aria-label="Change who you are" hidden><img alt="" id="who-btn-img"></button>
+  <button type="button" class="mode-btn active" data-mode="freeplay">Free Play</button>
+  <button type="button" class="mode-btn" data-mode="walk">Walk It</button>
+</div>
+
+<main id="app-main">
+  <div class="walk-stage" id="walk-stage">
+    <span class="walk-cloud walk-cloud--a" aria-hidden="true"></span>
+    <span class="walk-cloud walk-cloud--b" aria-hidden="true"></span>
+    <span class="walk-cloud walk-cloud--c" aria-hidden="true"></span>
+    <div class="walk-ground" aria-hidden="true"></div>
+    <div class="walk-row" id="walk-row"></div>
+  </div>
+  <div class="walk-controls">
+    <button type="button" class="walk-btn" data-action="left" aria-label="Walk left">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><path d="M80 50 H28 M48 26 L24 50 L48 74"/></svg>
+    </button>
+    <button type="button" class="walk-btn walk-btn--jump" data-action="jump" aria-label="Jump">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><path d="M18 76 Q50 4 82 76"/><path d="M66 64 L82 78 L88 58"/></svg>
+    </button>
+    <button type="button" class="walk-btn" data-action="right" aria-label="Walk right">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><path d="M20 50 H72 M52 26 L76 50 L52 74"/></svg>
+    </button>
+  </div>
+</main>
+
+<div class="who-picker" id="who-picker" role="dialog" aria-labelledby="who-picker-title" hidden>
+  <h2 class="who-picker__title" id="who-picker-title">Who do you want to be?</h2>
+  <div class="who-picker__cards" id="who-cards"></div>
+</div>
+
+<script src="shared/touch-guard.js"></script>
+<script src="shared/feedback.js"></script>
+<script src="shared/stats.js"></script>
+<script src="shared/speech.js"></script>
+<script src="shared/summary.js"></script>
+<script src="shared/portal-storage.js"></script>
+<script src="shared/session.js"></script>
+<script src="shared/hints.js"></script>
+<script src="shared/progression.js"></script>
+<script src="shared/page-boot.js"></script>
+<script src="shared/walk-logic.js"></script>
+<script src="scripts/walk-page.js"></script>
+</body>
+</html>

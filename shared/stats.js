@@ -89,6 +89,22 @@ function normalizeMemoryStats(parsed) {
   return normalizeStatsBySchema(parsed, createMemoryStats());
 }
 
+function createWalkStats() {
+  return {
+    freeSteps: 0,
+    freeJumps: 0,
+    walkFriends: 0,
+    walkBoardsMissed: 0,
+    friendTaps: 0,
+    usedFreeplay: false,
+    usedWalk: false
+  };
+}
+
+function normalizeWalkStats(parsed) {
+  return normalizeStatsBySchema(parsed, createWalkStats());
+}
+
 function createClockStats() {
   return {
     matchSuccesses: 0,
@@ -160,6 +176,8 @@ if (typeof module !== 'undefined' && module.exports) {
     normalizeSameAsStats,
     createMemoryStats,
     normalizeMemoryStats,
+    createWalkStats,
+    normalizeWalkStats,
     createClockStats,
     normalizeClockStats,
     createSpellingStats,
