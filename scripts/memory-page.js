@@ -1,4 +1,3 @@
-const modeBtns = document.querySelectorAll('.mode-btn');
 const memoryGridEl = document.getElementById('memory-grid');
 
 const MEMORY_SESSION_KEY = 'ariaMemorySession';
@@ -6,37 +5,31 @@ const MEMORY_LEVEL_KEY = MEMORY_SESSION_KEY + ':level';
 const CONFETTI_HEX = ['#00838f', '#26c6da', '#b2ebf2', '#e53935', '#43a047', '#8e24aa', '#ff9800', '#1e88e5'];
 const BOARD_PROMPT = 'Find the ones that match!';
 
-let mode = null;
-
 function matchedSentence(pairs, boards) {
   return 'You matched ' + pairs + ' pair' + (pairs === 1 ? '' : 's') +
     (boards ? ' and finished ' + boards + ' board' + (boards === 1 ? '' : 's') + '!' : '!');
 }
 
+function faceDownSentence(rung) {
+  if (rung.hidden === 0) return 'all face up';
+  if (rung.hidden === rung.pairs * 2) return 'all face down';
+  return rung.hidden + ' of them face down';
+}
+
 function renderSummary(board, stats) {
-  if (stats.usedFreeplay) {
-    appendScoreSection(board, {
-      icon: '🎨',
-      title: 'Free Play',
-      body: stats.freeMatches === 0
-        ? 'You opened Free Play - tap two that are the same next time!'
-        : matchedSentence(stats.freeMatches, stats.freeBoards)
-    });
-  }
-
-  if (stats.usedFlip) {
-    const body = createIntroBody(stats.flipMatches === 0
-      ? 'Flip two cards and find the pictures that match!'
-      : matchedSentence(stats.flipMatches, stats.flipBoards));
-    // For the grown-up: how the board size moves, which she is never told.
-    appendBodyNote(body, 'Now on boards of ' + (MEMORY_LEVELS[savedMemoryLevelIdx()].pairs * 2) + ' cards. ' +
-      'A board with no wasted picks moves her up a size. Turning over a card she had already ' +
-      'seen when it couldn\'t be the match gets the X; going back to a seen card first is let go ' +
-      'once a board. Boards are never cut short; two messy boards in a row make the next one smaller' +
-      (stats.flipBoardsFailed ? ' (' + stats.flipBoardsFailed + ' messy today)' : '') + '.');
-    appendScoreSection(board, { icon: '🧠', title: 'Flip It', body: body });
-  }
-
+  const body = createIntroBody(stats.matches === 0
+    ? 'Tap two that are the same next time!'
+    : matchedSentence(stats.matches, stats.boards));
+  const rung = MEMORY_LADDER[savedMemoryLevelIdx()];
+  // For the grown-up: how the boards move, which she is never told.
+  appendBodyNote(body, 'Now on boards of ' + (rung.pairs * 2) + ' cards, ' + faceDownSentence(rung) + '. ' +
+    'The first boards are all face up; then one card of each pair goes face down, then whole pairs, ' +
+    'and only then does the board grow. A board with no wasted picks moves her up a step. Picking a card ' +
+    'she could see, or had already seen, when it couldn\'t be the match gets the X; going back to a seen ' +
+    'card first is let go once a board. A board finished only once the hint pointed the way stays where ' +
+    'it is, and two messy boards in a row step her back' +
+    (stats.boardsFailed ? ' (' + stats.boardsFailed + ' messy today)' : '') + '.');
+  appendScoreSection(board, { icon: '🧠', title: 'Memory', body: body });
   cancelSpeech();
 }
 
@@ -55,36 +48,34 @@ const thumbsDown = createThumbsDownController();
 setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
 
 // ---------------------------------------------------------------------------
-// Flip It: a concentration game over the Spelling picture pool. Only a
-// board played without a slip grows the deck; a slip is a pick she had the
-// information to avoid (see shared/memory-logic.js). Turning over a card she'd
-// already seen, as the second card, when it isn't the match gets the big X;
-// going back to a seen card first is milder, the first one let go and later
-// ones a buzzer and a shake. The board never ends early: slips only decide
-// the size of the next one. Honest first looks at new cards never count
-// against her and only get the soft tone.
+// One game over the Spelling picture pool, climbing MEMORY_LADDER
+// (shared/memory-logic.js): the first boards are dealt face up, then one card
+// of each pair goes face down, then whole pairs. There used to be a face-up
+// Free Play beside a face-down Flip It, and Free Play, the one she landed on,
+// was the one she stayed on.
 //
-// Cards she has never turned over shimmer, a slow sheen across the back, so
-// the board itself shows where there is still something to find.
+// Only a board played without a slip moves her up; a slip is a pick she had
+// the information to avoid. Picking a card she could see, or had already
+// seen, as the second card when it isn't the match gets the big X; going back
+// to a turned card first is milder, the first one let go and later ones a
+// buzzer and a shake. The board never ends early: slips only decide the next
+// one. Honest first looks at new cards never count against her and only get
+// the soft tone.
 //
-// Free Play deals the same cards face up, one 8-card board at a time: she
-// taps a card and its twin, and the pair goes. Nothing she taps is wrong.
+// Face-down cards she has never turned over shimmer, a slow sheen across the
+// back, so the board itself shows where there is still something to find.
 // ---------------------------------------------------------------------------
 
-// pairs on the board + the grid shape. Level 1 is a single pair, so the very
-// first board is impossible to get wrong - it just teaches "find the two that
-// match". The last entry is the cap: clearing the top board re-deals at size.
-const MEMORY_LEVELS = [
-  { pairs: 1, cols: 2, rows: 1 },   // 2 cards
-  { pairs: 2, cols: 2, rows: 2 },   // 4 cards
-  { pairs: 3, cols: 3, rows: 2 },   // 6 cards
-  { pairs: 4, cols: 4, rows: 2 },   // 8 cards
-  { pairs: 5, cols: 4, rows: 3 },   // 10 cards, with the last pair centred
-  { pairs: 6, cols: 4, rows: 3 },   // 12 cards
-  { pairs: 8, cols: 4, rows: 4 }    // 16 cards
-];
-
-const FREE_PLAY_BOARD = { pairs: 4, cols: 4, rows: 2 };
+// The grid for each board size. The last rung is the cap: clearing the top
+// board re-deals at size.
+const MEMORY_GRIDS = {
+  2: { cols: 2, rows: 2 },
+  3: { cols: 3, rows: 2 },
+  4: { cols: 4, rows: 2 },
+  5: { cols: 4, rows: 3 },   // 10 cards, with the last pair centred
+  6: { cols: 4, rows: 3 },
+  8: { cols: 4, rows: 4 }
+};
 
 // The deck is the Spelling game's whole picture pool (data/spelling.js), so it
 // grows whenever Spelling does. It used to be a hand-picked 30 chosen so no two
@@ -115,17 +106,17 @@ let boardSerial = 0;
 let memoryLevelIdx = 0;
 let memoryKnownSlips = 0;
 let memoryGambles = 0;
+let memoryHinted = false;
 let memoryFailStreak = 0;
 let memoryLastKeys = [];
-let freeLastKeys = [];
 
 const hint = createHintNudge({
   onFlash: function() {
-    freePlayHintIndices(memoryCards, memoryFirstIdx).forEach(function(i) {
-      flashHintEl(memoryCards[i].el);
-    });
+    const indices = memoryHintIndices(memoryCards, memoryFirstIdx);
+    if (indices.length > 0) memoryHinted = true;
+    indices.forEach(function(i) { flashHintEl(memoryCards[i].el); });
   },
-  isActive: function() { return mode === 'freeplay' && !memoryLocked && !session.isSessionEnded(); }
+  isActive: function() { return !memoryLocked && !session.isSessionEnded(); }
 });
 
 function shuffleInPlace(arr) {
@@ -154,13 +145,13 @@ function renderMemoryArt(el, card) {
   el.appendChild(img);
 }
 
-function createMemoryCard(card, index, cols, faceUp) {
+function createMemoryCard(card, index, cols, shown) {
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.className = faceUp ? 'memory-card is-flipped' : 'memory-card is-fresh';
+  btn.className = shown ? 'memory-card is-flipped' : 'memory-card is-fresh';
   // The shimmer crosses the board as one diagonal wave, top-left first.
   btn.style.setProperty('--shimmer-delay', (((index % cols) + Math.floor(index / cols)) * 0.14) + 's');
-  btn.setAttribute('aria-label', faceUp ? card.name : 'Memory card, face down');
+  btn.setAttribute('aria-label', shown ? card.name : 'Memory card, face down');
 
   const inner = document.createElement('span');
   inner.className = 'memory-card__inner';
@@ -184,9 +175,9 @@ function createMemoryCard(card, index, cols, faceUp) {
   inner.appendChild(front);
   btn.appendChild(inner);
 
-  btn.addEventListener('click', function() { MODES[mode].tap(index); });
+  btn.addEventListener('click', function() { onMemoryTap(index); });
 
-  return { key: card.key, name: card.name, el: btn, artEl: art, faceUp: faceUp, matched: false, seen: false };
+  return { key: card.key, name: card.name, el: btn, artEl: art, shown: shown, faceUp: shown, matched: false, seen: shown };
 }
 
 function clearMemoryTimers() {
@@ -216,18 +207,23 @@ function clearMemoryTimers() {
 // match, and she should hear both halves of it. The first card of a turn
 // replaces whatever was being said (the intro, a cheer) — her tap wins.
 function flipMemoryUp(card, isSecond) {
-  card.faceUp = true;
-  card.el.classList.remove('is-fresh');
-  card.el.classList.add('is-flipped');
-  card.el.setAttribute('aria-label', card.name + ', face up');
+  if (!card.shown) {
+    card.faceUp = true;
+    card.el.classList.remove('is-fresh');
+    card.el.classList.add('is-flipped');
+    card.el.setAttribute('aria-label', card.name + ', face up');
+  }
   // Say what was revealed so the child sees it and hears it named.
   if (session.isSessionEnded()) return null;
   return speakText(card.name, { rate: 0.9, queue: isSecond });
 }
 
+// A face-down card turns back over; one dealt face up only settles back down.
 function flipMemoryDown(card) {
+  card.el.classList.remove('is-picked', 'shake');
+  if (card.shown) return;
   card.faceUp = false;
-  card.el.classList.remove('is-flipped', 'shake');
+  card.el.classList.remove('is-flipped');
   card.el.setAttribute('aria-label', 'Memory card, face down');
 }
 
@@ -237,7 +233,7 @@ function shakeMemoryCard(card) {
   card.el.classList.add('shake');
 }
 
-function dealBoard(level, picks, faceUp) {
+function dealBoard(rung, picks) {
   clearMemoryTimers();
   boardSerial += 1;
   memoryFirstIdx = -1;
@@ -245,19 +241,21 @@ function dealBoard(level, picks, faceUp) {
   memoryMatchedPairs = 0;
 
   const deck = [];
-  picks.forEach(function(p) {
-    deck.push(p);
-    deck.push(p);
+  picks.forEach(function(p, pairIndex) {
+    const hiddenCopies = memoryHiddenCopies(pairIndex, rung.pairs, rung.hidden);
+    deck.push({ card: p, shown: hiddenCopies < 2 });
+    deck.push({ card: p, shown: hiddenCopies < 1 });
   });
   shuffleInPlace(deck);
 
-  memoryGridEl.style.setProperty('--cols', String(level.cols));
-  memoryGridEl.style.setProperty('--rows', String(level.rows));
+  const grid = MEMORY_GRIDS[rung.pairs];
+  memoryGridEl.style.setProperty('--cols', String(grid.cols));
+  memoryGridEl.style.setProperty('--rows', String(grid.rows));
   memoryGridEl.classList.toggle('memory-grid--center-last-pair', deck.length === 10);
 
   memoryGridEl.innerHTML = '';
-  memoryCards = deck.map(function(card, i) {
-    const node = createMemoryCard(card, i, level.cols, faceUp);
+  memoryCards = deck.map(function(entry, i) {
+    const node = createMemoryCard(entry.card, i, grid.cols, entry.shown);
     memoryGridEl.appendChild(node.el);
     return node;
   });
@@ -271,22 +269,17 @@ function dealBoard(level, picks, faceUp) {
   }, 360);
 }
 
-function buildFlipBoard() {
+function buildMemoryBoard() {
   memoryKnownSlips = 0;
   memoryGambles = 0;
-  const level = MEMORY_LEVELS[memoryLevelIdx];
-  const picks = pickMemoryItems(level.pairs, memoryLastKeys);
+  memoryHinted = false;
+  const rung = MEMORY_LADDER[memoryLevelIdx];
+  const picks = pickMemoryItems(rung.pairs, memoryLastKeys);
   memoryLastKeys = picks.map(function(p) { return p.key; });
   // Remembered with the level so a board dealt after a reload also avoids the
   // one that was on screen when the page went away.
   saveMemoryLevel();
-  dealBoard(level, picks, false);
-}
-
-function buildFreeBoard() {
-  const picks = pickMemoryItems(FREE_PLAY_BOARD.pairs, freeLastKeys);
-  freeLastKeys = picks.map(function(p) { return p.key; });
-  dealBoard(FREE_PLAY_BOARD, picks, true);
+  dealBoard(rung, picks);
   hint.reset();
 }
 
@@ -320,17 +313,25 @@ function dropIntroPrompt() {
   }
 }
 
-function onFlipTap(index) {
+function onMemoryTap(index) {
   if (session.isSessionEnded() || memoryLocked) return;
   const card = memoryCards[index];
-  if (!card || card.matched || card.faceUp) return;
+  if (!card || card.matched) return;
+
+  if (index === memoryFirstIdx) {
+    if (card.shown) speakText(card.name, { rate: 0.9 });
+    hint.poke();
+    return;
+  }
 
   dropIntroPrompt();
 
   const spoken = flipMemoryUp(card, memoryFirstIdx !== -1);
+  card.el.classList.add('is-picked');
 
   if (memoryFirstIdx === -1) {
     memoryFirstIdx = index;
+    hint.poke();
     return;
   }
 
@@ -343,53 +344,11 @@ function onFlipTap(index) {
   card.seen = true;
 
   if (outcome === 'match') {
+    hint.stop();
     resolveMemoryMatch(first, card, spoken);
   } else {
     resolveMemoryMismatch(first, card, outcome);
   }
-}
-
-function onFreeplayTap(index) {
-  if (session.isSessionEnded() || memoryLocked) return;
-  const card = memoryCards[index];
-  if (!card || card.matched) return;
-
-  dropIntroPrompt();
-
-  const lifted = memoryFirstIdx;
-  const action = freePlayTap(memoryCards, lifted, index);
-  switch (action) {
-    case 'again':
-      speakText(card.name, { rate: 0.9 });
-      hint.poke();
-      return;
-    case 'match':
-      memoryFirstIdx = -1;
-      card.el.classList.add('is-picked');
-      hint.stop();
-      session.mutateStats(function(stats) { stats.freeMatches += 1; });
-      celebratePair(memoryCards[lifted], card, speakText(card.name, { rate: 0.9, queue: true }), function() {
-        if (memoryMatchedPairs >= FREE_PLAY_BOARD.pairs) {
-          finishFreeBoard();
-        } else {
-          memoryLocked = false;
-          hint.reset();
-        }
-      });
-      return;
-    case 'swap':
-      memoryCards[lifted].el.classList.remove('is-picked');
-      hint.registerMiss();
-      break;
-    case 'lift':
-      hint.poke();
-      break;
-    default:
-      throw new Error('Unknown Free Play tap: ' + action);
-  }
-  card.el.classList.add('is-picked');
-  memoryFirstIdx = index;
-  speakText(card.name, { rate: 0.9 });
 }
 
 // Run `go` once the card's name has finished being spoken. Speech can also
@@ -449,11 +408,15 @@ function celebratePair(a, b, spoken, then) {
 }
 
 function resolveMemoryMatch(a, b, spoken) {
-  session.mutateStats(function(stats) { stats.flipMatches += 1; });
-  const total = MEMORY_LEVELS[memoryLevelIdx].pairs;
+  session.mutateStats(function(stats) { stats.matches += 1; });
+  const total = MEMORY_LADDER[memoryLevelIdx].pairs;
   celebratePair(a, b, spoken, function() {
-    if (memoryMatchedPairs >= total) completeMemoryLevel();
-    else memoryLocked = false;
+    if (memoryMatchedPairs >= total) {
+      completeMemoryLevel();
+    } else {
+      memoryLocked = false;
+      hint.reset();
+    }
   });
 }
 
@@ -461,7 +424,10 @@ function resolveMemoryMatch(a, b, spoken) {
 function resolveMemoryMismatch(a, b, kind) {
   memoryLocked = true;
 
-  if (kind === 'known') memoryKnownSlips += 1;
+  if (kind === 'known') {
+    memoryKnownSlips += 1;
+    hint.registerMiss();
+  }
   if (kind === 'gamble') memoryGambles += 1;
   // How loudly this miss is answered:
   //   'x'    - a known slip: the big red X and the buzzer, the wrong-answer
@@ -474,7 +440,9 @@ function resolveMemoryMismatch(a, b, kind) {
     : 'soft';
 
   // Hold both faces up long enough to see and hear them, then react and turn
-  // them back. Nothing here ever ends the board.
+  // them back. Two cards that were both face up already have nothing new to
+  // look at, so the answer comes quickly. Nothing here ever ends the board.
+  const lookMs = a.shown && b.shown ? 450 : 1500;
   memoryTimer = window.setTimeout(function() {
     memoryTimer = null;
     if (feedback === 'soft') {
@@ -491,7 +459,7 @@ function resolveMemoryMismatch(a, b, kind) {
       flipMemoryDown(b);
       memoryLocked = false;
     }, feedback === 'soft' ? 280 : 620);
-  }, 1500);
+  }, lookMs);
 }
 
 function celebrateBoard(dealNext) {
@@ -523,24 +491,19 @@ function completeMemoryLevel() {
   // How the board went decides the next one's size (see memoryBoardOutcome
   // and nextMemoryLevel): only a clean board moves her up. Whatever happened,
   // she finished it, and that's celebrated the same.
-  const outcome = memoryBoardOutcome(memoryKnownSlips, memoryGambles);
-  const next = nextMemoryLevel(memoryLevelIdx, outcome, memoryFailStreak, MEMORY_LEVELS.length);
+  const outcome = memoryBoardOutcome(memoryKnownSlips, memoryGambles, memoryHinted);
+  const next = nextMemoryLevel(memoryLevelIdx, outcome, memoryFailStreak, MEMORY_LADDER.length);
 
   session.mutateStats(function(stats) {
-    stats.flipBoards += 1;
-    if (outcome === 'failed') stats.flipBoardsFailed += 1;
+    stats.boards += 1;
+    if (outcome === 'failed') stats.boardsFailed += 1;
   });
 
   memoryLevelIdx = next.level;
   memoryFailStreak = next.failStreak;
   saveMemoryLevel();
 
-  celebrateBoard(buildFlipBoard);
-}
-
-function finishFreeBoard() {
-  session.mutateStats(function(stats) { stats.freeBoards += 1; });
-  celebrateBoard(buildFreeBoard);
+  celebrateBoard(buildMemoryBoard);
 }
 
 function saveMemoryLevel() {
@@ -549,7 +512,7 @@ function saveMemoryLevel() {
 
 function savedMemoryLevelIdx() {
   const saved = loadRoundState(MEMORY_LEVEL_KEY);
-  return saved && isValidIndex(saved.level, MEMORY_LEVELS.length) ? saved.level : 0;
+  return saved && isValidIndex(saved.level, MEMORY_LADDER.length) ? saved.level : 0;
 }
 
 function loadMemoryLevel() {
@@ -561,9 +524,9 @@ function loadMemoryLevel() {
   return savedMemoryLevelIdx();
 }
 
-function startFlip() {
+function startMemory() {
   memoryLevelIdx = loadMemoryLevel();
-  buildFlipBoard();
+  buildMemoryBoard();
 }
 
 function stopMemoryGame() {
@@ -576,34 +539,12 @@ function stopMemoryGame() {
   memoryLocked = false;
 }
 
-const MODES = {
-  freeplay: { start: buildFreeBoard, tap: onFreeplayTap, usedField: 'usedFreeplay' },
-  flip: { start: startFlip, tap: onFlipTap, usedField: 'usedFlip' }
-};
-
-function setMode(name) {
-  if (session.isSessionEnded()) return;
-  stopMemoryGame();
-  mode = MODES[name] ? name : 'freeplay';
-  rememberSessionMode(MEMORY_SESSION_KEY, mode);
-  modeBtns.forEach(function(btn) {
-    btn.classList.toggle('active', btn.dataset.mode === mode);
-  });
-  session.mutateStats(function(stats) { stats[MODES[mode].usedField] = true; });
-  MODES[mode].start();
-}
-
-modeBtns.forEach(function(btn) {
-  btn.addEventListener('click', function() {
-    if (btn.dataset.mode === mode) return;
-    setMode(btn.dataset.mode);
-    btn.blur();
-  });
-});
-
 initGamePage({
   session: session,
   stop: stopMemoryGame,
-  start: function() { setMode(readSessionMode(MEMORY_SESSION_KEY, 'freeplay')); },
-  onResume: function() { setMode(mode); }
+  start: startMemory,
+  onResume: function() {
+    stopMemoryGame();
+    startMemory();
+  }
 });

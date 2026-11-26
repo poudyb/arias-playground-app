@@ -36,33 +36,6 @@ body {
     transform: translateY(2px);
     box-shadow: 0 1px 0 #004d40;
   }
-#mode-buttons {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    z-index: 100;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 6px;
-    max-width: 58vw;
-  }
-.mode-btn {
-    background: #eee;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 13px;
-    font-family: var(--font-ui);
-    color: #666;
-    cursor: pointer;
-  }
-.mode-btn.active {
-    background: #00838f;
-    border-color: #006064;
-    color: #fff;
-  }
-.mode-btn.active { pointer-events: none; }
 #app-main {
     width: min(92vw, 720px);
     flex: 1 1 auto;
@@ -331,13 +304,4 @@ body {
 @keyframes hint-flash-pulse {
     0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 179, 0, 0)); }
     45% { filter: drop-shadow(0 0 13px rgba(255, 179, 0, 0.95)); }
-  }
-
-  /* Hover styling is gated on a device that can actually hover. A tablet has no
-     pointer to hover with, and Safari fakes it: a tap leaves :hover stuck on
-     whatever was tapped until something else is tapped. With the tiles lifting
-     on hover, pressing one game made the previously-pressed one look pressed
-     too - two cards animating for one tap. */
-  @media (hover: hover) {
-  .mode-btn:hover { background: #ddd; }
   }

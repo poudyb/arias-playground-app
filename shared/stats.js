@@ -75,13 +75,9 @@ function normalizeSameAsStats(parsed) {
 
 function createMemoryStats() {
   return {
-    freeMatches: 0,
-    freeBoards: 0,
-    flipMatches: 0,
-    flipBoards: 0,
-    flipBoardsFailed: 0,
-    usedFreeplay: false,
-    usedFlip: false
+    matches: 0,
+    boards: 0,
+    boardsFailed: 0
   };
 }
 
