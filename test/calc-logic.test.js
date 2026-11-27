@@ -52,14 +52,13 @@ test('a whole sum lights only equals, and equals gives the answer', () => {
   assert.deepStrictEqual(pressAll(['9', '-', '2', '=']), { a: 9, op: '-', b: 2, result: 7 });
 });
 
-test('equals works once: it never repeats, and nothing chains on', () => {
+test('equals works once: it never repeats', () => {
   const s = pressAll(['3', '+', '4', '=']);
-  for (const k of ['=', '+', '-']) assert.strictEqual(calc.calcPress(s, k), s, k + ' after the answer');
+  assert.strictEqual(calc.calcPress(s, '='), s);
 });
 
 test('Free Play: after the answer C or a number moves on', () => {
   const s = pressAll(['3', '+', '4', '=']);
-  assert.deepStrictEqual(enabledKeys(s), DIGITS.concat(['C']));
   const cleared = calc.calcPress(s, 'C');
   assert.deepStrictEqual(cleared, calc.emptyCalc());
   assert.deepStrictEqual(enabledKeys(cleared), DIGITS);
@@ -87,7 +86,18 @@ test('an operator can\'t be pressed twice or swapped once chosen', () => {
   assert.strictEqual(calc.calcPress(s, '-'), s);
 });
 
-test('no run of key presses can make zero, a negative, a two-digit entry or a chained sum', () => {
+function assertSaneState(s, rules) {
+  const inRange = (v, max) => Number.isInteger(v) && v >= 1 && v <= max;
+  assert.ok(s.a == null || inRange(s.a, 18), 'first number ' + s.a);
+  assert.ok(s.b == null || inRange(s.b, 9), 'second number ' + s.b);
+  assert.ok(s.result == null || (inRange(s.result, 18) && s.result === calc.calcResult(s.a, s.op, s.b)), 'result ' + s.result);
+  const ops = rules.ops.join('');
+  const finished = rules.target != null && s.result != null;
+  assert.ok(!finished || ops !== '+' || s.result <= rules.target, 'past ' + rules.target + ' with no minus');
+  assert.ok(!finished || ops !== '-' || s.result >= rules.target, 'below ' + rules.target + ' with no plus');
+}
+
+test('no run of key presses can make zero, a negative, a two-digit key, or an answer past 18', () => {
   const random = seeded(42);
   const ruleSets = [calc.FREE_RULES];
   calc.MAKE_RUNGS.forEach((rung) => {
@@ -102,13 +112,7 @@ test('no run of key presses can make zero, a negative, a two-digit entry or a ch
       const next = calc.calcPress(s, k, rules);
       assert.notStrictEqual(next, s, k + ' was enabled, so it must do something');
       s = next;
-      for (const v of [s.a, s.b]) {
-        if (v != null) assert.ok(Number.isInteger(v) && v >= 1 && v <= 9, 'operand ' + v);
-      }
-      if (s.result != null) {
-        assert.ok(s.result >= 1 && s.result <= 18, 'result ' + s.result);
-        assert.strictEqual(s.result, calc.calcResult(s.a, s.op, s.b));
-      }
+      assertSaneState(s, rules);
     }
   }
 });
@@ -145,14 +149,11 @@ test('following the hint from any point that can still get there ends in the num
   calc.MAKE_RUNGS.forEach((rung) => {
     for (let t = rung.min; t <= rung.max; t++) {
       const rules = calc.makeRules(rung, t);
-      // From a clean screen, and from every first number that can still make t.
-      const starts = [[]].concat(DIGITS.map((k) => [k]).filter((p) => {
-        const s = pressAll(p, rules);
-        return s.a != null && calc.solutionsFor(t, rules).some((x) => x.a === s.a);
-      }));
+      // From a clean screen, and from every first number she can press.
+      const starts = [[]].concat(DIGITS.filter((k) => calc.isKeyEnabled(calc.emptyCalc(), k, rules)).map((k) => [k]));
       for (const prefix of starts) {
         let s = pressAll(prefix, rules);
-        for (let step = 0; step < 6 && s.result == null; step++) {
+        for (let step = 0; step < 12 && s.result !== t; step++) {
           const key = calc.hintKeyFor(s, t, rules);
           assert.ok(key, 'a hint for ' + t + ' at ' + JSON.stringify(s));
           assert.ok(calc.isKeyEnabled(s, key, rules), 'the hint ' + key + ' is a key that is on');
@@ -170,9 +171,7 @@ test('the first hint for a number starts from the middle, not with 1', () => {
   assert.strictEqual(calc.hintKeyFor(pressAll(['3'], rules), 7, rules), '+');
   assert.strictEqual(calc.hintKeyFor(pressAll(['3', '+'], rules), 7, rules), '4');
   assert.strictEqual(calc.hintKeyFor(pressAll(['3', '+', '4'], rules), 7, rules), '=');
-  // Nothing can be undone, so once a sum can't get there there's nothing to point at.
-  assert.strictEqual(calc.hintKeyFor(pressAll(['9'], rules), 7, rules), null);
-  assert.strictEqual(calc.hintKeyFor(pressAll(['3', '+', '1'], rules), 7, rules), null);
+  assert.ok(!calc.isKeyEnabled(calc.emptyCalc(), '9', rules), 'with no minus, 9 can never make 7, so it is off');
 });
 
 test('makeTarget stays in the rung\'s range and never repeats the last number', () => {
@@ -197,7 +196,8 @@ test('makeRung clamps a stored rung that is out of range or junk', () => {
 test('in Quiz the number to make can\'t start a sum, but is on once a sum has started', () => {
   const plus = calc.makeRules(calc.makeRung(1), 5);
   assert.ok(!calc.isKeyEnabled(calc.emptyCalc(), '5', plus), 'not as the first number');
-  assert.ok(calc.isKeyEnabled(pressAll(['2', '+'], plus), '5', plus), 'as the second number it is hers to choose');
+  assert.ok(calc.isKeyEnabled(pressAll(['2', '+'], plus), '3', plus), 'a second number that makes it is on');
+  assert.ok(!calc.isKeyEnabled(pressAll(['2', '+'], plus), '5', plus), 'with no minus, 2 + 5 would pass 5, so it is off');
   const both = calc.makeRules(calc.makeRung(3), 3);
   assert.ok(!calc.isKeyEnabled(calc.emptyCalc(), '3', both));
   assert.ok(calc.isKeyEnabled(pressAll(['6', '-'], both), '3', both));
@@ -222,4 +222,75 @@ test('the target being off never removes a right answer', () => {
       }
     }
   });
+});
+
+test('Free Play: after the answer, plus and minus carry on from it', () => {
+  const s = pressAll(['3', '+', '4', '=']);
+  assert.deepStrictEqual(enabledKeys(s), DIGITS.concat(['+', '-', 'C']));
+  assert.deepStrictEqual(calc.calcPress(s, '+'), { a: 7, op: '+', b: null, result: null });
+  assert.deepStrictEqual(calc.calcPress(s, '-'), { a: 7, op: '-', b: null, result: null });
+  assert.strictEqual(calc.calcPress(s, '='), s, 'equals still never repeats');
+});
+
+test('carrying on keeps every answer from 1 to 18', () => {
+  const eleven = pressAll(['5', '+', '6', '=', '+']);
+  assert.strictEqual(eleven.a, 11);
+  assert.deepStrictEqual(enabledKeys(eleven), ['1', '2', '3', '4', '5', '6', '7']);
+  const eighteen = pressAll(['9', '+', '9', '=']);
+  assert.ok(!calc.isKeyEnabled(eighteen, '+'), 'nothing fits on top of 18');
+  assert.ok(calc.isKeyEnabled(eighteen, '-'));
+  assert.deepStrictEqual(enabledKeys(calc.calcPress(eighteen, '-')), DIGITS);
+  assert.deepStrictEqual(enabledKeys(pressAll(['3', '+', '2', '=', '-'])), ['1', '2', '3', '4'], 'never down to 0');
+  assert.ok(!calc.isKeyEnabled(pressAll(['3', '-', '2', '=']), '-'), 'nothing can be taken from 1');
+});
+
+test('Quiz, plus only: no key can take her past the number', () => {
+  const rules = calc.makeRules(calc.makeRung(1), 7);
+  assert.deepStrictEqual(enabledKeys(calc.emptyCalc(), rules), ['1', '2', '3', '4', '5', '6']);
+  assert.deepStrictEqual(enabledKeys(pressAll(['3', '+'], rules), rules), ['1', '2', '3', '4']);
+  const short = pressAll(['3', '+', '2', '='], rules);
+  assert.ok(calc.isKeyEnabled(short, '+', rules), 'five carries on toward seven');
+  assert.deepStrictEqual(enabledKeys(calc.calcPress(short, '+', rules), rules), ['1', '2']);
+  const two = calc.makeRules(calc.makeRung(0), 2);
+  assert.deepStrictEqual(enabledKeys(calc.emptyCalc(), two), ['1'], 'Make 2 lights only 1');
+});
+
+test('Quiz, minus only: no key can take her below the number', () => {
+  const rules = calc.makeRules(calc.makeRung(2), 3);
+  assert.deepStrictEqual(enabledKeys(calc.emptyCalc(), rules), ['4', '5', '6', '7', '8', '9']);
+  assert.deepStrictEqual(enabledKeys(pressAll(['6', '-'], rules), rules), ['1', '2', '3']);
+  const over = pressAll(['6', '-', '1', '='], rules);
+  assert.ok(calc.isKeyEnabled(over, '-', rules), 'five carries on down toward three');
+  assert.deepStrictEqual(enabledKeys(calc.calcPress(over, '-', rules), rules), ['1', '2']);
+});
+
+test('Quiz, plus and minus: nothing extra is off, and an overshoot can come back', () => {
+  const rules = calc.makeRules(calc.makeRung(3), 7);
+  assert.deepStrictEqual(enabledKeys(calc.emptyCalc(), rules), ['1', '2', '3', '4', '5', '6', '8', '9']);
+  const over = pressAll(['4', '+', '5', '='], rules);
+  assert.ok(calc.isKeyEnabled(over, '-', rules) && calc.isKeyEnabled(over, '+', rules));
+  assert.strictEqual(calc.carryKeyToward(over.result, 7, rules), '-');
+  assert.strictEqual(calc.carryKeyToward(5, 7, rules), '+');
+  assert.strictEqual(calc.carryKeyToward(7, 7, rules), null);
+});
+
+test('a Quiz round made in one sum is clean, in two it is helped, in three or by a step away it is missed', () => {
+  assert.strictEqual(calc.makeRoundOutcome(1, false, false), 'clean');
+  assert.strictEqual(calc.makeRoundOutcome(1, false, true), 'assisted');
+  assert.strictEqual(calc.makeRoundOutcome(2, false, false), 'assisted');
+  assert.strictEqual(calc.makeRoundOutcome(3, false, false), 'missed');
+  assert.strictEqual(calc.makeRoundOutcome(2, true, false), 'missed');
+  assert.ok(calc.isStepAway(9, 10, 7), '9 + 1 = 10 when making 7 goes the wrong way');
+  assert.ok(!calc.isStepAway(9, 8, 7));
+  assert.ok(!calc.isStepAway(5, 7, 7));
+});
+
+test('after a short answer the hint points along the carry, then the rest of the way', () => {
+  const rules = calc.makeRules(calc.makeRung(1), 7);
+  assert.strictEqual(calc.hintKeyFor(pressAll(['3', '+', '1'], rules), 7, rules), '=', 'finish the sum, then carry on');
+  const short = pressAll(['3', '+', '2', '='], rules);
+  assert.strictEqual(calc.hintKeyFor(short, 7, rules), '+');
+  assert.strictEqual(calc.hintKeyFor(calc.calcPress(short, '+', rules), 7, rules), '2');
+  const mixed = calc.makeRules(calc.makeRung(3), 7);
+  assert.strictEqual(calc.hintKeyFor(pressAll(['4', '+', '5', '='], mixed), 7, mixed), '-');
 });

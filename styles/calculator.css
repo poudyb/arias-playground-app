@@ -192,7 +192,7 @@ body.calc-page {
 
 /* The digits wear their dots' colours, so "3" and the three orange dots are
    plainly the same thing. */
-.calc-cell--a { color: var(--dot-a); }
+.calc-cell--a { color: var(--dot-a); letter-spacing: var(--digit-tighten); }
 .calc-cell--op { color: var(--num-op); }
 .calc-cell--b { color: var(--dot-b); }
 .calc-cell--eq { color: #455a64; }
@@ -334,7 +334,7 @@ body.calc-page {
   .dots-work {
     display: grid;
     grid-template-rows:
-      calc(var(--dot) * 2.5 + var(--dot-gap))
+      calc(var(--dot) * (var(--a-rows, 2) + 0.5) + var(--dot-gap) * (var(--a-rows, 2) - 1))
       calc(var(--dot) * 1.4)
       calc(var(--dot) * 2.5 + var(--dot-gap));
     justify-items: center;

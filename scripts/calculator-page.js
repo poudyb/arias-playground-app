@@ -1,12 +1,14 @@
 // Calculator — two modes, both on the same pretend calculator:
 //   Free Play — a calculator that only does what she means: a number, plus or
-//               minus, a number, equals. At each step only that step's keys
-//               are lit; everything else (a second number in a row, a minus
-//               first, a minus that goes to zero or below, a second operator,
-//               equals again) is greyed out and does nothing. See
-//               shared/calc-logic.js. There is no 0 and no C.
+//               minus, a number, equals, and after the answer plus or minus
+//               carries on from it. At each step only that step's keys are
+//               lit; everything else (a second number in a row, a minus first,
+//               a minus that goes to zero or below, an answer past 18, a
+//               second operator, equals again) is greyed out and does
+//               nothing. See shared/calc-logic.js. There is no 0.
 //   Quiz      — a number to make ("Make 7!") and the calculator to make it
-//               with. Pressing = is her answer. Climbs a ladder (MAKE_RUNGS).
+//               with. An answer short of it is a step on the way: she carries
+//               on from it. Climbs a ladder (MAKE_RUNGS).
 //
 // Beside the calculator, every number she types is drawn as dots: orange for
 // the first, blue for the second. When she presses = the blue dots slide over
@@ -47,7 +49,6 @@ const makeLadder = createLadderProgression({
 
 const appMain = document.getElementById('app-main');
 const audio = createAudioFeedback();
-const thumbsDown = createThumbsDownController();
 const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
 setupInteractionUnlock([function() { audio.getAudioCtx(); }]);
@@ -194,7 +195,8 @@ function buildCalculator(options) {
   // A key that can't do anything right now is a real disabled button, drawn
   // flat and grey, so a tap on it is never a tap that silently does nothing.
   // The next step along the sum (the operators after a first number, equals
-  // after a second) breathes gently, to show the way through.
+  // after a second, and after the answer whichever key the mode says is the way
+  // on) breathes gently, to show the way through.
   function render() {
     const phase = calcPhase(state);
     cells.a.textContent = state.a == null ? '' : String(state.a);
@@ -204,6 +206,7 @@ function buildCalculator(options) {
     cells.r.textContent = state.result == null ? '' : String(state.result);
     screen.dataset.phase = phase;
     const rules = options.getRules();
+    const wayOn = phase === 'done' ? options.wayOnAfterAnswer(state) : null;
     CALC_KEYS.forEach(function(key) {
       const on = !locked && isKeyEnabled(state, key, rules);
       const btn = keyEls[key];
@@ -212,7 +215,7 @@ function buildCalculator(options) {
       btn.classList.toggle('is-next', on && (
         (phase === 'first' && (key === '+' || key === '-')) ||
         (phase === 'second' && key === '=') ||
-        (phase === 'done' && key === CALC_CLEAR_KEY)));
+        key === wayOn));
     });
   }
 
@@ -337,6 +340,7 @@ function buildDotsBoard(options) {
     for (let i = 0; i < n; i++) tray.appendChild(makeDot(kind, i));
     setCols(tray, n);
     tray.classList.add('is-set');
+    if (tray === trayA) el.style.setProperty('--a-rows', String(Math.max(2, Math.ceil(n / 5))));
   }
 
   // Rows of five, like a ten-frame, but a plate no wider than it needs: three
@@ -364,6 +368,7 @@ function buildDotsBoard(options) {
       tray.classList.remove('is-set');
     });
     sign.textContent = '';
+    el.style.removeProperty('--a-rows');
     result.classList.remove('is-full', 'is-short', 'is-over');
     buildSlots(rings);
     syncCountBtn();
@@ -389,6 +394,15 @@ function buildDotsBoard(options) {
     syncCountBtn();
   }
 
+  // Carrying on from an answer, its dots go back up as the first number.
+  function followOperator(key, prev, next) {
+    if (calcPhase(prev) === 'done') {
+      clear();
+      fillTray(trayA, next.a, 'a');
+    }
+    sign.textContent = opSign(key);
+  }
+
   function followKey(key, prev, next) {
     if (key === '=') {
       clearCounting();
@@ -399,7 +413,7 @@ function buildDotsBoard(options) {
       return;
     }
     if (key === '+' || key === '-') {
-      sign.textContent = opSign(key);
+      followOperator(key, prev, next);
       return;
     }
     const before = calcPhase(prev);
@@ -788,6 +802,7 @@ function enterFreeplay() {
 
   const calc = buildCalculator({
     getRules: function() { return FREE_RULES; },
+    wayOnAfterAnswer: function() { return CALC_CLEAR_KEY; },
     onPress: function(key, prev, next) {
       board.onPress(key, prev, next);
       speakKey(key, next);
@@ -871,8 +886,10 @@ function enterQuiz() {
   let round = null;
   let rung = makeRung(0);
   let rules = makeRules(rung);
-  let roundMissed = false;
+  let roundSums = 0;
+  let roundSteppedAway = false;
   let roundHinted = false;
+  let carriedFrom = null;
   const timers = [];
 
   function later(fn, ms) {
@@ -891,14 +908,14 @@ function enterQuiz() {
 
   const calc = buildCalculator({
     getRules: function() { return rules; },
+    wayOnAfterAnswer: function(state) { return round ? carryKeyToward(state.result, round.target, rules) : null; },
     onPress: onPress
   });
   ui.stage.appendChild(calc.el);
 
-  // After two wrong answers or a long pause, the next key along a sum that
-  // works glows — picking up from whatever she has typed, and pointing at a
-  // better first number if hers can't get there. Never while an answer is
-  // being shown.
+  // After two answers that weren't the number, or a long pause, the next key
+  // along the way to it glows, picking up from whatever she has typed. Never
+  // while an answer is being shown.
   const hint = createHintNudge({
     // A two-year-old stopping to think isn't stuck, and a round the hint had to
     // help with doesn't count towards moving up, so give her as long as Clock
@@ -914,11 +931,9 @@ function enterQuiz() {
     }
   });
 
-  // `afterSum`: after a wrong answer the number to make waits for her sum to
-  // finish being read out, rather than cutting it off halfway.
-  function sayTarget(afterSum) {
+  function sayTarget() {
     if (session.isSessionEnded() || !round) return;
-    speakText('Make ' + CALC_NUMBER_WORDS[round.target] + '!', { rate: 0.88, queue: afterSum === true });
+    speakText('Make ' + CALC_NUMBER_WORDS[round.target] + '!', { rate: 0.88 });
   }
 
   function isSavedRound(saved, level) {
@@ -930,9 +945,10 @@ function enterQuiz() {
   // The rung is read here and only here, so a round never changes under her.
   function newRound() {
     clearTimers();
-    roundMissed = false;
+    roundSums = 0;
+    roundSteppedAway = false;
     roundHinted = false;
-    thumbsDown.hide();
+    carriedFrom = null;
 
     const level = makeLadder.getRung();
     rung = makeRung(level);
@@ -958,27 +974,35 @@ function enterQuiz() {
   function onPress(key, prev, next) {
     board.onPress(key, prev, next);
     speakKey(key, next);
+    const before = calcPhase(prev);
+    if ((key === '+' || key === '-') && before === 'done') carriedFrom = prev.result;
+    else if (before === 'done' || before === 'start') carriedFrom = null;
     if (key !== '=') {
       hint.poke();
       return;
     }
-    // Her answer. Nothing more can be pressed until it has been answered.
+    // An answer. Nothing more can be pressed until the dots have landed.
+    roundSums += 1;
+    if (carriedFrom != null && isStepAway(carriedFrom, next.result, round.target)) roundSteppedAway = true;
     calc.setLocked(true);
     speakText('equals ' + CALC_NUMBER_WORDS[next.result], { rate: 0.9, queue: true });
     board.resolve(function() {
       if (session.isSessionEnded()) return;
       if (next.result === round.target) onRight();
-      else onWrong();
+      else onOnTheWay();
     });
   }
 
   function onRight() {
     hint.stop();
     saveRoundState(MAKE_STATE_KEY, null);
-    session.mutateStats(function(stats) { stats.quizCorrect += 1; });
-    makeLadder.recordRound(roundMissed ? 'missed' : roundHinted ? 'assisted' : 'clean');
-    // A right answer straight after a wrong one mustn't celebrate under the X.
-    thumbsDown.hide();
+    const outcome = makeRoundOutcome(roundSums, roundSteppedAway, roundHinted);
+    session.mutateStats(function(stats) {
+      stats.quizCorrect += 1;
+      if (roundSums > 1) stats.quizCarried += 1;
+      if (outcome === 'missed') pushUniqueStruggle(stats.quizStruggled, round.target);
+    });
+    makeLadder.recordRound(outcome);
     restartAnimation(goal, 'is-made');
     spawnConfetti({
       colors: CONFETTI_HEX,
@@ -997,24 +1021,12 @@ function enterQuiz() {
   }
 
   // The dots have landed and she can see it doesn't fit: a gap in the rings,
-  // or one left over. Then the X, and a clean calculator to try again on.
-  function onWrong() {
-    roundMissed = true;
-    session.mutateStats(function(stats) {
-      stats.quizWrong += 1;
-      pushUniqueStruggle(stats.quizStruggled, round.target);
-    });
-    thumbsDown.show();
-    audio.playBuzzer();
+  // or one left over. That's no wrong answer, it's a step on the way, so no
+  // X: the key that carries on toward the number glows (see wayOnAfterAnswer),
+  // and a number still starts a fresh sum.
+  function onOnTheWay() {
     hint.registerMiss();
-    later(function() {
-      if (session.isSessionEnded()) return;
-      board.clear();
-      calc.reset();
-      calc.setLocked(false);
-      sayTarget(true);
-      hint.poke();
-    }, 1800);
+    calc.setLocked(false);
   }
 
   replay.addEventListener('click', function() {
@@ -1032,39 +1044,44 @@ function enterQuiz() {
       board.cancel();
       hint.stop();
       cancelSpeech();
-      thumbsDown.hide();
     }
   };
 }
 
 // ---- Summary, modes, page ------------------------------------------------------
 
+function freePlaySummary(stats) {
+  const body = createIntroBody(stats.playSums > 0
+    ? 'You did ' + stats.playSums + ' ' + (stats.playSums === 1 ? 'sum' : 'sums') + ' on the calculator!'
+    : 'You opened Free Play - press a number, plus or minus, and another number next time!');
+  if (stats.playSeen.length > 0) {
+    appendBodyNote(body, 'Some you tried:').style.fontWeight = '600';
+    body.appendChild(createPillWrap(stats.playSeen, function(pill, text) { pill.textContent = text; }));
+  }
+  return body;
+}
+
+function quizSummary(stats) {
+  const intro = stats.quizCorrect === 0
+    ? 'You opened Quiz - make the number with the calculator next time!'
+    : 'Quiz: ' + stats.quizCorrect + ' made' + (stats.quizCarried ? ', ' + stats.quizCarried + ' by carrying on from an answer' : '') + '.';
+  const body = createIntroBody(intro);
+  // Where she is on the ladder, in words: the only place it is ever said.
+  appendBodyNote(body, makeRung(makeLadder.getRung()).note);
+  if (stats.quizStruggled.length > 0) {
+    appendBodyNote(body, stats.quizCorrect > 0 ? 'These took another try:' : 'These were tricky:').style.fontWeight = '600';
+    body.appendChild(createPillWrap(stats.quizStruggled, function(pill, n) { pill.textContent = String(n); }));
+  }
+  return body;
+}
+
 function renderSummary(boardEl, stats) {
   if (stats.usedFreeplay) {
-    const body = createIntroBody(stats.playSums > 0
-      ? 'You did ' + stats.playSums + ' ' + (stats.playSums === 1 ? 'sum' : 'sums') + ' on the calculator!'
-      : 'You opened Free Play - press a number, plus or minus, and another number next time!');
-    if (stats.playSeen.length > 0) {
-      appendBodyNote(body, 'Some you tried:').style.fontWeight = '600';
-      body.appendChild(createPillWrap(stats.playSeen, function(pill, text) { pill.textContent = text; }));
-    }
-    appendScoreSection(boardEl, { modClass: 'score-section--free', icon: '🧮', title: 'Free Play', body: body });
+    appendScoreSection(boardEl, { modClass: 'score-section--free', icon: '🧮', title: 'Free Play', body: freePlaySummary(stats) });
   }
-
   if (stats.usedQuiz) {
-    const intro = stats.quizCorrect === 0 && stats.quizWrong === 0
-      ? 'You opened Quiz - make the number with the calculator next time!'
-      : 'Quiz: ' + stats.quizCorrect + ' made' + (stats.quizWrong ? ', ' + stats.quizWrong + ' oops' : '') + '.';
-    const body = createIntroBody(intro);
-    // Where she is on the ladder, in words: the only place it is ever said.
-    appendBodyNote(body, makeRung(makeLadder.getRung()).note);
-    if (stats.quizStruggled.length > 0) {
-      appendBodyNote(body, stats.quizCorrect > 0 ? 'These took another try:' : 'These were tricky:').style.fontWeight = '600';
-      body.appendChild(createPillWrap(stats.quizStruggled, function(pill, n) { pill.textContent = String(n); }));
-    }
-    appendScoreSection(boardEl, { modClass: 'score-section--quiz', icon: '🎯', title: 'Quiz', body: body });
+    appendScoreSection(boardEl, { modClass: 'score-section--quiz', icon: '🎯', title: 'Quiz', body: quizSummary(stats) });
   }
-
   cancelSpeech();
 }
 
@@ -1072,7 +1089,6 @@ function stopCalcGame() {
   cancelSpeech();
   if (activeMode && activeMode.teardown) activeMode.teardown();
   activeMode = null;
-  thumbsDown.hide();
 }
 
 const session = createTimedSession({
@@ -1098,7 +1114,6 @@ function setMode(name) {
   activeMode = null;
   appMain.innerHTML = '';
   cancelSpeech();
-  thumbsDown.hide();
 
   session.mutateStats(function(stats) {
     if (name === 'freeplay') stats.usedFreeplay = true;

@@ -150,7 +150,7 @@ function createCalcStats() {
     playSums: 0,
     playSeen: [],
     quizCorrect: 0,
-    quizWrong: 0,
+    quizCarried: 0,
     quizStruggled: [],
     usedFreeplay: false,
     usedQuiz: false

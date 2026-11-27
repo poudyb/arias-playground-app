@@ -2,12 +2,11 @@
 //
 // A real calculator does whatever it is told, and most of what a small child
 // tells it turns into something she can't read: a minus pressed first makes a
-// negative number, 3 - 5 makes another one, 5 then 3 makes fifty-three, a plus
-// after the answer chains on, and pressing = again repeats the last sum. This
-// one only ever does one thing — a number, plus or minus, a number, equals —
-// and at every step only the keys for that step are lit. Everything else is
-// switched off (and drawn greyed out) rather than left to do something
-// surprising.
+// negative number, 3 - 5 makes another one, 5 then 3 makes fifty-three, and
+// pressing = again repeats the last sum. This one only ever does one thing — a
+// number, plus or minus, a number, equals — and at every step only the keys
+// for that step are lit. Everything else is switched off (and drawn greyed
+// out) rather than left to do something surprising.
 //
 //   start  - nothing typed           numbers on
 //   first  - "3"                     + and - on, nothing else: no second
@@ -15,20 +14,25 @@
 //   op     - "3 +"                   numbers on (for minus, only those under 3)
 //                                    — no swapping the operator either
 //   second - "3 + 4"                 only = on
-//   done   - "3 + 4 = 7"             numbers on, starting a fresh sum, and
-//                                    in Free Play C too, which just wipes the
-//                                    screen (Quiz has no C: it moves on by
-//                                    itself)
+//   done   - "3 + 4 = 7"             numbers on, starting a fresh sum; + and -,
+//                                    carrying on from 7; and in Free Play C,
+//                                    which just wipes the screen (Quiz has no
+//                                    C: it moves on by itself)
 //
 // Every press counts and nothing can be undone. Pressing number after number,
 // each replacing the last, was a game of its own that never got to a sum. =
 // is the one key lit once a sum is whole, so it's a step she goes through
 // rather than one she has to know about; and it's lit only there, so there's
-// no pressing it again to repeat the sum, and the answer can never be carried
-// into another one.
+// no pressing it again to repeat the sum.
 //
-// There is no 0. Zero is a concept for later, and minus never goes to zero
-// either: 5 - 5 is off.
+// Carrying on is what a real calculator does with a plus after the answer, and
+// she reached for it: in front of "3 + 4 = 7" she pressed minus, then plus.
+// The answer becomes the first number of the next sum, so a first number can
+// be anything up to 18, though every key she presses is still 1 to 9.
+//
+// Every answer is 1 to 18: that is what the dots can show and as far as her
+// number words go. There is no 0. Zero is a concept for later, and minus never
+// goes to zero either: 5 - 5 is off.
 //
 // C is only ever on once a sum is finished. The old C was on all the time: it
 // was the key she pressed most, and it only ever took her backwards. Without
@@ -52,6 +56,7 @@ const CALC_NUMBER_WORDS = [
   'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
   'seventeen', 'eighteen'
 ];
+const CALC_MAX_RESULT = CALC_NUMBER_WORDS.length - 1;
 
 function emptyCalc() {
   return { a: null, op: null, b: null, result: null };
@@ -78,11 +83,27 @@ function opAllowed(op, rules) {
   return !rules.ops || rules.ops.indexOf(op) !== -1;
 }
 
-// Whether `op` can follow the first number `a`. Minus needs something to take
-// away that still leaves at least one.
+// Whether a sum may come out at `result`: 1 to 18, and in a Quiz round that
+// can only go one way, never past the number she's making in the direction
+// she couldn't come back from. With no minus, a key that would take her past
+// it is off, the same way the number itself is off as a first number.
+function resultAllowed(result, rules) {
+  if (result < 1 || result > CALC_MAX_RESULT) return false;
+  if (rules.target == null) return true;
+  if (!opAllowed('-', rules) && result > rules.target) return false;
+  if (!opAllowed('+', rules) && result < rules.target) return false;
+  return true;
+}
+
+function secondNumberAllowed(a, op, b, rules) {
+  return resultAllowed(calcResult(a, op, b), rules);
+}
+
+// Whether `op` can follow `a`, the first number or the answer carried on from:
+// some second number has to leave the sum somewhere it's allowed to be.
 function opCanFollow(op, a, rules) {
   if (!opAllowed(op, rules)) return false;
-  return op === '+' || a >= 2;
+  return CALC_DIGIT_KEYS.some(function(key) { return secondNumberAllowed(a, op, digitOfKey(key), rules); });
 }
 
 function isKeyEnabled(s, key, rules) {
@@ -90,23 +111,30 @@ function isKeyEnabled(s, key, rules) {
   const phase = calcPhase(s);
   if (key === CALC_CLEAR_KEY) return phase === 'done' && !!rules.clear;
   if (key === '=') return phase === 'second';
-  if (key === '+' || key === '-') return phase === 'first' && opCanFollow(key, s.a, rules);
+  if (key === '+' || key === '-') return isOpEnabled(s, phase, key, rules);
   const d = digitOfKey(key);
-  if (d == null) return false;
+  return d != null && isDigitEnabled(s, phase, d, rules);
+}
+
+// An operator follows a first number, or carries on from an answer.
+function isOpEnabled(s, phase, op, rules) {
+  if (phase === 'first') return opCanFollow(op, s.a, rules);
+  if (phase === 'done') return opCanFollow(op, s.result, rules);
+  return false;
+}
+
+function isDigitEnabled(s, phase, d, rules) {
+  if (phase === 'op') return secondNumberAllowed(s.a, s.op, d, rules);
+  if (phase !== 'start' && phase !== 'done') return false;
   // In Quiz, the number she's asked to make (`rules.target`) can't start a sum:
   // with no 0 to add or take away, a sum that starts with it can never come
   // out right, and pressing the number she'd just been told was the one thing
   // she did. Only as the first number — once a sum is started, the second
   // number is hers to choose like any other.
-  const isTarget = rules.target != null && d === rules.target;
-  if (phase === 'op') return s.op === '+' || d < s.a;
+  if (rules.target != null && d === rules.target) return false;
   // A first number is on only if some operator can follow it, so a number is
   // never a dead end (on a minus-only rung, 1 has nothing it can take away).
-  if (phase === 'start' || phase === 'done') {
-    if (isTarget) return false;
-    return CALC_OP_KEYS.some(function(op) { return opCanFollow(op, d, rules); });
-  }
-  return false;
+  return CALC_OP_KEYS.some(function(op) { return opCanFollow(op, d, rules); });
 }
 
 // The state after pressing `key`. A key that isn't enabled hands back the very
@@ -115,7 +143,10 @@ function calcPress(s, key, rules) {
   if (!isKeyEnabled(s, key, rules)) return s;
   if (key === CALC_CLEAR_KEY) return emptyCalc();
   if (key === '=') return { a: s.a, op: s.op, b: s.b, result: calcResult(s.a, s.op, s.b) };
-  if (key === '+' || key === '-') return { a: s.a, op: key, b: null, result: null };
+  if (key === '+' || key === '-') {
+    const from = calcPhase(s) === 'done' ? s.result : s.a;
+    return { a: from, op: key, b: null, result: null };
+  }
   const d = digitOfKey(key);
   if (calcPhase(s) === 'op') return { a: s.a, op: s.op, b: d, result: null };
   return { a: d, op: null, b: null, result: null };
@@ -204,8 +235,7 @@ function solutionsFor(target, rules) {
     CALC_OP_KEYS.forEach(function(op) {
       if (!opAllowed(op, rules)) return;
       for (let b = 1; b <= 9; b++) {
-        if (op === '-' && b >= a) continue;
-        if (calcResult(a, op, b) === target) out.push({ a: a, op: op, b: b });
+        if (secondNumberAllowed(a, op, b, rules) && calcResult(a, op, b) === target) out.push({ a: a, op: op, b: b });
       }
     });
   }
@@ -216,29 +246,81 @@ function middleOf(list) {
   return list[Math.floor((list.length - 1) / 2)];
 }
 
-// The one key to glow when she's stuck: the next press along a sum that makes
-// the target, picking up from whatever she has typed. Null when there's nothing
-// that helps: a sum that's finished, or one that has already gone somewhere the
-// target can't be reached from — nothing can be undone, so she finishes it
-// (the only lit keys take her there), sees it's wrong, and gets a clean start.
+// The one key to glow when she's stuck: the next press along the shortest way
+// to a finished sum that makes the target, picking up from whatever she has
+// typed. A sum short of the number carries on toward it; one that went past,
+// on a rung with both operators, comes back. Null only when nothing gets
+// there.
 //
 // From a clean screen it starts from the middle of the list rather than the
 // end, so the hint for 7 is 3 + 4 and not 1 + 6.
 function hintKeyFor(s, target, rules) {
-  const phase = calcPhase(s);
-  const sols = solutionsFor(target, rules);
-  if (sols.length === 0) return null;
-  if (phase === 'start') return String(middleOf(sols).a);
-  if (phase === 'first') {
-    const m = sols.filter(function(x) { return x.a === s.a; });
-    return m.length ? middleOf(m).op : null;
+  if (calcPhase(s) === 'start') {
+    const sols = solutionsFor(target, rules);
+    return sols.length > 0 ? String(middleOf(sols).a) : null;
   }
-  if (phase === 'op') {
-    const m = sols.filter(function(x) { return x.a === s.a && x.op === s.op; });
-    return m.length ? String(m[0].b) : null;
+  return firstKeyToward(s, target, rules);
+}
+
+const CALC_HINT_DEPTH = 12;
+
+function calcStateId(s) {
+  return [s.a, s.op, s.b, s.result].join(',');
+}
+
+function firstKeyToward(s, target, rules) {
+  if (s.result === target) return null;
+  const seen = {};
+  seen[calcStateId(s)] = true;
+  let frontier = [{ state: s, first: null }];
+  for (let depth = 0; depth < CALC_HINT_DEPTH && frontier.length > 0; depth++) {
+    const next = [];
+    for (const node of frontier) {
+      const arrivedBy = pressEachKeyFrom(node, target, rules, seen, next);
+      if (arrivedBy) return arrivedBy;
+    }
+    frontier = next;
   }
-  if (phase === 'second') return calcResult(s.a, s.op, s.b) === target ? '=' : null;
   return null;
+}
+
+// Presses every key that's on from `node`, queueing new states into `next`.
+// Returns the first key of the way there when one of them makes the target.
+function pressEachKeyFrom(node, target, rules, seen, next) {
+  for (const key of CALC_KEYS) {
+    if (!isKeyEnabled(node.state, key, rules)) continue;
+    const moved = calcPress(node.state, key, rules);
+    const first = node.first || key;
+    if (moved.result === target) return first;
+    if (!seen[calcStateId(moved)]) {
+      seen[calcStateId(moved)] = true;
+      next.push({ state: moved, first: first });
+    }
+  }
+  return null;
+}
+
+// After an answer that isn't the number, the operator that carries on toward
+// it, or null when it is the number or nothing carries on that way.
+function carryKeyToward(result, target, rules) {
+  if (result === target) return null;
+  const op = result < target ? '+' : '-';
+  return opCanFollow(op, result, rules) ? op : null;
+}
+
+// Whether a sum carried on from `from` ended further from the target.
+function isStepAway(from, result, target) {
+  return Math.abs(result - target) > Math.abs(from - target);
+}
+
+// How a Quiz round went, for the ladder. `sums` is how many times she pressed
+// = on the way to the number. One sum is clean; carrying on once is fine but
+// not evidence she could have made it straight off, so it counts like a hinted
+// round; three sums, or carrying on the wrong way, is a miss.
+function makeRoundOutcome(sums, steppedAway, hinted) {
+  if (steppedAway || sums >= 3) return 'missed';
+  if (sums === 2 || hinted) return 'assisted';
+  return 'clean';
 }
 
 // A number to make on this rung, never the same one twice running.
@@ -261,6 +343,7 @@ if (typeof module !== 'undefined' && module.exports) {
     CALC_KEYS,
     CALC_CLEAR_KEY,
     CALC_NUMBER_WORDS,
+    CALC_MAX_RESULT,
     FREE_RULES,
     emptyCalc,
     calcPhase,
@@ -275,6 +358,9 @@ if (typeof module !== 'undefined' && module.exports) {
     makeRules,
     solutionsFor,
     hintKeyFor,
+    carryKeyToward,
+    isStepAway,
+    makeRoundOutcome,
     makeTarget
   };
 }

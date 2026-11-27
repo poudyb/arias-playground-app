@@ -15,7 +15,9 @@ buzzer: that is the normal feedback, and Quiz, Read It, Match and Clock all use
 it. Leave the X off only where it would be too harsh, which is a step she is
 still working toward rather than an answer she gave: a wrong letter while
 spelling a word (Spell It), or a Memory flip that was just looking. Those get a
-small shake and a sound instead. Reuse the ARASAAC image pool in
+small shake and a sound instead. An answer in Calculator Quiz that isn't the
+number yet is that kind of step too, because she carries on from it: it gets
+no X, only the circles showing the gap and a glow on the key that carries on. Reuse the ARASAAC image pool in
 `assets/spelling/` when it fits, and verify the image rather than trusting its
 filename.
 
