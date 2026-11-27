@@ -413,6 +413,29 @@ main {
       0 4px 0 #558b2f,
       0 8px 16px rgba(0, 0, 0, 0.18);
   }
+.game-tile--maze {
+    background-color: #aed581;
+    background-image: conic-gradient(#9ccc65 25%, transparent 0 50%, #9ccc65 0 75%, transparent 0);
+    background-size: 44px 44px;
+    box-shadow:
+      0 8px 0 #558b2f,
+      0 14px 28px rgba(0, 0, 0, 0.2);
+  }
+.game-tile--maze .game-tile__art {
+    filter: drop-shadow(0 4px 0 rgba(85, 139, 47, 0.35));
+  }
+.game-tile--maze .game-tile__label {
+    color: #1b5e20;
+  }
+.game-tile--maze .game-tile__hint {
+    color: #33691e;
+    opacity: 0.95;
+  }
+.game-tile--maze:active {
+    box-shadow:
+      0 4px 0 #558b2f,
+      0 8px 16px rgba(0, 0, 0, 0.18);
+  }
 .game-tile--clock {
     background: linear-gradient(145deg, #0d1b2a 0%, #1b263b 45%, #243447 100%);
     box-shadow:
@@ -594,7 +617,8 @@ main {
       0 12px 0 #ad1457,
       0 18px 32px rgba(0, 0, 0, 0.22);
   }
-  .game-tile--walk:hover {
+  .game-tile--walk:hover,
+  .game-tile--maze:hover {
     box-shadow:
       0 12px 0 #558b2f,
       0 18px 32px rgba(0, 0, 0, 0.22);

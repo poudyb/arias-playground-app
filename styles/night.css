@@ -180,6 +180,28 @@
     filter: brightness(0.85);
   }
 
+  /* ---- Garden Maze ----------------------------------------------------------------
+     The same dusk as Walk and Jump's garden. The trees and ponds keep their
+     dark outlines, which is what she finds them by. */
+
+  :root .maze-stage {
+    background: #7d8f6c;
+  }
+
+  :root .maze-field {
+    background-color: #8a9c78;
+    background-image: conic-gradient(#82956f 25%, transparent 0 50%, #82956f 0 75%, transparent 0);
+    box-shadow: 0 0 0 6px #5b7a43, 0 10px 0 6px #4a6636, 0 16px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  :root .maze-thing {
+    filter: brightness(0.85);
+  }
+
+  :root .maze-ring {
+    border-color: rgba(227, 232, 240, 0.7);
+  }
+
   :root .who-picker {
     background: var(--night-bg);
   }
@@ -254,6 +276,7 @@
   :root .game-tile--same .game-tile__label { color: #80deea; }
   :root .game-tile--memory .game-tile__label { color: #f48fb1; }
   :root .game-tile--walk .game-tile__label { color: #c5e1a5; }
+  :root .game-tile--maze .game-tile__label { color: #c5e1a5; }
   :root .game-tile--clock .game-tile__label { color: #ffd180; }
 
   :root .game-tile__art__dot {

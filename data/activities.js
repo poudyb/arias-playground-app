@@ -116,6 +116,18 @@ const ACTIVITIES = [
     defaultStats: function() { return createWalkStats(); }
   },
   {
+    id: 'maze',
+    href: 'maze.html',
+    title: 'Garden Maze',
+    hint: 'Find the way round!',
+    tileClass: 'game-tile--maze',
+    artClasses: 'game-tile__art game-tile__art--maze',
+    artHtml: '🐱🌳🐶',
+    sessionKey: 'ariaMazeSession',
+    statsKey: 'ariaMazeStats',
+    defaultStats: function() { return createMazeStats(); }
+  },
+  {
     id: 'clock',
     href: 'clock.html',
     title: 'Clock',

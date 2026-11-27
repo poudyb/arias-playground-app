@@ -10,35 +10,15 @@ document.querySelectorAll('.walk-btn').forEach(function(btn) {
 });
 
 const WALK_SESSION_KEY = 'ariaWalkSession';
-const WALK_AVATAR_KEY = 'ariaWalkAvatar';
 const WALK_LADDER_KEY = 'ariaWalkLadder';
-const PICTURES = 'assets/spelling/';
+const PICTURES = GARDEN_PICTURES;
 const CONFETTI_HEX = ['#558b2f', '#9ccc65', '#ffca28', '#e53935', '#1e88e5', '#8e24aa', '#ff9800', '#26c6da'];
-
-// `feet` is the empty band under each drawing, as a share of the picture's
-// height, measured from the files, so every character stands on the ground.
-const AVATARS = [
-  { key: 'cat', name: 'cat', img: 'cat.png', feet: 0.14 },
-  { key: 'girl', name: 'girl', img: 'run.png', feet: 0.03 },
-  { key: 'pig', name: 'pig', img: 'pig.png', feet: 0.25 },
-  { key: 'hen', name: 'hen', img: 'hen.png', feet: 0.09 }
-];
-
-const FRIENDS = [
-  { key: 'dog', img: 'dog.png', feet: 0.18, facesFront: false },
-  { key: 'cat', img: 'cat.png', feet: 0.14, facesFront: false },
-  { key: 'pig', img: 'pig.png', feet: 0.25, facesFront: false },
-  { key: 'hen', img: 'hen.png', feet: 0.09, facesFront: false },
-  { key: 'cow', img: 'cow.png', feet: 0.18, facesFront: false },
-  { key: 'owl', img: 'owl.png', feet: 0.02, facesFront: true },
-  { key: 'fox', img: 'fox.png', feet: 0.28, facesFront: false }
-];
 
 const MOVE_MS = { step: 380, over: 620, onto: 620, hop: 500, blocked: 420, edge: 420 };
 const PIECE_ANIMATIONS = ['is-stepping', 'is-jumping', 'is-hopping', 'is-bumping', 'is-cheering', 'shake'];
 
 let mode = null;
-let avatar = loadAvatar();
+let avatar = loadGardenAvatar();
 let board = null;
 let state = null;
 let friend = null;
@@ -127,21 +107,6 @@ function hintLine(action) {
   if (action !== 'jump') return 'Tap the arrow to walk!';
   const front = state.pos + (state.facing === 'left' ? -1 : 1);
   return board.things[front] === 'stump' ? 'Jump up!' : 'Jump over it!';
-}
-
-function loadAvatar() {
-  try {
-    const key = localStorage.getItem(WALK_AVATAR_KEY);
-    return AVATARS.find(function(a) { return a.key === key; }) || null;
-  } catch (_) {
-    return null;
-  }
-}
-
-function saveAvatar(picked) {
-  try {
-    localStorage.setItem(WALK_AVATAR_KEY, picked.key);
-  } catch (_) {}
 }
 
 function clearWalkTimers() {
@@ -246,8 +211,7 @@ function renderBoard() {
 }
 
 function pickFriend() {
-  const pool = FRIENDS.filter(function(f) { return f.key !== avatar.key && f.key !== lastFriendKey; });
-  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const pick = pickGardenFriend(avatar, lastFriendKey);
   lastFriendKey = pick.key;
   return pick;
 }
@@ -488,7 +452,7 @@ function onPickAvatar(choice, card) {
   speakText(choice.name, { rate: 0.9 });
   const firstPick = avatar == null;
   avatar = choice;
-  saveAvatar(choice);
+  saveGardenAvatar(choice);
   syncWhoButton();
   pickerTimer = window.setTimeout(function() {
     pickerTimer = null;

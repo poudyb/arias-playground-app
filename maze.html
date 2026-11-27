@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Garden Maze — Aria's Playroom</title>
+<link rel="stylesheet" href="styles/fonts.css">
+<link rel="stylesheet" href="styles/shared.css">
+<link rel="stylesheet" href="styles/maze.css">
+<link rel="stylesheet" href="styles/night.css">
+</head>
+<body>
+
+<div id="play-timer" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<div id="session-end-overlay" aria-modal="true" role="dialog" aria-labelledby="session-end-title" aria-hidden="true">
+  <div class="session-end-card">
+    <h2 id="session-end-title">Time's up!</h2>
+    <p class="session-end-sub">Here's how your walking went!</p>
+    <div class="session-end-stats" id="session-end-stats"></div>
+    <a href="index.html" class="session-end-home" id="session-end-home">Back to home</a>
+  </div>
+</div>
+
+<a href="index.html" class="home-btn" id="link-home" aria-label="Back to games">← Home</a>
+
+<div class="maze-corner">
+  <button type="button" class="who-btn" id="who-btn" aria-label="Change who you are" hidden><img alt="" id="who-btn-img"></button>
+</div>
+
+<main id="app-main">
+  <div class="maze-stage" id="maze-stage">
+    <div class="maze-field" id="maze-field"></div>
+  </div>
+</main>
+
+<div class="who-picker" id="who-picker" role="dialog" aria-labelledby="who-picker-title" hidden>
+  <h2 class="who-picker__title" id="who-picker-title">Who do you want to be?</h2>
+  <div class="who-picker__cards" id="who-cards"></div>
+</div>
+
+<script src="shared/touch-guard.js"></script>
+<script src="shared/feedback.js"></script>
+<script src="shared/stats.js"></script>
+<script src="shared/speech.js"></script>
+<script src="shared/summary.js"></script>
+<script src="shared/portal-storage.js"></script>
+<script src="shared/session.js"></script>
+<script src="shared/hints.js"></script>
+<script src="shared/progression.js"></script>
+<script src="shared/page-boot.js"></script>
+<script src="shared/garden-cast.js"></script>
+<script src="shared/maze-logic.js"></script>
+<script src="scripts/maze-page.js"></script>
+</body>
+</html>

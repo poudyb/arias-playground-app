@@ -101,6 +101,20 @@ function normalizeWalkStats(parsed) {
   return normalizeStatsBySchema(parsed, createWalkStats());
 }
 
+function createMazeStats() {
+  return {
+    mazeFriends: 0,
+    mazeBoardsMissed: 0,
+    bumps: 0,
+    friendTaps: 0,
+    offTaps: 0
+  };
+}
+
+function normalizeMazeStats(parsed) {
+  return normalizeStatsBySchema(parsed, createMazeStats());
+}
+
 function createClockStats() {
   return {
     matchSuccesses: 0,
@@ -174,6 +188,8 @@ if (typeof module !== 'undefined' && module.exports) {
     normalizeMemoryStats,
     createWalkStats,
     normalizeWalkStats,
+    createMazeStats,
+    normalizeMazeStats,
     createClockStats,
     normalizeClockStats,
     createSpellingStats,

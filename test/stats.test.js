@@ -62,6 +62,8 @@ test('normalize* round-trips a full valid stats object unchanged', () => {
   const pairs = [
     [stats.createSameAsStats, stats.normalizeSameAsStats],
     [stats.createMemoryStats, stats.normalizeMemoryStats],
+    [stats.createWalkStats, stats.normalizeWalkStats],
+    [stats.createMazeStats, stats.normalizeMazeStats],
     [stats.createClockStats, stats.normalizeClockStats],
     [stats.createSpellingStats, stats.normalizeSpellingStats],
     [stats.createCalcStats, stats.normalizeCalcStats]

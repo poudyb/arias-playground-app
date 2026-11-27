@@ -1,6 +1,6 @@
 # arias-playground-app
 
-**Aria's Playroom** — a simple static web app with letter/number, animal sounds, shapes & colors, clock, spelling, calculator and walk-and-jump activities for young learners.
+**Aria's Playroom** — a simple static web app with letter/number, animal sounds, shapes & colors, clock, spelling, calculator, walk-and-jump and garden maze activities for young learners.
 
 ## Run locally
 
@@ -19,7 +19,7 @@ Open [http://localhost:8080](http://localhost:8080) and use `index.html` as the 
 
 The pure logic (stats normalization, clock wording / digit segments, the
 spelling word helpers and Read It ladder, the calculator's key rules and Make
-It ladder, Memory's strategy rules, Walk and Jump's moves and board ladder, session index validation, and the ladder progressions
+It ladder, Memory's strategy rules, Walk and Jump's moves and board ladder, Garden Maze's boards (each one checked that walking straight at the friend never works) and its tap ring, session index validation, and the ladder progressions
 that step a game's difficulty up and down — both the single on/off step and
 the multi-rung ladders Clock Match, Quiz and Next climb) is unit-tested with
 **Node's built-in test runner** — no dependencies to install.
